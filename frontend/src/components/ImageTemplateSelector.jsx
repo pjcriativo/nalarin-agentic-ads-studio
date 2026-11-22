@@ -358,7 +358,7 @@ function TemplateCard({ template, onSelect, isSelected, onToggleSelect }) {
     let colorPalette = null;
     try {
         colorPalette = template.color_palette ? JSON.parse(template.color_palette) : null;
-    } catch (e) {
+    } catch {
         // Ignore parse errors
     }
 
@@ -428,7 +428,7 @@ function TemplateListItem({ template, onSelect, isSelected, onToggleSelect }) {
     let colorPalette = null;
     try {
         colorPalette = template.color_palette ? JSON.parse(template.color_palette) : null;
-    } catch (e) {
+    } catch {
         // Ignore parse errors
     }
 

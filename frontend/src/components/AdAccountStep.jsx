@@ -74,19 +74,6 @@ const AdAccountStep = ({ onNext }) => {
         onNext();
     };
 
-    const formatCurrency = (amount, currency) => {
-        if (!amount || amount === '0' || amount === 0) return null;
-        const value = parseInt(amount) / 100; // Facebook returns amounts in cents
-        return `${currency} ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    };
-
-    const formatAge = (days) => {
-        if (!days || days === 0) return null;
-        if (days < 30) return `${days} days`;
-        if (days < 365) return `${Math.floor(days / 30)} months`;
-        return `${Math.floor(days / 365)} years`;
-    };
-
     return (
         <div>
             <h2 className="text-2xl font-bold mb-2">{t('adAccountStep.selectAdAccount')}</h2>

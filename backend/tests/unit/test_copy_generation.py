@@ -86,7 +86,7 @@ class TestCopyGeneration:
         )
         assert response.status_code in [
             status.HTTP_400_BAD_REQUEST,
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             status.HTTP_404_NOT_FOUND
         ]
 
@@ -193,7 +193,7 @@ class TestCopyGenerationEdgeCases:
         # Should handle error gracefully
         assert response.status_code in [
             status.HTTP_400_BAD_REQUEST,
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             status.HTTP_503_SERVICE_UNAVAILABLE
         ]

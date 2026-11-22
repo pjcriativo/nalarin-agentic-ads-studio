@@ -18,6 +18,10 @@ const StatCard = ({ title, value, change, trend, icon: Icon }) => (
     </div>
 );
 
+// Fixed placeholder heights (previously random on every render). This page
+// still shows sample data and says so in the notice below.
+const SAMPLE_BAR_HEIGHTS = [38, 52, 45, 64, 58, 72, 66, 81, 75, 69, 88, 94];
+
 const Reporting = () => {
     const { t } = useTranslation('dashboard');
     const stats = [
@@ -51,6 +55,10 @@ const Reporting = () => {
                 </div>
             </div>
 
+            <div role="status" className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3">
+                {t('reporting.sampleDataNotice')}
+            </div>
+
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat, index) => (
@@ -80,7 +88,7 @@ const Reporting = () => {
                             <div key={i} className="w-full bg-amber-100 rounded-t-sm relative group">
                                 <div
                                     className="absolute bottom-0 left-0 w-full bg-amber-500 rounded-t-sm transition-all duration-500 group-hover:bg-amber-600"
-                                    style={{ height: `${Math.random() * 100}%` }}
+                                    style={{ height: `${SAMPLE_BAR_HEIGHTS[i]}%` }}
                                 ></div>
                             </div>
                         ))}

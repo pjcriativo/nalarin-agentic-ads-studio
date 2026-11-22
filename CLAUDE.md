@@ -44,8 +44,10 @@ python init_db.py
 uvicorn app.main:app --reload --port 8000
 
 # Run tests
-pytest
-pytest test_research.py  # Run single test file
+# Tests only run against a DISPOSABLE PostgreSQL (db name must end in "_test"):
+# never the dev or Railway database. This starts one, runs pytest + coverage, tears it down:
+bash ../scripts/test-backend.sh
+bash ../scripts/test-backend.sh tests/unit/test_google_ads.py  # single file
 ```
 
 ### Frontend
@@ -263,8 +265,7 @@ FAL_AI_API_KEY=...
 KIE_AI_API_KEY=...
 
 # Facebook Marketing API
-VITE_FACEBOOK_ACCESS_TOKEN=...
-VITE_FACEBOOK_API_VERSION=v24.0
+FACEBOOK_ACCESS_TOKEN=...   # backend only - never behind a VITE_ prefix
 
 # Auth
 SECRET_KEY=...  # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"

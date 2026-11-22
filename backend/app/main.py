@@ -6,6 +6,7 @@ Created by Didik Wahyudi
 
 import os
 import re
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -20,11 +21,32 @@ from app.core.rate_limit import limiter
 # fail-fast pattern already used for SECRET_KEY in app.core.config.
 from app.core import token_encryption  # noqa: F401
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Validate the PostgreSQL connection on startup (fail fast)."""
+    from app.database import engine
+    from sqlalchemy import text
+
+    try:
+        with engine.connect() as conn:
+            version = conn.execute(text("SELECT version()")).scalar()
+            print("Connected to PostgreSQL")
+            print(f"   Version: {version}")
+    except Exception as e:
+        # Sanitize DATABASE_URL - hide password
+        sanitized_url = re.sub(r'://[^:]+:[^@]+@', '://***:***@', settings.DATABASE_URL)
+        print(f"Failed to connect to database: {e}")
+        print(f"   DATABASE_URL: {sanitized_url}")
+        raise RuntimeError("Database connection failed") from e
+    yield
+
+
 app = FastAPI(
     title="Facebook Ad Automation API",
     version="1.0.0",
     openapi_url="/api/v1/openapi.json",
     docs_url="/api/v1/docs",
+    lifespan=lifespan,
 )
 
 # Register rate limiter
@@ -91,27 +113,6 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
-
-# Database Connection Validation
-@app.on_event("startup")
-async def startup_event():
-    """Validate PostgreSQL connection on startup"""
-    from app.database import engine
-    from sqlalchemy import text
-    
-    try:
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT version()"))
-            version = result.scalar()
-            print(f"✅ Connected to PostgreSQL")
-            print(f"   Version: {version}")
-    except Exception as e:
-        # Sanitize DATABASE_URL - hide password
-        sanitized_url = re.sub(r'://[^:]+:[^@]+@', '://***:***@', settings.DATABASE_URL)
-        print(f"❌ Failed to connect to database: {e}")
-        print(f"   DATABASE_URL: {sanitized_url}")
-        raise RuntimeError(f"Database connection failed: {e}")
-
 
 # Include Routers
 from app.api.v1 import brands, products, research, generated_ads, templates, facebook, uploads, dashboard, copy_generation, profiles, ad_remix, prompts, ad_styles, auth, users, google_ads, overview, tiktok_ads, bot, optimization

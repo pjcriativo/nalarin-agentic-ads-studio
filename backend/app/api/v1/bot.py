@@ -15,14 +15,35 @@ from app.api.v1.overview import build_overview
 router = APIRouter()
 
 
+def _require_key_owner(api_key: ApiKey) -> str:
+    """Every bot read is scoped to the user that issued the key; an unbound key
+    must never see anyone's data."""
+    if not api_key.created_by_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This API key is not bound to an owner.",
+        )
+    return api_key.created_by_user_id
+
+
 @router.get("/connections")
 def list_connections(
-    _api_key: ApiKey = Depends(require_api_key_scope("ads:read")),
+    api_key: ApiKey = Depends(require_api_key_scope("ads:read")),
     db: Session = Depends(get_db),
 ):
-    """Return connection metadata only. OAuth token material never leaves the backend."""
-    google = db.query(GoogleAdsConnection).filter(GoogleAdsConnection.is_active.is_(True)).all()
-    tiktok = db.query(TikTokAdsConnection).filter(TikTokAdsConnection.is_active.is_(True)).all()
+    """Return connection metadata only, for the user who owns this API key.
+    OAuth token material never leaves the backend."""
+    owner_id = _require_key_owner(api_key)
+    google = (
+        db.query(GoogleAdsConnection)
+        .filter(GoogleAdsConnection.user_id == owner_id, GoogleAdsConnection.is_active.is_(True))
+        .all()
+    )
+    tiktok = (
+        db.query(TikTokAdsConnection)
+        .filter(TikTokAdsConnection.user_id == owner_id, TikTokAdsConnection.is_active.is_(True))
+        .all()
+    )
     return {
         "google_ads": [
             {"customer_id": connection.customer_id, "account_name": connection.account_name, "connected_at": connection.created_at}
@@ -58,21 +79,21 @@ async def read_spend(
     db: Session = Depends(get_db),
 ):
     """Get aggregated total spend across all connected platforms for the bot."""
-    if not api_key.created_by_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="This API key is not bound to an owner.",
-        )
-    
-    overview_data = await build_overview(db, api_key.created_by_user_id, date_preset)
-    
-    total_spend = sum(float(campaign.get("spend", 0.0) or 0.0) for campaign in overview_data)
-    
+    owner_id = _require_key_owner(api_key)
+
+    # build_overview returns {"campaigns": [...], "errors": {...}} -- iterate the
+    # campaign rows, not the dict (which would yield its keys).
+    overview = await build_overview(db, owner_id, date_preset)
+    campaigns = overview.get("campaigns", [])
+
+    total_spend = sum(float(campaign.get("spend", 0.0) or 0.0) for campaign in campaigns)
+
     return {
         "date_preset": date_preset,
         "total_spend": round(total_spend, 2),
         "currency": "USD",
-        "active_campaigns": len([c for c in overview_data if str(c.get("status", "")).upper() == "ENABLED"])
+        "active_campaigns": len([c for c in campaigns if str(c.get("status", "")).upper() == "ENABLED"]),
+        "platform_errors": overview.get("errors", {}),
     }
 
 
@@ -83,9 +104,5 @@ async def read_overview(
     db: Session = Depends(get_db),
 ):
     """Read performance associated with the user who issued the bot key."""
-    if not api_key.created_by_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="This API key is not bound to an owner and cannot read Ads Studio performance.",
-        )
-    return await build_overview(db, api_key.created_by_user_id, date_preset)
+    owner_id = _require_key_owner(api_key)
+    return await build_overview(db, owner_id, date_preset)

@@ -11,7 +11,6 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 // Helper Components
 const CopyButton = ({ text, label }) => {
     const { t } = useTranslation('library');
-    const { showError } = useToast();
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {

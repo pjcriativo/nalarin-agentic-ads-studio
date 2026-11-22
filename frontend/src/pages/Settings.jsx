@@ -11,7 +11,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 export default function Settings() {
     const { t } = useTranslation('settings');
-    const { showSuccess, showError } = useToast();
+    const { showSuccess, showError, showWarning } = useToast();
     const { authFetch } = useAuth();
     const [activeTab, setActiveTab] = useState('styles');
     const [styles, setStyles] = useState([]);
@@ -20,8 +20,8 @@ export default function Settings() {
     const [editingPrompt, setEditingPrompt] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showAIModal, setShowAIModal] = useState(false);
-    const [generating, setGenerating] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const generating = false;
+    const [, setLoading] = useState(true);
     const [styleToDelete, setStyleToDelete] = useState(null);
 
     // Load prompts and styles from API
@@ -97,18 +97,11 @@ export default function Settings() {
         showSuccess(t('settings.styleAddedSuccessfully'));
     };
 
-    const handleGenerateAIStyles = async (prompt, count) => {
-        setGenerating(true);
-        try {
-            // TODO: Implement AI generation endpoint
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Simulated API call
-            showSuccess(t('settings.generatedCountNewStyles', { count }));
-            setShowAIModal(false);
-        } catch (error) {
-            showError(t('settings.failedToGenerateStyles'));
-        } finally {
-            setGenerating(false);
-        }
+    // AI style generation has no backend endpoint yet. Say so instead of
+    // pretending (the previous version waited 2s and reported fake success).
+    const handleGenerateAIStyles = () => {
+        showWarning(t('settings.aiGenerationUnavailable'));
+        setShowAIModal(false);
     };
 
     return (

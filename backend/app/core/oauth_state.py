@@ -18,7 +18,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Response
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError
 
 from app.core.config import settings
 
@@ -46,7 +47,7 @@ def verify_oauth_state(token: str, provider: str) -> str:
     any failure (expired, wrong provider, tampered, wrong purpose)."""
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[_ALGORITHM])
-    except JWTError as exc:
+    except PyJWTError as exc:
         raise ValueError(f"Invalid or expired OAuth state: {exc}")
 
     if payload.get("purpose") != "oauth_state":

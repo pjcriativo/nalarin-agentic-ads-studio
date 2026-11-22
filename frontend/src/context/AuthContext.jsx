@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- context modules intentionally export the provider and its hook together */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const AuthContext = createContext();
@@ -25,7 +26,7 @@ export const AuthProvider = ({ children }) => {
             if (accessToken) {
                 try {
                     await fetchUser();
-                } catch (err) {
+                } catch {
                     // Token might be expired, try to refresh
                     if (refreshToken) {
                         try {
@@ -54,7 +55,7 @@ export const AuthProvider = ({ children }) => {
         const refreshInterval = setInterval(async () => {
             try {
                 await refreshAccessToken();
-            } catch (err) {
+            } catch {
                 // Silently fail - will retry on next interval or next API call
                 console.log('Background token refresh failed, will retry');
             }
@@ -160,7 +161,7 @@ export const AuthProvider = ({ children }) => {
                     },
                     body: JSON.stringify({ refresh_token: refreshToken }),
                 });
-            } catch (err) {
+            } catch {
                 // Ignore errors during logout
             }
         }
@@ -189,19 +190,14 @@ export const AuthProvider = ({ children }) => {
         }
 
         const promise = (async () => {
-            let response;
-            try {
-                response = await fetch(`${API_URL}/auth/refresh`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ refresh_token: localStorage.getItem('refreshToken') }),
-                });
-            } catch (err) {
-                // Network error - rethrow but don't attach status so we don't logout
-                throw err;
-            }
+            // A network error propagates as-is (no status attached, so we don't logout).
+            const response = await fetch(`${API_URL}/auth/refresh`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ refresh_token: localStorage.getItem('refreshToken') }),
+            });
 
             if (!response.ok) {
                 const error = new Error('Failed to refresh token');

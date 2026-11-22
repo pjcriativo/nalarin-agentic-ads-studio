@@ -18,7 +18,6 @@ export default function AdRemix() {
     const { authFetch } = useAuth();
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(false);
-    const [blueprint, setBlueprint] = useState(null);
     const [adConcept, setAdConcept] = useState(null);
 
     const [wizardData, setWizardData] = useState({
@@ -51,27 +50,6 @@ export default function AdRemix() {
             ...prev,
             campaignDetails: { ...prev.campaignDetails, [field]: value }
         }));
-    };
-
-    const handleDeconstruct = async () => {
-        setLoading(true);
-        try {
-            const response = await authFetch(`${API_URL}/ad-remix/deconstruct`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ template_id: wizardData.template.id })
-            });
-
-            if (!response.ok) throw new Error(t('adRemix.deconstructionFailed'));
-
-            const data = await response.json();
-            setBlueprint(data);
-        } catch (error) {
-            console.error('Deconstruction error:', error);
-            showError(t('adRemix.failedToDeconstructTemplatePlease'));
-        } finally {
-            setLoading(false);
-        }
     };
 
     const handleReconstruct = async () => {

@@ -62,7 +62,7 @@ export default function Overview() {
                 const error = await response.json().catch(() => ({}));
                 showError(translateBackendMessage(error.detail, 'dashboard:overview.loadFailed'));
             }
-        } catch (error) {
+        } catch {
             showError(t('overview.loadFailed'));
         } finally {
             setLoading(false);

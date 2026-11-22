@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Check, Wand2, Layout, Image as ImageIcon, Briefcase, LayoutGrid, List, Search, BarChart2, Layers } from 'lucide-react';
 import CopyBuilder from './CopyBuilder';
@@ -32,7 +32,10 @@ const Wizard = () => {
     });
 
     // Auto-fill from product if selected
-    useEffect(() => {
+    // (adjusted during render, keyed on the product, instead of in an effect)
+    const [syncedProduct, setSyncedProduct] = useState(null);
+    if (selectedProduct !== syncedProduct) {
+        setSyncedProduct(selectedProduct);
         if (selectedProduct) {
             setCopyData(prev => ({
                 ...prev,
@@ -40,7 +43,7 @@ const Wizard = () => {
                 // You could also map description to something if needed
             }));
         }
-    }, [selectedProduct]);
+    }
 
     const handleNext = () => {
         setStep(step + 1);

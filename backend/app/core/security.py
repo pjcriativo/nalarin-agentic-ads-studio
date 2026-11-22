@@ -1,7 +1,8 @@
 import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from jose import jwt, JWTError
+import jwt
+from jwt import PyJWTError
 import bcrypt
 from app.core.config import settings
 import secrets
@@ -58,5 +59,5 @@ def decode_access_token(token: str) -> Optional[dict]:
         if payload.get("type") != "access":
             return None
         return payload
-    except JWTError:
+    except PyJWTError:
         return None

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronRight, ChevronLeft, Check, Loader, Plus } from 'lucide-react';
 import { useCampaign } from '../context/CampaignContext';
 import { useToast } from '../context/ToastContext';
-import { getCampaigns, createFacebookCampaign } from '../lib/facebookApi';
+import { getCampaigns } from '../lib/facebookApi';
 
 const CAMPAIGN_OBJECTIVES = [
     { value: 'OUTCOME_SALES', label: 'Sales - Drive purchases and conversions' },
@@ -23,12 +23,12 @@ const BID_STRATEGIES = [
 
 const CampaignStep = ({ onNext, onBack }) => {
     const { t } = useTranslation('campaigns');
-    const { campaignData, setCampaignData, selectedAdAccount, setSelectedAdAccount } = useCampaign();
+    const { campaignData, setCampaignData, selectedAdAccount } = useCampaign();
     const { showError, showWarning } = useToast();
     const [mode, setMode] = useState('new'); // 'new' or 'existing'
     const [existingCampaigns, setExistingCampaigns] = useState([]);
     const [selectedCampaign, setSelectedCampaign] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [loading] = useState(false);
     const [loadingCampaigns, setLoadingCampaigns] = useState(false);
 
     useEffect(() => {

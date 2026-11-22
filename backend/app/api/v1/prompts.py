@@ -58,7 +58,7 @@ def create_prompt(prompt: PromptCreate, db: Session = Depends(get_db), current_u
     if existing:
         raise HTTPException(status_code=400, detail="Prompt with this ID already exists")
 
-    db_prompt = Prompt(**prompt.dict())
+    db_prompt = Prompt(**prompt.model_dump())
     db.add(db_prompt)
     db.commit()
     db.refresh(db_prompt)
@@ -72,7 +72,7 @@ def update_prompt(prompt_id: str, prompt: PromptUpdate, db: Session = Depends(ge
         raise HTTPException(status_code=404, detail="Prompt not found")
 
     # Update only provided fields
-    update_data = prompt.dict(exclude_unset=True)
+    update_data = prompt.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_prompt, field, value)
 

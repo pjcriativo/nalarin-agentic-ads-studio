@@ -23,8 +23,15 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Core no-unused-vars cannot see JSX usage (<Icon />), so PascalCase
+      // bindings (vars AND destructured props) are exempt, as before for vars.
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^[A-Z_]' }],
     },
+  },
+  {
+    // Node-executed config files.
+    files: ['*.config.js', 'vite.config.js', 'tailwind.config.js', 'vitest.config.js'],
+    languageOptions: { globals: globals.node },
   },
   {
     // Vitest globals (vitest.config.js sets `globals: true`) for unit tests + setup.

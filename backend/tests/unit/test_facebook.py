@@ -34,7 +34,7 @@ class TestFacebookCampaigns:
         # 404 when no Meta Ads connection exists; otherwise service-level errors
         assert response.status_code in [
             status.HTTP_404_NOT_FOUND,  # No connected Meta Ads account
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             status.HTTP_400_BAD_REQUEST,
             status.HTTP_500_INTERNAL_SERVER_ERROR
         ]
@@ -55,7 +55,7 @@ class TestFacebookCampaigns:
         assert response.status_code in [
             status.HTTP_200_OK,
             status.HTTP_201_CREATED,
-            status.HTTP_422_UNPROCESSABLE_ENTITY  # If schema is different
+            status.HTTP_422_UNPROCESSABLE_CONTENT  # If schema is different
         ]
 
 
@@ -93,7 +93,7 @@ class TestFacebookAdSets:
             assert response.status_code in [
                 status.HTTP_200_OK,
                 status.HTTP_201_CREATED,
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
                 status.HTTP_500_INTERNAL_SERVER_ERROR  # FK constraint if campaign not saved
             ]
 
@@ -117,7 +117,7 @@ class TestFacebookAds:
         assert response.status_code in [
             status.HTTP_200_OK,
             status.HTTP_201_CREATED,
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             status.HTTP_500_INTERNAL_SERVER_ERROR
         ]
 
@@ -136,7 +136,7 @@ class TestFacebookMediaUpload:
         assert response.status_code in [
             status.HTTP_404_NOT_FOUND,  # No connected Meta Ads account
             status.HTTP_400_BAD_REQUEST,
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             status.HTTP_500_INTERNAL_SERVER_ERROR
         ]
 
@@ -211,7 +211,7 @@ class TestFacebookServiceMocked:
         assert response.status_code in [
             status.HTTP_200_OK,
             status.HTTP_201_CREATED,
-            status.HTTP_422_UNPROCESSABLE_ENTITY  # Schema mismatch
+            status.HTTP_422_UNPROCESSABLE_CONTENT  # Schema mismatch
         ]
 
     def test_upload_video_mocked(self, client, auth_headers, mock_facebook_service):

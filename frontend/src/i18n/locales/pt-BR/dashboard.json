@@ -59,17 +59,18 @@
     "conversionRate": "Taxa de conversão",
     "download": "Baixar relatório",
     "performanceOverTime": "Desempenho ao longo do tempo",
-    "platformDistribution": "Distribuição por plataforma"
+    "platformDistribution": "Distribuição por plataforma",
+    "sampleDataNotice": "Dados de exemplo apenas para pré-visualizar o layout. Estes números não são os resultados reais das suas campanhas; o relatório em tempo real ainda não está conectado."
   },
   "optimization": {
     "loadFailed": "Falha ao carregar o status da otimização",
     "networkError": "Erro de rede ao carregar o status da otimização",
-    "testPassed": "Teste da política do modo automático aprovado (Modo: AUTO)",
-    "testManual": "Política avaliada (Modo: MANUAL, Motivo: {{reason}})",
+    "testPassed": "Prévia da política: esta ação seria permitida no modo AUTO. Nada foi executado.",
+    "testManual": "Prévia da política: esta ação exige aprovação MANUAL ({{reason}}). Nada foi executado.",
     "simulationFailed": "Falha ao avaliar a simulação da política",
     "loading": "Carregando política de otimização...",
     "title": "Otimização agêntica e modo automático",
-    "subtitle": "Gestão autônoma de campanhas protegida por limites de segurança",
+    "subtitle": "Política de proteção para alterações em campanhas. A execução autônoma não está ativa.",
     "killSwitch": "Kill-switch ativo",
     "autoOn": "Modo automático ATIVO",
     "manualOnly": "Somente limites manuais",
@@ -81,6 +82,8 @@
     "operatingWindow": "Janela de operação",
     "monitored": "Monitorado 24/7",
     "simulate": "Simular avaliação de regras",
-    "verdict": "Veredito"
+    "verdict": "Veredito",
+    "engineInactive": "A otimização autônoma não está ativa. As regras abaixo apenas mostram quais ações seriam permitidas; nenhuma campanha é monitorada ou alterada automaticamente.",
+    "notMonitored": "Sem monitoramento (motor inativo)"
   }
 }

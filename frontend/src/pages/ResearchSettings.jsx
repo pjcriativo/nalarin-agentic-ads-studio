@@ -13,11 +13,6 @@ const ResearchSettings = () => {
     const [showKeywordModal, setShowKeywordModal] = useState(false);
     const [blacklistKeyword, setBlacklistKeyword] = useState('');
 
-    useEffect(() => {
-        fetchBlacklist();
-        fetchKeywordBlacklist();
-    }, []);
-
     const fetchBlacklist = async () => {
         try {
             const data = await getBlacklist();
@@ -36,6 +31,12 @@ const ResearchSettings = () => {
         }
     };
 
+    useEffect(() => {
+        fetchBlacklist();
+        fetchKeywordBlacklist();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
+    }, []);
+
     const handleAddToBlacklist = async (pageName) => {
         if (!pageName) {
             setShowBlacklistModal(true);
@@ -48,7 +49,7 @@ const ResearchSettings = () => {
             fetchBlacklist();
             setBlacklistPageName('');
             setShowBlacklistModal(false);
-        } catch (error) {
+        } catch {
             showError(t('researchSettings.failedToAddToBlacklist'));
         }
     };
@@ -58,7 +59,7 @@ const ResearchSettings = () => {
             await removeFromBlacklist(id);
             showSuccess(t('researchSettings.removedPagenameFromBlacklist', { pageName }));
             fetchBlacklist();
-        } catch (error) {
+        } catch {
             showError(t('researchSettings.failedToRemoveFromBlacklist'));
         }
     };
@@ -75,7 +76,7 @@ const ResearchSettings = () => {
             fetchKeywordBlacklist();
             setBlacklistKeyword('');
             setShowKeywordModal(false);
-        } catch (error) {
+        } catch {
             showError(t('researchSettings.failedToAddToKeyword'));
         }
     };
@@ -85,7 +86,7 @@ const ResearchSettings = () => {
             await removeFromKeywordBlacklist(id);
             showSuccess(t('researchSettings.removedKeywordFromKeywordBlacklist', { keyword }));
             fetchKeywordBlacklist();
-        } catch (error) {
+        } catch {
             showError(t('researchSettings.failedToRemoveFromKeyword'));
         }
     };

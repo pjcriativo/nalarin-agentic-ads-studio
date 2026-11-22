@@ -47,6 +47,7 @@
     "generating": "Gerando...",
     "generateStyles": "Gerar estilos",
     "generatedCountNewStyles": "{{count}} novos estilos gerados!",
+    "aiGenerationUnavailable": "A geração de estilos por IA ainda não está disponível. Nenhum estilo foi criado.",
     "areYouSureYouWant": "Tem certeza de que deseja excluir este estilo de anúncio? Esta ação não pode ser desfeita.",
     "tabStyles": "Estilos de anúncio",
     "tabPrompts": "Prompts",

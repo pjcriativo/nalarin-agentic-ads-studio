@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, BarChart3, Package, Users, Video, Wand2, Settings, LogOut, Image, ShoppingBag, Target, ChevronLeft, ChevronRight, FileImage, Search, ChevronDown, UserCog, TrendingUp, Music2, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -15,15 +15,14 @@ export default function Layout() {
     const { t } = useTranslation('layout');
     const [expandedMenus, setExpandedMenus] = useState({ brands: false, research: false });
     const [isCollapsed, setIsCollapsed] = useState(false);
-    const [showUserMenu, setShowUserMenu] = useState(false);
     // Mobile off-canvas nav. md+ always shows the desktop sidebar; the
     // mobile drawer shares the exact same markup (className toggles only).
-    const [mobileOpen, setMobileOpen] = useState(false);
-
-    // Close the drawer whenever the route changes (tap-through navigation).
-    useEffect(() => {
-        setMobileOpen(false);
-    }, [location.pathname]);
+    // The drawer is remembered together with the route it was opened on, so it
+    // closes by itself whenever the route changes (tap-through navigation)
+    // without an effect that sets state.
+    const [mobileOpenPath, setMobileOpenPath] = useState(null);
+    const mobileOpen = mobileOpenPath === location.pathname;
+    const setMobileOpen = (open) => setMobileOpenPath(open ? location.pathname : null);
 
     const handleLogout = async () => {
         await logout();

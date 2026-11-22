@@ -24,7 +24,7 @@ const CTA_OPTIONS = [
 const AdCreativeStep = ({ onNext, onBack }) => {
     const { t } = useTranslation('campaigns');
     const { showWarning, showError } = useToast();
-    const { creativeData, setCreativeData, selectedAdAccount, selectedProduct, adsetData } = useCampaign();
+    const { creativeData, setCreativeData, selectedAdAccount, adsetData } = useCampaign();
     const [pages, setPages] = useState([]);
     const [loadingPages, setLoadingPages] = useState(false);
 
@@ -339,7 +339,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                 showWarning(t('adCreativeStep.pleaseEnterAValidUrl'));
                 return;
             }
-        } catch (e) {
+        } catch {
             showWarning(t('adCreativeStep.pleaseEnterAValidUrl2'));
             return;
         }

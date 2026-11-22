@@ -79,6 +79,12 @@ class Settings:
             "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
         )
 
+    if len(SECRET_KEY) < 32:
+        raise ValueError(
+            "SECRET_KEY must be at least 32 characters (HS256 key strength).\n"
+            "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+        )
+
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))  # 30 minutes
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))  # 7 days

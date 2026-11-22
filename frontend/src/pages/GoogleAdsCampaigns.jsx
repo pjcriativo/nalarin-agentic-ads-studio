@@ -141,7 +141,7 @@ export default function GoogleAdsCampaigns() {
             setConnection({ connected: false });
             setCampaigns([]);
             showSuccess(t('googleAdsCampaigns.googleAdsAccountDisconnected'));
-        } catch (error) {
+        } catch {
             showError(t('googleAdsCampaigns.failedToDisconnect'));
         } finally {
             setDisconnecting(false);

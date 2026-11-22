@@ -1,28 +1,99 @@
 import os
+from pathlib import Path
+from urllib.parse import urlparse
+
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-from unittest.mock import MagicMock, patch
 
-# For tests, use a SEPARATE dev database to avoid polluting production
-# Set TEST_DATABASE_URL env var or fallback to dev database
 
-from app.main import app
-from app.database import Base, get_db
-from app.models import User, Role
-from app.core.security import get_password_hash
-from app.core.config import settings
-from app.core.rate_limit import limiter
+def _resolve_test_database_url() -> str:
+    """The suite only ever runs against a DISPOSABLE PostgreSQL database.
 
-# Use DATABASE_URL from env (CI sets this to localhost postgres)
-# No fallback - DATABASE_URL must be set
-TEST_DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("TEST_DATABASE_URL")
-if not TEST_DATABASE_URL:
-    raise ValueError("DATABASE_URL or TEST_DATABASE_URL environment variable required for tests")
+    It requires an explicit TEST_DATABASE_URL (there is deliberately no
+    fallback to DATABASE_URL, which in local dev points at the shared dev
+    database and in production at Railway) and refuses any database whose
+    name does not end in ``_test``. Start one with
+    ``docker compose -f docker-compose.test.yml up -d`` (see scripts/test-backend.sh).
+    """
+    url = os.getenv("TEST_DATABASE_URL", "").strip()
+    if not url:
+        raise pytest.UsageError(
+            "TEST_DATABASE_URL is required. The tests create/drop data and must "
+            "never run against the dev or production database. Start the "
+            "disposable DB: docker compose -f docker-compose.test.yml up -d"
+        )
+    if not url.startswith(("postgresql://", "postgres://")):
+        raise pytest.UsageError("TEST_DATABASE_URL must be a PostgreSQL URL.")
+    db_name = urlparse(url).path.lstrip("/")
+    if not db_name.endswith("_test"):
+        raise pytest.UsageError(
+            f"Refusing to run: database '{db_name}' does not end in '_test'."
+        )
+    configured = os.getenv("DATABASE_URL", "").strip()
+    if configured and configured == url:
+        raise pytest.UsageError("TEST_DATABASE_URL must differ from DATABASE_URL.")
+    return url
+
+
+TEST_DATABASE_URL = _resolve_test_database_url()
+
+# Make the process hermetic BEFORE the app is imported: point the app's own
+# engine at the disposable DB and neutralise anything a developer's .env could
+# leak in (real provider credentials, auto-mode, kill-switch...).
+from cryptography.fernet import Fernet  # noqa: E402
+
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+os.environ["SECRET_KEY"] = "test-secret-key-0123456789-abcdefghijklmnop"
+os.environ["OAUTH_TOKEN_ENCRYPTION_KEY"] = Fernet.generate_key().decode()
+os.environ["GEMINI_API_KEY"] = "mock-key"
+os.environ["FAL_AI_API_KEY"] = "mock-key"
+for _var in (
+    "KIE_AI_API_KEY", "FACEBOOK_ACCESS_TOKEN", "VITE_FACEBOOK_ACCESS_TOKEN",
+    "FACEBOOK_APP_ID", "FACEBOOK_APP_SECRET", "FACEBOOK_OAUTH_REDIRECT_URI",
+    "GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_DEVELOPER_TOKEN",
+    "GOOGLE_ADS_LOGIN_CUSTOMER_ID", "GOOGLE_ADS_OAUTH_REDIRECT_URI",
+    "TIKTOK_ADS_APP_ID", "TIKTOK_ADS_APP_SECRET", "TIKTOK_ADS_OAUTH_REDIRECT_URI",
+    "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME",
+    "R2_PUBLIC_URL", "ADS_AUTO_MODE", "ADS_MUTATION_KILL_SWITCH", "PROPOSAL_TOKEN_SECRET",
+):
+    os.environ[_var] = ""
+
+from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
+from unittest.mock import MagicMock, patch  # noqa: E402
+
+from app.main import app  # noqa: E402
+from app.database import Base, get_db  # noqa: E402
+from app.models import User, Role  # noqa: E402
+from app.core.security import get_password_hash  # noqa: E402
+from app.core.config import settings  # noqa: E402
+from app.core.rate_limit import limiter  # noqa: E402
+
 engine = create_engine(TEST_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _migrated_test_database():
+    """Build the schema of the disposable DB with the real Alembic migrations
+    (not just create_all), so a broken or missing migration fails the suite."""
+    from alembic import command
+    from alembic.config import Config
+
+    backend_dir = Path(__file__).resolve().parent.parent
+    cfg = Config(str(backend_dir / "alembic.ini"))
+    cfg.set_main_option("script_location", str(backend_dir / "alembic"))
+    command.upgrade(cfg, "head")
+    yield
+
+
+@pytest.fixture
+def google_ads_configured(monkeypatch):
+    """Explicitly enable Google Ads for tests that exercise configured-server paths."""
+    monkeypatch.setattr(settings, "GOOGLE_ADS_CLIENT_ID", "test-client-id")
+    monkeypatch.setattr(settings, "GOOGLE_ADS_CLIENT_SECRET", "test-client-secret")
+    monkeypatch.setattr(settings, "GOOGLE_ADS_DEVELOPER_TOKEN", "test-developer-token")
+    monkeypatch.setattr(settings, "GOOGLE_ADS_OAUTH_REDIRECT_URI", "http://localhost:8000/api/v1/google-ads/oauth/callback")
 
 
 @pytest.fixture(autouse=True)
@@ -46,16 +117,26 @@ def db_session():
     Note: Uses PostgreSQL. Tables are not dropped after tests to preserve
     production data. Test user is cleaned up individually.
     """
-    # Ensure tables exist
-    Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
     try:
         yield session
     finally:
         # Clean up test data (don't drop tables in production DB)
         # Delete test user if it exists
-        from app.models import User, RefreshToken
+        from app.models import (
+            User, RefreshToken, MutationAudit, GoogleAdsConnection,
+            MetaAdsConnection, TikTokAdsConnection, ApiKey,
+        )
+        session.rollback()
         test_user = session.query(User).filter(User.email == "test@example.com").first()
+        for u in session.query(User).filter(User.email.like("%@example.com")).all():
+            for model in (MutationAudit, GoogleAdsConnection, MetaAdsConnection, TikTokAdsConnection):
+                session.query(model).filter(model.user_id == u.id).delete()
+            session.query(ApiKey).filter(ApiKey.created_by_user_id == u.id).delete()
+            if u is not test_user:
+                session.query(RefreshToken).filter(RefreshToken.user_id == u.id).delete()
+                session.delete(u)
+        session.commit()
         if test_user:
             session.query(RefreshToken).filter(RefreshToken.user_id == test_user.id).delete()
             session.delete(test_user)

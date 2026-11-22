@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- context modules intentionally export the provider and its hook together */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 

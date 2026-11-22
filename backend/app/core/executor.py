@@ -15,6 +15,16 @@ import hashlib
 import json
 import time
 from typing import Dict, Any, Optional, List, Tuple
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+# Autonomous execution (reading live metrics, deciding and calling the ad
+# platforms without a human) is NOT implemented. The policy/evaluation layer
+# below is real and tested, but nothing consumes its "auto" verdict yet, so the
+# API and the UI must never present auto-mode as active. Flip this only when an
+# executor that really applies mutations exists.
+AUTONOMOUS_EXECUTION_IMPLEMENTED = False
+
+DEFAULT_AUTO_TIMEZONE = "America/Sao_Paulo"
 
 MUTATION_ACTIONS = [
     "campaign.create",
@@ -36,7 +46,7 @@ def canonical_payload_hash(payload: Dict[str, Any]) -> str:
 class ProposalTokenService:
     @staticmethod
     def _get_secret() -> Optional[str]:
-        secret = os.getenv("PROPOSAL_TOKEN_SECRET", os.getenv("SECRET_KEY", ""))
+        secret = os.getenv("PROPOSAL_TOKEN_SECRET") or os.getenv("SECRET_KEY", "")
         return secret if len(secret) >= 32 else None
 
     @classmethod
@@ -116,7 +126,9 @@ class AutoModePolicy:
         max_actions_per_day: Optional[int] = None,
         operating_hour_start: Optional[int] = None,
         operating_hour_end: Optional[int] = None,
+        timezone_name: str = DEFAULT_AUTO_TIMEZONE,
     ):
+        self.timezone_name = timezone_name
         self.auto_enabled = auto_enabled
         self.allowed_actions = allowed_actions or []
         self.max_budget_micros = max_budget_micros
@@ -139,7 +151,15 @@ class AutoModePolicy:
             val = os.getenv(key, "").strip()
             return int(val) if val.isdigit() and 0 <= int(val) <= 23 else None
 
+        timezone_name = os.getenv("ADS_AUTO_TIMEZONE", "").strip() or DEFAULT_AUTO_TIMEZONE
+        try:
+            ZoneInfo(timezone_name)
+        except (ZoneInfoNotFoundError, ValueError):
+            # Fail closed on a typo: fall back to the default rather than guessing.
+            timezone_name = DEFAULT_AUTO_TIMEZONE
+
         return cls(
+            timezone_name=timezone_name,
             auto_enabled=auto_enabled,
             allowed_actions=allowed_actions,
             max_budget_micros=parse_pos_int("ADS_AUTO_MAX_BUDGET_MICROS"),
@@ -153,12 +173,17 @@ class AutoModePolicy:
         self,
         action: str,
         payload: Dict[str, Any],
-        today_spend_micros: int = 0,
+        today_spend_micros: Optional[int] = 0,
         today_action_count: int = 0,
         now: Optional[int] = None,
-        hour_wib: Optional[int] = None,
+        hour_local: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """Pure evaluation function. Returns {ok: bool, mode: str, reason: str, policy_actor: str}"""
+        """Pure evaluation function. Returns {ok: bool, mode: str, reason: str, policy_actor: str}
+
+        ``today_spend_micros=None`` means "the caller could not verify today's
+        spend from a trusted source"; when a daily-spend ceiling is configured
+        that fails closed to manual approval.
+        """
         if not self.auto_enabled:
             return {"ok": False, "mode": "manual", "reason": "auto-disabled"}
 
@@ -166,18 +191,22 @@ class AutoModePolicy:
             return {"ok": False, "mode": "manual", "reason": "action-not-auto-allowed"}
 
         current_time = now if now is not None else int(time.time())
-        if hour_wib is None:
-            # UTC + 7 for WIB
-            utc_hour = time.gmtime(current_time).tm_hour
-            hour_wib = (utc_hour + 7) % 24
+        if hour_local is None:
+            from datetime import datetime, timezone as _tz
+            hour_local = datetime.fromtimestamp(current_time, _tz.utc).astimezone(
+                ZoneInfo(self.timezone_name)
+            ).hour
 
         if self.operating_hour_start is not None and self.operating_hour_end is not None:
-            if not (self.operating_hour_start <= hour_wib <= self.operating_hour_end):
+            if not (self.operating_hour_start <= hour_local <= self.operating_hour_end):
                 return {"ok": False, "mode": "manual", "reason": "outside-operating-hours"}
 
         amount_micros = int(payload.get("amount_micros", payload.get("amountMicros", 0)))
         if self.max_budget_micros is not None and amount_micros > self.max_budget_micros:
             return {"ok": False, "mode": "manual", "reason": "budget-over-ceiling"}
+
+        if self.max_daily_spend_micros is not None and today_spend_micros is None:
+            return {"ok": False, "mode": "manual", "reason": "daily-spend-unverifiable"}
 
         if self.max_daily_spend_micros is not None and today_spend_micros > self.max_daily_spend_micros:
             return {"ok": False, "mode": "manual", "reason": "daily-spend-over-ceiling"}

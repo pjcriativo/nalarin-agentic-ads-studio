@@ -104,3 +104,31 @@ def test_proposal_token_service(monkeypatch):
     )
     assert ok is False
     assert reason == "bad-signature"
+
+
+def test_operating_hours_use_the_configured_timezone():
+    # 2024-01-01T12:00:00Z is 09:00 in America/Sao_Paulo (UTC-3) but 12:00 in UTC.
+    noon_utc = 1704110400
+    kwargs = dict(auto_enabled=True, allowed_actions=["campaign.pause"],
+                  operating_hour_start=8, operating_hour_end=10)
+    in_sp = AutoModePolicy(timezone_name="America/Sao_Paulo", **kwargs)
+    in_utc = AutoModePolicy(timezone_name="UTC", **kwargs)
+    assert in_sp.evaluate("campaign.pause", {}, now=noon_utc)["ok"] is True
+    assert in_utc.evaluate("campaign.pause", {}, now=noon_utc)["reason"] == "outside-operating-hours"
+
+
+def test_unverifiable_spend_fails_closed_when_a_ceiling_is_set():
+    policy = AutoModePolicy(auto_enabled=True, allowed_actions=["campaign.pause"],
+                            max_daily_spend_micros=1_000_000)
+    verdict = policy.evaluate("campaign.pause", {}, today_spend_micros=None)
+    assert verdict == {"ok": False, "mode": "manual", "reason": "daily-spend-unverifiable"}
+    # without a ceiling there is nothing to verify
+    no_ceiling = AutoModePolicy(auto_enabled=True, allowed_actions=["campaign.pause"])
+    assert no_ceiling.evaluate("campaign.pause", {}, today_spend_micros=None)["ok"] is True
+
+
+def test_empty_proposal_secret_env_falls_back_to_secret_key(monkeypatch):
+    monkeypatch.setenv("PROPOSAL_TOKEN_SECRET", "")
+    monkeypatch.setenv("SECRET_KEY", "k" * 40)
+    assert ProposalTokenService._get_secret() == "k" * 40
+

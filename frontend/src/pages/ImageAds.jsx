@@ -256,7 +256,7 @@ export default function ImageAds() {
             <div className="mb-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center justify-between relative">
                     <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-200 -z-10"></div>
-                    {steps.map((step, index) => {
+                    {steps.map((step) => {
                         const Icon = step.icon;
                         const isActive = step.id === currentStep;
                         const isCompleted = step.id < currentStep;
@@ -1010,7 +1010,7 @@ function ReviewItem({ label, value, icon: Icon }) {
     );
 }
 
-function CopySelectionStep({ generatedCopy, wizardData, onBack, onRegenerate, isRegenerating, onProceed, customImagePrompt, setCustomImagePrompt, authFetch }) {
+function CopySelectionStep({ generatedCopy, wizardData, onBack, onProceed, customImagePrompt, setCustomImagePrompt, authFetch }) {
     const { t } = useTranslation('creatives');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [editedCopy, setEditedCopy] = useState(null);
@@ -1360,20 +1360,17 @@ Style: ${designStyle}`);
     );
 }
 
-function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack, onRestart }) {
+function ImageGenerationStep({ generatedImages, selectedCopy, onBack, onRestart }) {
     const { t } = useTranslation('creatives');
     const [selectedImageIndex, setSelectedImageIndex] = useState(null);
     const [imgError, setImgError] = useState(false);
 
-    if (!generatedImages || generatedImages.length === 0) {
-        return <div className="text-center p-8 text-red-600">{t('imageAds.errorNoImageDataAvailable')}</div>;
-    }
-
     // Filter to show only square images in the main grid
-    const squareImages = generatedImages.filter(img => img.size.includes('Square'));
+    // (hooks below must run on every render, so the empty-state return comes after them)
+    const squareImages = (generatedImages || []).filter(img => img.size.includes('Square'));
 
     // If no square images found (fallback), use all images
-    const displayImages = squareImages.length > 0 ? squareImages : generatedImages;
+    const displayImages = squareImages.length > 0 ? squareImages : (generatedImages || []);
 
     const selectedImage = selectedImageIndex !== null ? displayImages[selectedImageIndex] : null;
 
@@ -1384,6 +1381,8 @@ function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack
 
     // Current image being viewed in the modal (defaults to the selected square image)
     const [viewedImage, setViewedImage] = useState(null);
+    // Stable timestamp for download file names (an impure Date.now() in render is not allowed).
+    const [downloadStamp] = useState(() => Date.now());
 
     // Update viewed image when selection changes
     React.useEffect(() => {
@@ -1391,6 +1390,10 @@ function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack
             setViewedImage(selectedImage);
         }
     }, [selectedImage]);
+
+    if (!generatedImages || generatedImages.length === 0) {
+        return <div className="text-center p-8 text-red-600">{t('imageAds.errorNoImageDataAvailable')}</div>;
+    }
 
     const displayCopy = selectedCopy || { headline: '', body: '', cta: '' };
 
@@ -1578,7 +1581,7 @@ function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack
                                     {/* Download Button */}
                                     <a
                                         href={viewedImage.url}
-                                        download={`ad-${viewedImage.size}-${Date.now()}.png`}
+                                        download={`ad-${viewedImage.size}-${downloadStamp}.png`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="w-full py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-bold flex items-center justify-center gap-2 transition-colors"

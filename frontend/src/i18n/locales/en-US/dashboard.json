@@ -59,17 +59,18 @@
     "conversionRate": "Conversion Rate",
     "download": "Download report",
     "performanceOverTime": "Performance Over Time",
-    "platformDistribution": "Platform Distribution"
+    "platformDistribution": "Platform Distribution",
+    "sampleDataNotice": "Sample data for layout preview only. These figures are not your real campaign results; live reporting is not connected yet."
   },
   "optimization": {
     "loadFailed": "Failed to load optimization status",
     "networkError": "Network error loading optimization status",
-    "testPassed": "Auto-mode policy test passed (Mode: AUTO)",
-    "testManual": "Policy evaluated (Mode: MANUAL, Reason: {{reason}})",
+    "testPassed": "Policy preview: this action would be allowed in AUTO mode. Nothing was executed.",
+    "testManual": "Policy preview: this action needs MANUAL approval ({{reason}}). Nothing was executed.",
     "simulationFailed": "Failed to evaluate policy simulation",
     "loading": "Loading optimization policy...",
     "title": "Agentic Optimization & Auto-Mode",
-    "subtitle": "Guardrail-protected autonomous campaign management",
+    "subtitle": "Guardrail policy for campaign changes. Autonomous execution is not active.",
     "killSwitch": "Kill-Switch Active",
     "autoOn": "Auto-Mode ON",
     "manualOnly": "Manual Guardrail Only",
@@ -81,6 +82,8 @@
     "operatingWindow": "Operating Window",
     "monitored": "24/7 Monitored",
     "simulate": "Simulate Rule Evaluation",
-    "verdict": "Verdict"
+    "verdict": "Verdict",
+    "engineInactive": "Autonomous optimization is not active. The rules below only preview which actions would be allowed; no campaign is monitored or changed automatically.",
+    "notMonitored": "Not monitored (engine inactive)"
   }
 }

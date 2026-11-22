@@ -39,7 +39,7 @@ const UserManagement = () => {
                 const data = await response.json();
                 setUsers(data);
             }
-        } catch (err) {
+        } catch {
             showError(t('userManagement.failedToFetchUsers'));
         } finally {
             setLoading(false);
@@ -79,7 +79,7 @@ const UserManagement = () => {
                 const data = await response.json();
                 showError(translateBackendMessage(data.detail) || t('userManagement.failedToUpdateRoles'));
             }
-        } catch (err) {
+        } catch {
             showError(t('userManagement.failedToUpdateRoles'));
         }
     };
@@ -99,7 +99,7 @@ const UserManagement = () => {
                 const data = await response.json();
                 showError(translateBackendMessage(data.detail) || t('userManagement.failedToUpdateUser'));
             }
-        } catch (err) {
+        } catch {
             showError(t('userManagement.failedToUpdateUser'));
         }
     };
@@ -124,7 +124,7 @@ const UserManagement = () => {
                 const data = await response.json();
                 showError(translateBackendMessage(data.detail) || t('userManagement.failedToDeleteUser'));
             }
-        } catch (err) {
+        } catch {
             showError(t('userManagement.failedToDeleteUser'));
         }
     };
@@ -187,7 +187,7 @@ const UserManagement = () => {
             setShowAddModal(false);
             setNewUser({ name: '', email: '', password: '', role_ids: [] });
             fetchUsers();
-        } catch (err) {
+        } catch {
             showError(t('userManagement.failedToCreateUser'));
         } finally {
             setAddingUser(false);
@@ -232,7 +232,7 @@ const UserManagement = () => {
                 const data = await response.json();
                 showError(translateBackendMessage(data.detail) || t('userManagement.failedToUpdateUser'));
             }
-        } catch (err) {
+        } catch {
             showError(t('userManagement.failedToUpdateUser'));
         } finally {
             setUpdatingUser(false);

@@ -4,7 +4,7 @@ import { translateBackendMessage } from '../i18n/backendErrors';
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { formatDate, formatDateTime, formatNumber, countryName } from '../i18n/format';
-import { searchAndSave, getSavedSearches, deleteSavedSearch, getApiUsage, getBlacklist, addToBlacklist, removeFromBlacklist, getKeywordBlacklist, addToKeywordBlacklist, removeFromKeywordBlacklist, getRateLimit, getVerticals, createVertical, getVerticalAggregatedAds, getVerticalPageAds } from '../api/research';
+import { searchAndSave, getSavedSearches, deleteSavedSearch, getApiUsage, getBlacklist, addToBlacklist, getKeywordBlacklist, getRateLimit, getVerticals, createVertical, getVerticalAggregatedAds, getVerticalPageAds } from '../api/research';
 
 const COUNTRIES = [
     { code: 'US', name: 'United States' },
@@ -38,13 +38,11 @@ const Research = () => {
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('verticals');
     const [selectedVertical, setSelectedVertical] = useState(null);
-    const [apiUsage, setApiUsage] = useState([]);
+    const [, setApiUsage] = useState([]);
     const [blacklist, setBlacklist] = useState([]);
-    const [showBlacklistModal, setShowBlacklistModal] = useState(false);
-    const [blacklistPageName, setBlacklistPageName] = useState('');
+    const [, setShowBlacklistModal] = useState(false);
+    const [, setBlacklistPageName] = useState('');
     const [keywordBlacklist, setKeywordBlacklist] = useState([]);
-    const [showKeywordModal, setShowKeywordModal] = useState(false);
-    const [blacklistKeyword, setBlacklistKeyword] = useState('');
     const [rateLimit, setRateLimit] = useState(null);
     const [progressMessage, setProgressMessage] = useState('');
     const [verticals, setVerticals] = useState([]);
@@ -158,7 +156,7 @@ const Research = () => {
             setNewVerticalDescription('');
             setShowVerticalModal(false);
             fetchVerticals();
-        } catch (error) {
+        } catch {
             showError(t('research.failedToCreateVertical'));
         }
     };
@@ -334,63 +332,6 @@ const Research = () => {
         } catch (error) {
             const errorMsg = translateBackendMessage(error.response?.data?.detail) || t('research.failedToAddToBlacklist');
             showError(errorMsg);
-        }
-    };
-
-    const handleRemoveFromBlacklist = async (id, pageName) => {
-        try {
-            await removeFromBlacklist(id);
-            showSuccess(t('research.removedPagenameFromBlacklist', { pageName }));
-            fetchBlacklist();
-        } catch (error) {
-            showError(t('research.failedToRemoveFromBlacklist'));
-        }
-    };
-
-    const handleAddToKeywordBlacklist = async (keyword) => {
-        if (!keyword) {
-            setShowKeywordModal(true);
-            return;
-        }
-
-        try {
-            await addToKeywordBlacklist(keyword);
-            showSuccess(t('research.addedKeywordToKeywordBlacklist', { keyword }));
-            fetchKeywordBlacklist();
-            setBlacklistKeyword('');
-            setShowKeywordModal(false);
-
-            // Remove ads containing this keyword from current view
-            if (selectedSearch) {
-                const keywordLower = keyword.toLowerCase();
-                const filteredAds = selectedSearch.ads.filter(ad => {
-                    const bodyText = ad.ad_copy?.toLowerCase() || '';
-                    const titleText = ad.headline?.toLowerCase() || '';
-                    const captionText = ad.cta_text?.toLowerCase() || '';
-                    const brandName = ad.brand_name?.toLowerCase() || '';
-
-                    return !bodyText.includes(keywordLower) &&
-                           !titleText.includes(keywordLower) &&
-                           !captionText.includes(keywordLower) &&
-                           !brandName.includes(keywordLower);
-                });
-                setSelectedSearch({
-                    ...selectedSearch,
-                    ads: filteredAds
-                });
-            }
-        } catch (error) {
-            showError(t('research.failedToAddToKeyword'));
-        }
-    };
-
-    const handleRemoveFromKeywordBlacklist = async (id, keyword) => {
-        try {
-            await removeFromKeywordBlacklist(id);
-            showSuccess(t('research.removedKeywordFromKeywordBlacklist', { keyword }));
-            fetchKeywordBlacklist();
-        } catch (error) {
-            showError(t('research.failedToRemoveFromKeyword'));
         }
     };
 

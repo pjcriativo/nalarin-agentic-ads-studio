@@ -26,7 +26,7 @@ export default function OptimizationPanel() {
             } else {
                 showError(t('optimization.loadFailed'));
             }
-        } catch (err) {
+        } catch {
             showError(t('optimization.networkError'));
         } finally {
             setLoading(false);
@@ -48,9 +48,7 @@ export default function OptimizationPanel() {
                     provider: 'google_ads',
                     account_id: 'test_account',
                     action: 'campaign.pause',
-                    payload: { campaign_id: '12345' },
-                    today_spend_micros: 50000000,
-                    today_action_count: 1
+                    payload: { campaign_id: '12345' }
                 })
             });
             const data = await res.json();
@@ -60,7 +58,7 @@ export default function OptimizationPanel() {
             } else {
                 showSuccess(t('optimization.testManual', { reason: data.reason }));
             }
-        } catch (err) {
+        } catch {
             showError(t('optimization.simulationFailed'));
         } finally {
             setEvaluating(false);
@@ -95,7 +93,7 @@ export default function OptimizationPanel() {
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                             <ShieldAlert className="w-3.5 h-3.5 mr-1" /> {t('optimization.killSwitch')}
                         </span>
-                    ) : statusData.auto_enabled ? (
+                    ) : statusData.auto_enabled && statusData.engine_active ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> {t('optimization.autoOn')}
                         </span>
@@ -106,6 +104,12 @@ export default function OptimizationPanel() {
                     )}
                 </div>
             </div>
+
+            {!statusData.engine_active && (
+                <div role="status" className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                    {t('optimization.engineInactive')}
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
@@ -130,10 +134,10 @@ export default function OptimizationPanel() {
                 <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
                     <span className="text-gray-500 block text-xs uppercase font-semibold">{t('optimization.operatingWindow')}</span>
                     <div className="mt-2 text-xs text-gray-700">
-                        {statusData.operating_hours.start_wib !== null && statusData.operating_hours.end_wib !== null ? (
-                            <span>{statusData.operating_hours.start_wib}:00 - {statusData.operating_hours.end_wib}:00 WIB</span>
+                        {statusData.operating_hours.start !== null && statusData.operating_hours.end !== null ? (
+                            <span>{statusData.operating_hours.start}:00 - {statusData.operating_hours.end}:00 ({statusData.operating_hours.timezone})</span>
                         ) : (
-                            <span>{t('optimization.monitored')}</span>
+                            <span>{statusData.engine_active ? t('optimization.monitored') : t('optimization.notMonitored')}</span>
                         )}
                     </div>
                 </div>

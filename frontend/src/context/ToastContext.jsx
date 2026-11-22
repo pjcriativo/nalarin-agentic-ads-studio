@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- context modules intentionally export the provider and its hook together */
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import Toast from '../components/Toast';
 
@@ -14,6 +15,10 @@ export const useToast = () => {
 export const ToastProvider = ({ children }) => {
     const [toasts, setToasts] = useState([]);
 
+    const removeToast = useCallback((id) => {
+        setToasts(prev => prev.filter(toast => toast.id !== id));
+    }, []);
+
     const showToast = useCallback((message, type = 'info', duration = 5000) => {
         const id = Date.now() + Math.random();
         setToasts(prev => [...prev, { id, message, type }]);
@@ -25,11 +30,7 @@ export const ToastProvider = ({ children }) => {
         }
 
         return id;
-    }, []);
-
-    const removeToast = useCallback((id) => {
-        setToasts(prev => prev.filter(toast => toast.id !== id));
-    }, []);
+    }, [removeToast]);
 
     const showSuccess = useCallback((message, duration) => {
         return showToast(message, 'success', duration);

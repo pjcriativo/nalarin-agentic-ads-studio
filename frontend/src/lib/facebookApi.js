@@ -121,7 +121,7 @@ export async function getPixels(adAccountId) {
 /**
  * Get all promotable pages for a specific ad account
  */
-export async function getPages(adAccountId) {
+export async function getPages(_adAccountId) {
     try {
         const response = await authFetch(`${API_BASE_URL}/pages`);
         if (!response.ok) {
@@ -510,7 +510,7 @@ export async function searchLocations(query, type = 'city', adAccountId) {
  * @param {string} adAccountId - Facebook ad account ID
  * @param {string} budgetType - Budget type (CBO or ABO)
  */
-export async function createCompleteAd(campaignId, adsetData, creativeData, adData, pageId, adAccountId, budgetType) {
+export async function createCompleteAd(campaignId, adsetData, creativeData, adData, pageId, adAccountId, _budgetType) {
     try {
         let imageHash = null;
         let videoData = null;

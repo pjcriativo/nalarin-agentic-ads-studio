@@ -392,8 +392,8 @@ async def create_campaign(
 ):
     """Create a new Search campaign. Always created PAUSED -- activating it
     is a separate, explicit action (see /campaigns/{id}/enable)."""
-    _require_configured()
     _require_confirmed(body.confirm)
+    _require_configured()
     connection = _get_active_connection(db, current_user.id)
     try:
         refresh_token = decrypt_token(connection.encrypted_refresh_token)
@@ -421,8 +421,8 @@ async def pause_campaign(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    _require_configured()
     _require_confirmed(body.confirm)
+    _require_configured()
     connection = _get_active_connection(db, current_user.id)
     try:
         refresh_token = decrypt_token(connection.encrypted_refresh_token)
@@ -446,8 +446,8 @@ async def enable_campaign(
 ):
     """Activate a campaign -- the one write action that starts real spend.
     Requires confirm=true like every other write action here."""
-    _require_configured()
     _require_confirmed(body.confirm)
+    _require_configured()
     connection = _get_active_connection(db, current_user.id)
     try:
         refresh_token = decrypt_token(connection.encrypted_refresh_token)
@@ -469,8 +469,8 @@ async def add_negative_keywords(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    _require_configured()
     _require_confirmed(body.confirm)
+    _require_configured()
     connection = _get_active_connection(db, current_user.id)
     try:
         refresh_token = decrypt_token(connection.encrypted_refresh_token)

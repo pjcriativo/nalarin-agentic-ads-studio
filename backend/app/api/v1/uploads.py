@@ -27,6 +27,23 @@ def _looks_like_image(content: bytes) -> bool:
         return True
     return False
 ALLOWED_VIDEO_EXTENSIONS = {'.mp4', '.mov', '.avi', '.webm'}
+
+# ISO-BMFF top-level boxes that may legitimately open an .mp4/.mov file.
+_ISOBMFF_BOXES = (b'ftyp', b'moov', b'mdat', b'free', b'wide', b'skip')
+
+
+def _looks_like_video(content: bytes, extension: str) -> bool:
+    """Magic-byte sniff for the allowed video containers, matched to the
+    claimed extension (a renamed executable must not ride in as .mp4)."""
+    if len(content) < 12:
+        return False
+    if extension in ('.mp4', '.mov'):
+        return content[4:8] in _ISOBMFF_BOXES
+    if extension == '.webm':
+        return content[:4] == b'\x1a\x45\xdf\xa3'          # EBML header
+    if extension == '.avi':
+        return content[:4] == b'RIFF' and content[8:12] == b'AVI '
+    return False
 ALLOWED_EXTENSIONS = ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB for images
 MAX_VIDEO_SIZE = 500 * 1024 * 1024  # 500MB for videos
@@ -98,7 +115,7 @@ async def upload_file(file: UploadFile = File(...), current_user: User = Depends
         max_size = MAX_VIDEO_SIZE if is_video else MAX_IMAGE_SIZE
 
         # Read file content
-        file_content = await file.read()
+        file_content = await file.read(max_size + 1)
 
         # Security: Validate file size
         if len(file_content) > max_size:
@@ -107,8 +124,11 @@ async def upload_file(file: UploadFile = File(...), current_user: User = Depends
                 detail=f"File too large. Maximum size: {max_size / (1024 * 1024)}MB"
             )
 
-        # Security: magic-byte sniff so a renamed .exe can't ride in as .png
-        if not is_video and not _looks_like_image(file_content):
+        # Security: magic-byte sniff so a renamed .exe can't ride in as .png/.mp4
+        if is_video:
+            if not _looks_like_video(file_content, file_extension):
+                raise HTTPException(status_code=400, detail="File content does not match a video type")
+        elif not _looks_like_image(file_content):
             raise HTTPException(status_code=400, detail="File content does not match an image type")
 
         # Generate a unique filename

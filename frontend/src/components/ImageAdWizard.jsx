@@ -88,7 +88,7 @@ export default function ImageAdWizard({ onComplete, onCancel }) {
                 <div className="px-8 py-6 border-b border-gray-100 bg-gray-50">
                     <div className="flex items-center justify-between relative">
                         <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-200 -z-10"></div>
-                        {steps.map((step, index) => {
+                        {steps.map((step) => {
                             const Icon = step.icon;
                             const isActive = step.id === currentStep;
                             const isCompleted = step.id < currentStep;

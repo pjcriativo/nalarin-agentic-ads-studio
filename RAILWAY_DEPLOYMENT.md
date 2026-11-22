@@ -43,8 +43,8 @@ Railway should automatically detect your backend service from `railway.toml`.
 ```
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 GEMINI_API_KEY=your_gemini_api_key_here
-VITE_FACEBOOK_ACCESS_TOKEN=your_facebook_token_here
-VITE_FACEBOOK_AD_ACCOUNT_ID=your_facebook_ad_account_id_here
+FACEBOOK_ACCESS_TOKEN=your_facebook_token_here
+FACEBOOK_AD_ACCOUNT_ID=your_facebook_ad_account_id_here
 ```
 
 > [!IMPORTANT]
@@ -77,11 +77,11 @@ After the first deployment:
 
 ```
 VITE_API_URL=${{backend.RAILWAY_PUBLIC_DOMAIN}}
-VITE_SUPABASE_URL=your_supabase_url_here
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
-VITE_FACEBOOK_ACCESS_TOKEN=your_facebook_token_here
-VITE_FACEBOOK_AD_ACCOUNT_ID=your_facebook_ad_account_id_here
 ```
+
+Do **not** add tokens, secrets or API keys to the frontend service: anything with a
+`VITE_` prefix can end up in the public JavaScript bundle. Facebook and AI credentials
+belong only to the **backend** service.
 
 > [!IMPORTANT]
 > The `VITE_API_URL` uses Railway's reference syntax to automatically get your backend service URL. Make sure to include `https://` prefix: `https://${{backend.RAILWAY_PUBLIC_DOMAIN}}`

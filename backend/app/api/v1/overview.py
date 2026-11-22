@@ -32,11 +32,20 @@ from app.services.tiktok_ads_service import (
 router = APIRouter()
 
 
-def _normalize(platform: str, campaign_name: str, spend: float, impressions: int, clicks: int, conversions: float) -> Dict[str, Any]:
+def _normalize_status(status: Any) -> Optional[str]:
+    """Map platform-specific campaign status onto ENABLED / PAUSED / other."""
+    if not status:
+        return None
+    value = str(status).upper()
+    return "ENABLED" if value in ("ENABLED", "ACTIVE") else value
+
+
+def _normalize(platform: str, campaign_name: str, spend: float, impressions: int, clicks: int, conversions: float, status: Any = None) -> Dict[str, Any]:
     conversions = conversions or 0.0
     cpa = (spend / conversions) if conversions else None
     return {
         "platform": platform,
+        "status": _normalize_status(status),
         "campaign_name": campaign_name,
         "spend": round(spend or 0.0, 2),
         "impressions": int(impressions or 0),
@@ -79,6 +88,7 @@ def _fetch_meta_rows(db: Session, user_id: str, ad_account_id: Optional[str], da
                 insights["impressions"],
                 insights["clicks"],
                 insights["conversions"],
+                campaign.get("status"),
             )
         )
     return rows
@@ -104,6 +114,7 @@ async def _fetch_google_rows(db: Session, user_id: str, date_preset: str) -> Lis
             campaign.get("impressions", 0),
             campaign.get("clicks", 0),
             campaign.get("conversions", 0.0),
+            campaign.get("status"),
         )
         for campaign in campaigns
     ]

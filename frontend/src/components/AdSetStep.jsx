@@ -70,7 +70,7 @@ const AdSetStep = ({ onNext, onBack }) => {
     const [mode, setMode] = useState('new');
     const [existingAdsets, setExistingAdsets] = useState([]);
     const [selectedAdset, setSelectedAdset] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [loading] = useState(false);
     const [loadingAdSets, setLoadingAdSets] = useState(false);
     const [pixels, setPixels] = useState([]);
     const [loadingPixels, setLoadingPixels] = useState(false);
@@ -263,10 +263,6 @@ const AdSetStep = ({ onNext, onBack }) => {
         }
 
         onNext();
-    };
-
-    const parseCountries = (value) => {
-        return value.split(',').map(c => c.trim().toUpperCase()).filter(c => c.length > 0);
     };
 
     return (

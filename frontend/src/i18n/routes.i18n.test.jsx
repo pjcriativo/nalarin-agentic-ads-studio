@@ -23,7 +23,7 @@ vi.mock('../context/AuthContext', () => {
     const authFetch = vi.fn(async (url) => {
         const u = String(url);
         if (/\/optimization\/status/.test(u)) {
-            return { ok: true, status: 200, json: async () => ({ kill_switch_active: false, auto_enabled: true, allowed_actions: ['pause_campaign'], max_budget_micros: 0, max_daily_spend_micros: 5000000, operating_hours: { start_wib: null, end_wib: null } }) };
+            return { ok: true, status: 200, json: async () => ({ kill_switch_active: false, auto_enabled: true, allowed_actions: ['pause_campaign'], max_budget_micros: 0, max_daily_spend_micros: 5000000, engine_active: false, operating_hours: { start: null, end: null, timezone: 'America/Sao_Paulo' } }) };
         }
         if (/\/brands(\?|$)/.test(u)) {
             return { ok: true, status: 200, json: async () => [{ id: 'b1', name: 'Acme Corp', logo: '', voice: 'Friendly', colors: { primary: '#112233', secondary: '#445566', highlight: '#778899' }, products: [{ id: 'p1', name: 'Glow Serum', description: 'Nice serum', brandId: 'b1', product_shots: [] }], profileIds: ['c1'] }] };

@@ -8,7 +8,7 @@ import { Search, Trash2, ChevronDown, ChevronRight, ExternalLink, Image, Video, 
 
 const BrandScrapes = () => {
     const { t } = useTranslation('research');
-    const { showSuccess, showError, showInfo } = useToast();
+    const { showSuccess, showError } = useToast();
     const [brandName, setBrandName] = useState('');
     const [pageInput, setPageInput] = useState('');
 
@@ -45,7 +45,7 @@ const BrandScrapes = () => {
         try {
             const data = await getBrandScrapes();
             setScrapes(Array.isArray(data) ? data : []);
-        } catch (error) {
+        } catch {
             showError(t('brandScrapes.failedToLoadBrandScrapes'));
             setScrapes([]);
         }
@@ -99,7 +99,7 @@ const BrandScrapes = () => {
                 details.ads = [];
             }
             setScrapeDetails(details);
-        } catch (error) {
+        } catch {
             showError(t('brandScrapes.failedToLoadScrapeDetails'));
             setScrapeDetails(null);
         }
@@ -123,7 +123,7 @@ const BrandScrapes = () => {
                 setScrapeDetails(null);
             }
             fetchScrapes();
-        } catch (error) {
+        } catch {
             showError(t('brandScrapes.failedToDeleteBrandScrape'));
         }
     };

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { X, Plus, Trash2, Link as LinkIcon, Unlink } from 'lucide-react';
 import { useBrands } from '../context/BrandContext';
 import { useToast } from '../context/ToastContext';
-import { validateBrandName, validateHexColor, validateProductName, validateProductDescription, validateBrandVoice, validateTextInput } from '../utils/validation';
+import { validateBrandName, validateHexColor, validateBrandVoice } from '../utils/validation';
 
 const BrandForm = ({ onClose, onSave, initialData = null }) => {
     const { t } = useTranslation('brands');

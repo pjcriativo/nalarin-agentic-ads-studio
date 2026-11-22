@@ -111,7 +111,7 @@ def create_ad_style(
     if existing:
         raise HTTPException(status_code=400, detail="Ad style with this ID already exists")
 
-    db_style = AdStyle(**style.dict())
+    db_style = AdStyle(**style.model_dump())
     db.add(db_style)
     db.commit()
     db.refresh(db_style)
@@ -130,7 +130,7 @@ def update_ad_style(
         raise HTTPException(status_code=404, detail="Ad style not found")
 
     # Update only provided fields
-    update_data = style.dict(exclude_unset=True)
+    update_data = style.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_style, field, value)
 

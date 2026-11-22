@@ -233,7 +233,7 @@ class TestGoogleAdsWriteConfirmationGuard:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_create_campaign_confirmed_but_no_connection_is_404(self, client, auth_headers):
+    def test_create_campaign_confirmed_but_no_connection_is_404(self, client, auth_headers, google_ads_configured):
         """Once confirmed, the guard passes and the route proceeds to the
         next real check (an active connection must exist) -- proving the
         confirm gate isn't masking every other code path."""
@@ -244,6 +244,19 @@ class TestGoogleAdsWriteConfirmationGuard:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_pause_campaign_confirmed_but_no_connection_is_404(self, client, auth_headers):
+    def test_pause_campaign_confirmed_but_no_connection_is_404(self, client, auth_headers, google_ads_configured):
         response = client.post("/api/v1/google-ads/campaigns/123/pause", headers=auth_headers, json={"confirm": True})
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_unconfigured_server_still_rejects_unconfirmed_write_with_400(self, client, auth_headers):
+        """The confirm gate runs first: even with Google Ads unconfigured on
+        the server, an unconfirmed write is a 400 (never a 500)."""
+        response = client.post("/api/v1/google-ads/campaigns/123/pause", headers=auth_headers, json={})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_unconfigured_server_confirmed_write_is_500_config_error(self, client, auth_headers):
+        response = client.post(
+            "/api/v1/google-ads/campaigns/123/pause", headers=auth_headers, json={"confirm": True}
+        )
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert "not configured" in response.json()["detail"].lower()

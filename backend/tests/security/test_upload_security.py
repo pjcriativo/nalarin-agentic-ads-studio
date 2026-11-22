@@ -86,7 +86,7 @@ class TestFileUploadSecurity:
         )
         assert response.status_code in [
             status.HTTP_400_BAD_REQUEST,
-            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+            status.HTTP_413_CONTENT_TOO_LARGE
         ]
 
     def test_valid_image_upload(self, client, auth_headers):
@@ -113,7 +113,6 @@ class TestFileUploadSecurity:
         # but should not cause server error
         assert response.status_code != status.HTTP_500_INTERNAL_SERVER_ERROR
 
-    @pytest.mark.xfail(reason="Upload endpoint currently doesn't require auth - security gap to address")
     def test_upload_requires_auth(self, client):
         """Test that uploads require authentication.
 
@@ -157,7 +156,7 @@ class TestSQLInjection:
             headers=auth_headers
         )
         # Should either succeed (storing the string literally) or fail gracefully
-        assert response.status_code in [status.HTTP_200_OK, status.HTTP_422_UNPROCESSABLE_ENTITY]
+        assert response.status_code in [status.HTTP_200_OK, status.HTTP_422_UNPROCESSABLE_CONTENT]
 
         # If it succeeded, verify the table still exists
         if response.status_code == status.HTTP_200_OK:
