@@ -51,6 +51,13 @@ const EXACT = {
     'Failed to fetch user': 'fetchUserFailed',
     'Login failed': 'loginFailed',
     'Registration failed': 'registerFailed',
+    'No connected Google Ads account.': 'googleNotConnectedShort',
+    'No connected TikTok Ads advertiser.': 'tiktokNotConnectedShort',
+    'No connected Meta Ads account. Connect Meta Ads in Facebook Campaigns first.': 'metaNotConnectedHint',
+    'Google Ads is not configured on this server. Set GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET, and GOOGLE_ADS_DEVELOPER_TOKEN.': 'googleNotConfigured',
+    'TikTok Ads is not configured. Set TIKTOK_ADS_APP_ID and TIKTOK_ADS_APP_SECRET after your TikTok for Business developer app receives Marketing API access.': 'tiktokNotConfigured',
+    'Google Ads API error.': 'googleApiError',
+    'TikTok token refresh did not return an access token.': 'tiktokRefreshFailed',
     'No refresh token': 'noRefreshToken',
     'Failed to refresh token': 'refreshFailed',
     'No access token available': 'noAccessToken',
@@ -62,6 +69,8 @@ const EXACT = {
 
 const PATTERNS = [
     [/^Rate limit exceeded\. Try again in (\d+) seconds?\.?$/, 'rateLimit', (m) => ({ seconds: m[1] })],
+    [/^TikTok Ads API request failed: (.*)$/s, 'tiktokRequestFailed', (m) => ({ message: m[1] })],
+    [/^TikTok Ads returned an invalid response \(HTTP (\d+)\)\.$/, 'tiktokInvalidResponse', (m) => ({ status: m[1] })],
     [/^File too large\. Maximum size: ([\d.]+)MB$/, 'fileTooLarge', (m) => ({ size: m[1] })],
 ];
 

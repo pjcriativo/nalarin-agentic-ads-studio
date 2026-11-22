@@ -55,7 +55,14 @@
     "noRefreshToken": "No refresh token",
     "refreshFailed": "Failed to refresh token",
     "noAccessToken": "No access token available",
-    "networkError": "Network error. Check your connection and try again."
+    "networkError": "Network error. Check your connection and try again.",
+    "googleNotConnectedShort": "No connected Google Ads account.",
+    "tiktokNotConnectedShort": "No connected TikTok Ads advertiser.",
+    "metaNotConnectedHint": "No connected Meta Ads account. Connect Meta Ads in Facebook Campaigns first.",
+    "googleApiError": "Google Ads API error.",
+    "tiktokRefreshFailed": "TikTok token refresh did not return an access token.",
+    "tiktokRequestFailed": "TikTok Ads API request failed: {{message}}",
+    "tiktokInvalidResponse": "TikTok Ads returned an invalid response (HTTP {{status}})."
   },
   "api": {
     "failedToFetchAdAccounts": "Failed to fetch ad accounts",

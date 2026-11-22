@@ -102,7 +102,7 @@ export default function Overview() {
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-1">
                     {errorEntries.map(([platform, message]) => (
                         <p key={platform} className="text-sm text-amber-800">
-                            <span className="font-semibold">{PLATFORM_LABELS[platform] || platform}:</span> {message}
+                            <span className="font-semibold">{PLATFORM_LABELS[platform] || platform}:</span> {translateBackendMessage(message)}
                         </p>
                     ))}
                 </div>

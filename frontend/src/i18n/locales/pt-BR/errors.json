@@ -55,7 +55,14 @@
     "noRefreshToken": "Nenhum token de atualização",
     "refreshFailed": "Falha ao atualizar o token",
     "noAccessToken": "Nenhum token de acesso disponível",
-    "networkError": "Erro de rede. Verifique sua conexão e tente novamente."
+    "networkError": "Erro de rede. Verifique sua conexão e tente novamente.",
+    "googleNotConnectedShort": "Nenhuma conta do Google Ads conectada.",
+    "tiktokNotConnectedShort": "Nenhum anunciante do TikTok Ads conectado.",
+    "metaNotConnectedHint": "Nenhuma conta do Meta Ads conectada. Conecte o Meta Ads em Campanhas do Facebook primeiro.",
+    "googleApiError": "Erro na API do Google Ads.",
+    "tiktokRefreshFailed": "A renovação do token do TikTok não retornou um token de acesso.",
+    "tiktokRequestFailed": "Falha na requisição à API do TikTok Ads: {{message}}",
+    "tiktokInvalidResponse": "O TikTok Ads retornou uma resposta inválida (HTTP {{status}})."
   },
   "api": {
     "failedToFetchAdAccounts": "Falha ao carregar as contas de anúncios",
