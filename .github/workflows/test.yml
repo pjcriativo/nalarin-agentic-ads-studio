@@ -52,10 +52,14 @@ jobs:
         working-directory: backend
         env:
           TEST_DATABASE_URL: postgresql://ads_studio_test:ads_studio_test@localhost:5432/ads_studio_test
+          # DATABASE_URL is deliberately NOT set: tests/conftest.py refuses to run if
+          # it equals TEST_DATABASE_URL, and itself points the app at the disposable
+          # test database above (the service container is created fresh for every run
+          # and destroyed with it, so no cleanup step is needed).
+          #
           # Test-only credentials (not secrets, never used outside CI). The app
           # fails fast at import without a valid Fernet key for OAuth token
           # encryption, so CI must provide one; conftest.py also pins its own.
-          DATABASE_URL: postgresql://ads_studio_test:ads_studio_test@localhost:5432/ads_studio_test
           SECRET_KEY: ci-only-secret-key-not-used-anywhere-else-0123456789
           OAUTH_TOKEN_ENCRYPTION_KEY: 'PPq4rM9mxZ-0N0vXn3t2-k9RxFWyDo2AyaJISOO29Co='
         run: |
