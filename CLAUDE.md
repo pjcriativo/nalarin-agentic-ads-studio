@@ -222,6 +222,16 @@ Modal design requirements:
 
 All UI text goes through `react-i18next` (`pt-BR` + `en-US`, namespaces in `frontend/src/i18n/locales/`). Never hardcode user-facing strings; add keys to **both** languages and run `npm run test:i18n` (see `frontend/src/i18n/README.md`).
 
+## Frontend Design Director (MANDATORY)
+
+**Every frontend task** (screens, dashboards, menus, buttons, forms, modals, tables, navigation, responsiveness, animations, styles, icons, typography, UX/UI, React component fixes) MUST begin by calling the Skill tool with `frontend-design-director` (`.claude/skills/frontend-design-director/`) BEFORE reading or editing any frontend file - even for plan-only, review or one-line requests. It coordinates four installed specialists (see `.claude/skills/PROVENANCE.md`): `ui-ux-pro-max`, `frontend-design` (Anthropic), `web-design-guidelines` and `react-best-practices` (Vercel).
+
+- **Do not redesign approved interfaces.** Change visuals only when expressly requested; reuse existing Tailwind/amber tokens, `lucide-react` icons and components.
+- Purely technical frontend changes preserve architecture and markup (React best practices only).
+- PT-BR/EN-US i18n is mandatory for every new UI string (see Internationalization above).
+- Never run `ui-ux-pro-max ... --persist` or write generated design-system files into the repo unless asked.
+- After frontend changes run the verification routine in `.claude/skills/frontend-design-director/references/verification.md` (lint, build, tests, `npm run test:i18n`, visual regression desktop/mobile, a11y checklist).
+
 ## Database Requirements
 
 **PostgreSQL is REQUIRED.** SQLite is deprecated and will cause startup errors.
