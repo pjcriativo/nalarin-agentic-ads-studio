@@ -1,6 +1,9 @@
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
+import { translateBackendMessage } from '../i18n/backendErrors';
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { formatDate, formatDateTime, formatNumber, countryName } from '../i18n/format';
 import { searchAndSave, getSavedSearches, deleteSavedSearch, getApiUsage, getBlacklist, addToBlacklist, removeFromBlacklist, getKeywordBlacklist, addToKeywordBlacklist, removeFromKeywordBlacklist, getRateLimit, getVerticals, createVertical, getVerticalAggregatedAds, getVerticalPageAds } from '../api/research';
 
 const COUNTRIES = [
@@ -23,6 +26,7 @@ const LIMIT_OPTIONS = [
 ];
 
 const Research = () => {
+    const { t } = useTranslation('research');
     const { showSuccess, showError, showInfo } = useToast();
     const location = useLocation();
     const [query, setQuery] = useState('');
@@ -111,7 +115,7 @@ const Research = () => {
             setAggregatedAds(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to load aggregated ads', error);
-            showError('Failed to load aggregated ads');
+            showError(t('research.failedToLoadAggregatedAds'));
             setAggregatedAds([]);
         }
     };
@@ -134,7 +138,7 @@ const Research = () => {
                     setPageAds(prev => ({ ...prev, [pageId]: Array.isArray(ads) ? ads : [] }));
                 } catch (error) {
                     console.error('Failed to load page ads', error);
-                    showError('Failed to load ads for this page');
+                    showError(t('research.failedToLoadAdsFor'));
                     setPageAds(prev => ({ ...prev, [pageId]: [] }));
                 }
             }
@@ -143,19 +147,19 @@ const Research = () => {
 
     const handleCreateVertical = async () => {
         if (!newVerticalName.trim()) {
-            showError('Enter vertical name');
+            showError(t('research.enterVerticalName'));
             return;
         }
 
         try {
             await createVertical(newVerticalName, newVerticalDescription);
-            showSuccess(`Created vertical "${newVerticalName}"`);
+            showSuccess(t('research.createdVerticalNewverticalname', { newVerticalName }));
             setNewVerticalName('');
             setNewVerticalDescription('');
             setShowVerticalModal(false);
             fetchVerticals();
         } catch (error) {
-            showError('Failed to create vertical');
+            showError(t('research.failedToCreateVertical'));
         }
     };
 
@@ -202,15 +206,15 @@ const Research = () => {
     const handleScrape = async (e) => {
         e.preventDefault();
         if (!query.trim()) {
-            showError('Enter search term');
+            showError(t('research.enterSearchTerm'));
             return;
         }
 
         setLoading(true);
         const apiCalls = LIMIT_OPTIONS.find(o => o.value === limit)?.apiCalls || 1;
 
-        setProgressMessage(`Fetching ads from Facebook (${apiCalls} API call${apiCalls > 1 ? 's' : ''})...`);
-        showInfo('Starting scrape...');
+        setProgressMessage(t('research.fetchingAds', { count: apiCalls }));
+        showInfo(t('research.startingScrape'));
 
         try {
             const negativeList = negativeKeywords
@@ -218,7 +222,7 @@ const Research = () => {
                 .map(k => k.trim())
                 .filter(k => k.length > 0);
 
-            setProgressMessage('Processing and filtering ads...');
+            setProgressMessage(t('research.processingAds'));
 
             const result = await searchAndSave({
                 query,
@@ -233,8 +237,8 @@ const Research = () => {
                 schedule_config: null
             });
 
-            setProgressMessage('Saving to database...');
-            showSuccess(`Saved ${result.ads_count} ads from search`);
+            setProgressMessage(t('research.savingAds'));
+            showSuccess(t('research.savedAdsCountAdsFrom', { ads_count: result.ads_count }));
             setQuery('');
             setNegativeKeywords('');
             fetchSavedSearches();
@@ -247,7 +251,7 @@ const Research = () => {
             }
         } catch (error) {
             console.error('Scrape failed', error);
-            showError(error.response?.data?.detail || 'Scrape failed. Try again.');
+            showError(translateBackendMessage(error.response?.data?.detail) || t('research.scrapeFailedTryAgain'));
         } finally {
             setLoading(false);
             setProgressMessage('');
@@ -257,14 +261,14 @@ const Research = () => {
     const handleDelete = async (searchId) => {
         try {
             await deleteSavedSearch(searchId);
-            showSuccess('Search deleted');
+            showSuccess(t('research.searchDeleted'));
             fetchSavedSearches();
             if (selectedSearch?.id === searchId) {
                 setSelectedSearch(null);
             }
         } catch (error) {
             console.error('Delete failed', error);
-            showError('Failed to delete');
+            showError(t('research.failedToDelete'));
         }
     };
 
@@ -312,7 +316,7 @@ const Research = () => {
 
         try {
             await addToBlacklist(pageName);
-            showSuccess(`Added "${pageName}" to blacklist`);
+            showSuccess(t('research.addedPagenameToBlacklist', { pageName }));
             fetchBlacklist();
             setBlacklistPageName('');
             setShowBlacklistModal(false);
@@ -328,7 +332,7 @@ const Research = () => {
                 });
             }
         } catch (error) {
-            const errorMsg = error.response?.data?.detail || 'Failed to add to blacklist';
+            const errorMsg = translateBackendMessage(error.response?.data?.detail) || t('research.failedToAddToBlacklist');
             showError(errorMsg);
         }
     };
@@ -336,10 +340,10 @@ const Research = () => {
     const handleRemoveFromBlacklist = async (id, pageName) => {
         try {
             await removeFromBlacklist(id);
-            showSuccess(`Removed "${pageName}" from blacklist`);
+            showSuccess(t('research.removedPagenameFromBlacklist', { pageName }));
             fetchBlacklist();
         } catch (error) {
-            showError('Failed to remove from blacklist');
+            showError(t('research.failedToRemoveFromBlacklist'));
         }
     };
 
@@ -351,7 +355,7 @@ const Research = () => {
 
         try {
             await addToKeywordBlacklist(keyword);
-            showSuccess(`Added "${keyword}" to keyword blacklist`);
+            showSuccess(t('research.addedKeywordToKeywordBlacklist', { keyword }));
             fetchKeywordBlacklist();
             setBlacklistKeyword('');
             setShowKeywordModal(false);
@@ -376,26 +380,26 @@ const Research = () => {
                 });
             }
         } catch (error) {
-            showError('Failed to add to keyword blacklist');
+            showError(t('research.failedToAddToKeyword'));
         }
     };
 
     const handleRemoveFromKeywordBlacklist = async (id, keyword) => {
         try {
             await removeFromKeywordBlacklist(id);
-            showSuccess(`Removed "${keyword}" from keyword blacklist`);
+            showSuccess(t('research.removedKeywordFromKeywordBlacklist', { keyword }));
             fetchKeywordBlacklist();
         } catch (error) {
-            showError('Failed to remove from keyword blacklist');
+            showError(t('research.failedToRemoveFromKeyword'));
         }
     };
 
     return (
         <div className="container mx-auto px-4 py-8">
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-800">Ad Research</h1>
+                <h1 className="text-3xl font-bold text-gray-800">{t('research.adResearch')}</h1>
                 <p className="text-gray-600 mt-2">
-                    Scrape Facebook Ads Library and save searches with ads
+                    {t('research.scrapeFacebookAdsLibraryAnd')}
                 </p>
             </div>
 
@@ -405,29 +409,29 @@ const Research = () => {
                 <div className="space-y-6">
                     <div className="flex justify-between items-center">
                         <div>
-                            <h2 className="text-2xl font-bold">Research Verticals</h2>
-                            <p className="text-gray-600 mt-1">Select a vertical to view and manage searches</p>
+                            <h2 className="text-2xl font-bold">{t('research.researchVerticals')}</h2>
+                            <p className="text-gray-600 mt-1">{t('research.selectAVerticalToView')}</p>
                         </div>
                         <button
                             onClick={() => setShowVerticalModal(true)}
                             className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm"
                         >
-                            + New Vertical
+                            {t('research.newVertical')}
                         </button>
                     </div>
 
                     {verticals.length === 0 ? (
                         <div className="text-center py-16">
                             <div className="max-w-md mx-auto">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Verticals Yet</h3>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('research.noVerticalsYet')}</h3>
                                 <p className="text-gray-600 mb-4">
-                                    Create verticals to organize your research by category (Legal, Fitness, E-commerce, etc.)
+                                    {t('research.createVerticalsToOrganizeYour')}
                                 </p>
                                 <button
                                     onClick={() => setShowVerticalModal(true)}
                                     className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
                                 >
-                                    Create Your First Vertical
+                                    {t('research.createYourFirstVertical')}
                                 </button>
                             </div>
                         </div>
@@ -448,9 +452,9 @@ const Research = () => {
                                     )}
                                     <div className="flex items-center justify-between text-sm">
                                         <span className="text-gray-500">
-                                            Created {new Date(vertical.created_at).toLocaleDateString()}
+                                            {t('research.createdOn', { date: formatDate(vertical.created_at) })}
                                         </span>
-                                        <span className="text-indigo-600 font-medium">View →</span>
+                                        <span className="text-indigo-600 font-medium">{t('research.view')}</span>
                                     </div>
                                 </button>
                             ))}
@@ -470,7 +474,7 @@ const Research = () => {
                             }}
                             className="text-gray-600 hover:text-gray-900"
                         >
-                            ← Back to Verticals
+                            {t('research.backToVerticals')}
                         </button>
                         <div>
                             <h2 className="text-2xl font-bold">{selectedVertical.name}</h2>
@@ -491,7 +495,7 @@ const Research = () => {
                                         : 'border-transparent text-gray-600 hover:text-gray-900'
                                 }`}
                             >
-                                Aggregated Ads
+                                {t('research.aggregatedAds')}
                             </button>
                             <button
                                 onClick={() => setVerticalTab('search')}
@@ -501,7 +505,7 @@ const Research = () => {
                                         : 'border-transparent text-gray-600 hover:text-gray-900'
                                 }`}
                             >
-                                Search & History
+                                {t('research.searchHistory')}
                             </button>
                         </div>
                     </div>
@@ -511,10 +515,10 @@ const Research = () => {
                         <div className="bg-white rounded-lg border border-gray-200 p-6">
                             <div className="flex justify-between items-center mb-4">
                                 <div>
-                                    <h3 className="text-lg font-semibold">Unique Ads by Page</h3>
+                                    <h3 className="text-lg font-semibold">{t('research.uniqueAdsByPage')}</h3>
                                     {aggregatedAds.length > 0 && (
                                         <p className="text-sm text-gray-600 mt-1">
-                                            Total: {aggregatedAds.reduce((sum, page) => sum + page.total_ads, 0)} unique ads across {aggregatedAds.length} pages
+                                            {t('research.totalSummary', { ads: aggregatedAds.reduce((sum, page) => sum + page.total_ads, 0), pages: aggregatedAds.length })}
                                         </p>
                                     )}
                                 </div>
@@ -523,13 +527,13 @@ const Research = () => {
                                         type="text"
                                         value={aggregatedFilter}
                                         onChange={(e) => setAggregatedFilter(e.target.value)}
-                                        placeholder="Filter by keyword..."
+                                        placeholder={t('research.filterByKeyword')}
                                         className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none w-64"
                                     />
                                 )}
                             </div>
                             {aggregatedAds.length === 0 ? (
-                                <p className="text-gray-500 text-center py-8">No ads yet. Run a search to see aggregated results.</p>
+                                <p className="text-gray-500 text-center py-8">{t('research.noAdsYetRunA')}</p>
                             ) : (
                                 <div className="space-y-2">
                                     {(() => {
@@ -541,7 +545,7 @@ const Research = () => {
                                             : aggregatedAds;
 
                                         return filteredPages.length === 0 ? (
-                                            <p className="text-gray-500 text-center py-8">No pages match your filter.</p>
+                                            <p className="text-gray-500 text-center py-8">{t('research.noPagesMatchYourFilter')}</p>
                                         ) : filteredPages.map((page) => (
                                         <div key={page.page_id} className="border border-gray-200 rounded-lg overflow-hidden">
                                             <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
@@ -557,22 +561,22 @@ const Research = () => {
                                                         <h4 className="font-semibold text-gray-900">{page.page_name}</h4>
                                                         <div className="flex items-center gap-4 mt-1 text-sm">
                                                             <span className="text-gray-700 font-medium">
-                                                                {page.total_ads} unique ads
+                                                                {t('research.uniqueAds', { count: page.total_ads })}
                                                             </span>
                                                             <div className="flex items-center gap-3 text-xs">
                                                                 {page.image_count > 0 && (
                                                                     <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                                                                        📷 {page.image_count} images
+                                                                        📷 {t('research.images', { count: page.image_count })}
                                                                     </span>
                                                                 )}
                                                                 {page.video_count > 0 && (
                                                                     <span className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded">
-                                                                        🎥 {page.video_count} videos
+                                                                        🎥 {t('research.videos', { count: page.video_count })}
                                                                     </span>
                                                                 )}
                                                                 {page.carousel_count > 0 && (
                                                                     <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 rounded">
-                                                                        🎠 {page.carousel_count} carousels
+                                                                        🎠 {t('research.carousels', { count: page.carousel_count })}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -583,7 +587,7 @@ const Research = () => {
                                                     onClick={() => handleAddToBlacklist(page.page_name)}
                                                     className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
                                                 >
-                                                    Block Page
+                                                    {t('research.blockPage')}
                                                 </button>
                                             </div>
 
@@ -591,9 +595,9 @@ const Research = () => {
                                             {expandedPages.has(page.page_id) && (
                                                 <div className="px-4 py-3 bg-white border-t border-gray-200">
                                                     {!pageAds[page.page_id] ? (
-                                                        <div className="text-center py-4 text-gray-500">Loading ads...</div>
+                                                        <div className="text-center py-4 text-gray-500">{t('research.loadingAds')}</div>
                                                     ) : pageAds[page.page_id].length === 0 ? (
-                                                        <div className="text-center py-4 text-gray-500">No ads found</div>
+                                                        <div className="text-center py-4 text-gray-500">{t('research.noAdsFound')}</div>
                                                     ) : (
                                                         <div className="space-y-3">
                                                             {(() => {
@@ -611,7 +615,7 @@ const Research = () => {
                                                                     : pageAds[page.page_id];
 
                                                                 return filteredAds.length === 0 ? (
-                                                                    <div className="text-center py-4 text-gray-500">No ads match your filter.</div>
+                                                                    <div className="text-center py-4 text-gray-500">{t('research.noAdsMatchYourFilter')}</div>
                                                                 ) : filteredAds.map((ad) => (
                                                                 <div key={ad.id} className="border border-gray-200 rounded p-3 hover:shadow-sm">
                                                                     <div className="flex justify-between items-start mb-2">
@@ -633,7 +637,7 @@ const Research = () => {
                                                                         <div className="flex items-center gap-3">
                                                                             {ad.cta_text && (
                                                                                 <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded">
-                                                                                    CTA: {ad.cta_text}
+                                                                                    {t('research.ctaValue', { value: ad.cta_text })}
                                                                                 </span>
                                                                             )}
                                                                             <span className={`px-2 py-1 rounded font-medium ${
@@ -641,7 +645,7 @@ const Research = () => {
                                                                                     ? 'bg-green-100 text-green-700'
                                                                                     : 'bg-gray-100 text-gray-600'
                                                                             }`}>
-                                                                                Seen {ad.seen_count || 1}x
+                                                                                {t('research.seenTimes', { count: ad.seen_count || 1 })}
                                                                             </span>
                                                                         </div>
                                                                         <a
@@ -650,7 +654,7 @@ const Research = () => {
                                                                             rel="noopener noreferrer"
                                                                             className="text-indigo-600 hover:text-indigo-800"
                                                                         >
-                                                                            View Ad →
+                                                                            {t('research.viewAd')}
                                                                         </a>
                                                                     </div>
                                                                 </div>
@@ -673,14 +677,14 @@ const Research = () => {
                         <div className="space-y-6">
                             {/* New Search Form */}
                     <div className="bg-white rounded-lg border border-gray-200 p-6">
-                        <h3 className="text-lg font-semibold mb-4">New Search</h3>
+                        <h3 className="text-lg font-semibold mb-4">{t('research.newSearch')}</h3>
                         <form onSubmit={handleScrape} className="space-y-4">
                             <div className="flex flex-col sm:flex-row gap-4">
                                 <input
                                     type="text"
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
-                                    placeholder="Search keyword (e.g. 'fitness', 'Nike')"
+                                    placeholder={t('research.searchKeywordEGFitness')}
                                     className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                                 />
                                 <select
@@ -690,7 +694,7 @@ const Research = () => {
                                 >
                                     {COUNTRIES.map((c) => (
                                         <option key={c.code} value={c.code}>
-                                            {c.name}
+                                            {countryName(c.code, c.name)}
                                         </option>
                                     ))}
                                 </select>
@@ -700,7 +704,7 @@ const Research = () => {
                                     type="text"
                                     value={negativeKeywords}
                                     onChange={(e) => setNegativeKeywords(e.target.value)}
-                                    placeholder="Negative keywords (comma-separated)"
+                                    placeholder={t('research.negativeKeywordsCommaSeparated')}
                                     className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                                 />
                                 <select
@@ -710,42 +714,42 @@ const Research = () => {
                                 >
                                     {LIMIT_OPTIONS.map((opt) => (
                                         <option key={opt.value} value={opt.value}>
-                                            {opt.label}
+                                            {t('research.limitAds', { n: formatNumber(opt.value) })}
                                         </option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Search Type</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">{t('research.searchType')}</label>
                                 <select
                                     value={searchType}
                                     onChange={(e) => setSearchType(e.target.value)}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
                                 >
-                                    <option value="one_time">One-Time Search</option>
-                                    <option value="scheduled_daily">Scheduled Daily</option>
-                                    <option value="scheduled_weekly">Scheduled Weekly</option>
+                                    <option value="one_time">{t('research.oneTimeSearch')}</option>
+                                    <option value="scheduled_daily">{t('research.scheduledDaily')}</option>
+                                    <option value="scheduled_weekly">{t('research.scheduledWeekly')}</option>
                                 </select>
                             </div>
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm space-y-2">
                                 <div className="flex items-center justify-between">
                                     <span className="text-gray-700">
-                                        API Calls: <strong>{LIMIT_OPTIONS.find(o => o.value === limit)?.apiCalls || 1}</strong>
+                                        {t('research.apiCalls')} <strong>{LIMIT_OPTIONS.find(o => o.value === limit)?.apiCalls || 1}</strong>
                                     </span>
                                     <span className="text-gray-500">
-                                        (Facebook Ads Library API limit: 300 ads/call)
+                                        {t('research.facebookAdsLibraryApiLimit')}
                                     </span>
                                 </div>
                                 {rateLimit && (
                                     <div className="flex items-center justify-between pt-2 border-t border-blue-200">
                                         <span className="text-gray-700">
-                                            Rate Limit: <strong className={rateLimit.remaining < 50 ? 'text-red-600' : 'text-green-600'}>
+                                            {t('research.rateLimit')} <strong className={rateLimit.remaining < 50 ? 'text-red-600' : 'text-green-600'}>
                                                 {rateLimit.remaining}/{rateLimit.limit}
-                                            </strong> remaining
+                                            </strong> {t('research.remaining')}
                                         </span>
                                         {rateLimit.reset_in_seconds > 0 && (
                                             <span className="text-gray-500">
-                                                Resets in {Math.ceil(rateLimit.reset_in_seconds / 60)} min
+                                                {t('research.resetsIn', { minutes: Math.ceil(rateLimit.reset_in_seconds / 60) })}
                                             </span>
                                         )}
                                     </div>
@@ -767,16 +771,16 @@ const Research = () => {
                                 disabled={loading}
                                 className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
                             >
-                                {loading ? 'Scraping...' : 'Scrape & Save'}
+                                {loading ? t('research.scraping') : t('research.scrapeSave')}
                             </button>
                         </form>
                     </div>
 
                             {/* Saved Searches for this vertical */}
                             <div className="bg-white rounded-lg border border-gray-200 p-6">
-                                <h3 className="text-lg font-semibold mb-4">Saved Searches</h3>
+                                <h3 className="text-lg font-semibold mb-4">{t('research.savedSearches')}</h3>
                                 {savedSearches.filter(s => s.vertical_id === selectedVertical.id).length === 0 ? (
-                                    <p className="text-gray-500 text-center py-8">No searches yet for this vertical.</p>
+                                    <p className="text-gray-500 text-center py-8">{t('research.noSearchesYetForThis')}</p>
                                 ) : (
                                     <div className="space-y-4">
                                         {savedSearches.filter(s => s.vertical_id === selectedVertical.id).map((search) => (
@@ -796,22 +800,22 @@ const Research = () => {
                                                                     search.search_type === 'scheduled_weekly' ? 'bg-purple-100 text-purple-700' :
                                                                     'bg-gray-100 text-gray-700'
                                                                 }`}>
-                                                                    {search.search_type === 'scheduled_daily' ? 'Daily' :
-                                                                     search.search_type === 'scheduled_weekly' ? 'Weekly' : search.search_type}
+                                                                    {search.search_type === 'scheduled_daily' ? t('research.daily') :
+                                                                     search.search_type === 'scheduled_weekly' ? t('research.weekly') : search.search_type}
                                                                 </span>
                                                             )}
                                                         </div>
                                                         <p className="text-sm text-gray-500 mt-1">
-                                                            {search.ads?.length || 0} ads • {new Date(search.created_at).toLocaleString()}
+                                                            {t('research.adsCount', { n: search.ads?.length || 0 })} • {formatDateTime(search.created_at)}
                                                         </p>
                                                         {(search.ads_requested || search.ads_returned || search.ads_new || search.ads_duplicate) && (
                                                             <p className="text-xs text-gray-400 mt-1">
-                                                                Requested: {search.ads_requested || 0} • Returned: {search.ads_returned || 0} • New: {search.ads_new || 0} • Duplicates: {search.ads_duplicate || 0}
+                                                                {t('research.searchStats', { requested: search.ads_requested || 0, returned: search.ads_returned || 0, added: search.ads_new || 0, duplicates: search.ads_duplicate || 0 })}
                                                             </p>
                                                         )}
                                                         {search.negative_keywords && search.negative_keywords.length > 0 && (
                                                             <p className="text-xs text-gray-400 mt-1">
-                                                                Excluded: {search.negative_keywords.join(', ')}
+                                                                {t('research.excluded', { keywords: search.negative_keywords.join(', ') })}
                                                             </p>
                                                         )}
                                                     </div>
@@ -820,13 +824,13 @@ const Research = () => {
                                                             onClick={() => viewSearch(search)}
                                                             className="px-4 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700"
                                                         >
-                                                            View Ads
+                                                            {t('research.viewAds')}
                                                         </button>
                                                         <button
                                                             onClick={() => handleDelete(search.id)}
                                                             className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
                                                         >
-                                                            Delete
+                                                            {t('research.delete')}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -852,13 +856,13 @@ const Research = () => {
                                 }}
                                 className="text-indigo-600 hover:text-indigo-800 mb-2 flex items-center gap-1"
                             >
-                                ← Back to Searches
+                                {t('research.backToSearches')}
                             </button>
                             <h2 className="text-2xl font-bold text-gray-800">
-                                {selectedVertical.name} - All Ads
+                                {t('research.verticalAllAds', { name: selectedVertical.name })}
                             </h2>
                             <p className="text-gray-600 mt-1">
-                                Grouped by page
+                                {t('research.groupedByPage')}
                             </p>
                         </div>
                     </div>
@@ -883,7 +887,7 @@ const Research = () => {
 
                         // Group by page name
                         const adsByPage = filteredAds.reduce((acc, ad) => {
-                            const pageName = ad.brand_name || 'Unknown Page';
+                            const pageName = ad.brand_name || 'Unknown Page'; // grouping/blacklist key (data) - localised only when shown
                             if (!acc[pageName]) {
                                 acc[pageName] = [];
                             }
@@ -920,7 +924,7 @@ const Research = () => {
 
                         return pageGroups.length === 0 ? (
                             <div className="text-center py-16 bg-white rounded-lg border border-gray-200">
-                                <p className="text-gray-500">No ads found in this vertical</p>
+                                <p className="text-gray-500">{t('research.noAdsFoundInThis')}</p>
                             </div>
                         ) : (
                             <div className="space-y-2">
@@ -935,8 +939,8 @@ const Research = () => {
                                                     {expandedPages.has(pageName) ? '▼' : '▶'}
                                                 </span>
                                                 <div className="text-left">
-                                                    <h3 className="font-semibold text-gray-900">{pageName}</h3>
-                                                    <p className="text-sm text-gray-500">{totalAds} unique ads</p>
+                                                    <h3 className="font-semibold text-gray-900">{pageName === 'Unknown Page' ? t('research.unknownPage') : pageName}</h3>
+                                                    <p className="text-sm text-gray-500">{t('research.uniqueAds', { count: totalAds })}</p>
                                                 </div>
                                             </div>
                                             <button
@@ -946,7 +950,7 @@ const Research = () => {
                                                 }}
                                                 className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
                                             >
-                                                Block Page
+                                                {t('research.blockPage')}
                                             </button>
                                         </button>
 
@@ -955,13 +959,13 @@ const Research = () => {
                                                 <table className="min-w-full">
                                                     <thead className="bg-gray-50">
                                                         <tr>
-                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Headline</th>
-                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ad Copy</th>
+                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('research.headline')}</th>
+                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('research.adCopy')}</th>
                                                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">CTA</th>
-                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Searches</th>
-                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Seen</th>
-                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Started</th>
-                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('research.searches')}</th>
+                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('research.seen')}</th>
+                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('research.started')}</th>
+                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('research.actions')}</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-200">
@@ -995,7 +999,7 @@ const Research = () => {
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-4 py-2 text-sm text-gray-500 whitespace-nowrap">
-                                                                    {ad.start_date ? new Date(ad.start_date).toLocaleDateString() : '-'}
+                                                                    {ad.start_date ? formatDate(ad.start_date) : '-'}
                                                                 </td>
                                                                 <td className="px-4 py-2 text-sm whitespace-nowrap">
                                                                     <a
@@ -1004,7 +1008,7 @@ const Research = () => {
                                                                         rel="noopener noreferrer"
                                                                         className="text-indigo-600 hover:text-indigo-900"
                                                                     >
-                                                                        View
+                                                                        {t('research.view2')}
                                                                     </a>
                                                                 </td>
                                                             </tr>
@@ -1025,20 +1029,20 @@ const Research = () => {
             {showVerticalModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                        <h3 className="text-lg font-semibold mb-4">Add Vertical</h3>
+                        <h3 className="text-lg font-semibold mb-4">{t('research.addVertical')}</h3>
                         <div className="space-y-4">
                             <input
                                 type="text"
                                 value={newVerticalName}
                                 onChange={(e) => setNewVerticalName(e.target.value)}
-                                placeholder="Vertical name (e.g., Legal, Fitness)"
+                                placeholder={t('research.verticalNameEGLegal')}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                                 autoFocus
                             />
                             <textarea
                                 value={newVerticalDescription}
                                 onChange={(e) => setNewVerticalDescription(e.target.value)}
-                                placeholder="Description (optional)"
+                                placeholder={t('research.descriptionOptional')}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                                 rows="3"
                             />
@@ -1052,13 +1056,13 @@ const Research = () => {
                                 }}
                                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
                             >
-                                Cancel
+                                {t('research.cancel')}
                             </button>
                             <button
                                 onClick={handleCreateVertical}
                                 className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
                             >
-                                Create
+                                {t('research.create')}
                             </button>
                         </div>
                     </div>

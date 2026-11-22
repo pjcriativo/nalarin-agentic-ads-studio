@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, ChevronLeft, Check, LayoutGrid, List } from 'lucide-react';
 import templates from '../data/templates.json';
 
 const TemplateSelector = ({ selectedTemplate, onSelect, onNext, onBack }) => {
+    const { t } = useTranslation('creatives');
     const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
 
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Choose a Template</h2>
+                <h2 className="text-2xl font-bold">{t('templateSelector.chooseATemplate')}</h2>
                 <div className="flex bg-gray-100 p-1 rounded-lg">
                     <button
                         onClick={() => setViewMode('list')}
@@ -103,7 +105,7 @@ const TemplateSelector = ({ selectedTemplate, onSelect, onNext, onBack }) => {
                     onClick={onBack}
                     className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
                 >
-                    Back
+                    {t('templateSelector.back')}
                 </button>
                 <button
                     onClick={onNext}
@@ -113,7 +115,7 @@ const TemplateSelector = ({ selectedTemplate, onSelect, onNext, onBack }) => {
                         : 'bg-blue-600 text-white hover:bg-blue-700'
                         }`}
                 >
-                    Next: Generate Ad
+                    {t('templateSelector.nextGenerateAd')}
                 </button>
             </div>
         </div>

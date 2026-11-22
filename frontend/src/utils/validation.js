@@ -1,4 +1,7 @@
 // Validation utilities for user inputs
+import i18n from '../i18n';
+
+const tv = (key, opts) => i18n.t(`validation:${key}`, opts);
 
 /**
  * Validates and sanitizes a brand name
@@ -8,10 +11,10 @@
  */
 export const validateBrandName = (name) => {
     if (!name || name.trim().length === 0) {
-        throw new Error('Brand name is required');
+        throw new Error(tv('brandNameRequired'));
     }
     if (name.length > 100) {
-        throw new Error('Brand name must be less than 100 characters');
+        throw new Error(tv('brandNameMax'));
     }
     return name.trim();
 };
@@ -25,7 +28,7 @@ export const validateBrandName = (name) => {
 export const validateHexColor = (color) => {
     const hexRegex = /^#[0-9A-Fa-f]{6}$/;
     if (!hexRegex.test(color)) {
-        throw new Error('Invalid color format. Must be a 6-digit hex code (e.g., #FF5733)');
+        throw new Error(tv('hexColor'));
     }
     return color;
 };
@@ -38,10 +41,10 @@ export const validateHexColor = (color) => {
  */
 export const validateProductName = (name) => {
     if (!name || name.trim().length === 0) {
-        throw new Error('Product name is required');
+        throw new Error(tv('productNameRequired'));
     }
     if (name.length > 100) {
-        throw new Error('Product name must be less than 100 characters');
+        throw new Error(tv('productNameMax'));
     }
     return name.trim();
 };
@@ -53,7 +56,7 @@ export const validateProductName = (name) => {
  */
 export const validateProductDescription = (description) => {
     if (description && description.length > 500) {
-        throw new Error('Product description must be less than 500 characters');
+        throw new Error(tv('productDescriptionMax'));
     }
     return description.trim();
 };
@@ -65,7 +68,7 @@ export const validateProductDescription = (description) => {
  */
 export const validateBrandVoice = (voice) => {
     if (voice && voice.length > 500) {
-        throw new Error('Brand voice must be less than 500 characters');
+        throw new Error(tv('brandVoiceMax'));
     }
     return voice.trim();
 };
@@ -77,9 +80,9 @@ export const validateBrandVoice = (voice) => {
  * @param {string} fieldName - Name of the field for error messages
  * @returns {string} - The sanitized text
  */
-export const validateTextInput = (text, maxLength, fieldName = 'Input') => {
+export const validateTextInput = (text, maxLength, fieldName = i18n.t('validation:defaultField')) => {
     if (text && text.length > maxLength) {
-        throw new Error(`${fieldName} must be less than ${maxLength} characters`);
+        throw new Error(tv('textMax', { field: fieldName, max: maxLength }));
     }
     return text.trim();
 };

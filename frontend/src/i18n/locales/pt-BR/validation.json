@@ -1,0 +1,11 @@
+{
+  "defaultField": "Campo",
+  "brandNameRequired": "O nome da marca é obrigatório",
+  "brandNameMax": "O nome da marca deve ter menos de 100 caracteres",
+  "hexColor": "Formato de cor inválido. Use um código hexadecimal de 6 dígitos (ex.: #FF5733)",
+  "productNameRequired": "O nome do produto é obrigatório",
+  "productNameMax": "O nome do produto deve ter menos de 100 caracteres",
+  "productDescriptionMax": "A descrição do produto deve ter menos de 500 caracteres",
+  "brandVoiceMax": "A voz da marca deve ter menos de 500 caracteres",
+  "textMax": "{{field}} deve ter menos de {{max}} caracteres"
+}

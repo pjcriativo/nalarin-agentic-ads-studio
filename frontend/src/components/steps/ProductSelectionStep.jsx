@@ -1,14 +1,16 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, Image } from 'lucide-react';
 
 export default function ProductSelectionStep({ products, selectedProduct, onSelect, useProductShots, onToggleProductShots }) {
+    const { t } = useTranslation('creatives');
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">Select Your Product</h3>
-            <p className="text-gray-600 mb-6">Choose the product to feature in the ads</p>
+            <h3 className="text-xl font-bold mb-4">{t('productSelectionStep.selectYourProduct')}</h3>
+            <p className="text-gray-600 mb-6">{t('productSelectionStep.chooseTheProductToFeature')}</p>
             {products.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
-                    No products found for this brand. Please add products first.
+                    {t('productSelectionStep.noProductsFoundForThis')}
                 </div>
             ) : (
                 <div className="space-y-3">
@@ -32,7 +34,7 @@ export default function ProductSelectionStep({ products, selectedProduct, onSele
                                     {product.product_shots && product.product_shots.length > 0 && (
                                         <div className="text-xs text-amber-600 mt-1 font-medium flex items-center gap-1">
                                             <Image size={12} />
-                                            {product.product_shots.length} product shot{product.product_shots.length !== 1 ? 's' : ''} available
+                                            {t('common.productShotsAvailable', { count: product.product_shots.length })}
                                         </div>
                                     )}
                                 </div>
@@ -55,15 +57,15 @@ export default function ProductSelectionStep({ products, selectedProduct, onSele
                                             onChange={(e) => onToggleProductShots(e.target.checked)}
                                         />
                                         <div>
-                                            <span className="text-sm font-medium text-gray-900">Use Product Shots</span>
-                                            <p className="text-xs text-gray-500">Include uploaded product images in the generation process</p>
+                                            <span className="text-sm font-medium text-gray-900">{t('productSelectionStep.useProductShots')}</span>
+                                            <p className="text-xs text-gray-500">{t('productSelectionStep.includeUploadedProductImagesIn')}</p>
                                         </div>
                                     </label>
 
                                     {useProductShots && (
                                         <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
                                             {product.product_shots.map((shot, idx) => (
-                                                <img key={idx} src={shot} alt="Product shot" className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                                                <img key={idx} src={shot} alt={t('productSelectionStep.productShot')} className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
                                             ))}
                                         </div>
                                     )}

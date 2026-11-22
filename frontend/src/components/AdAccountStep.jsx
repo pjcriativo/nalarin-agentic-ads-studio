@@ -1,10 +1,13 @@
 import { useToast } from '../context/ToastContext';
+import { translateBackendMessage } from '../i18n/backendErrors';
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, Loader, Building2, CreditCard, TrendingUp, Calendar, DollarSign, AlertCircle } from 'lucide-react';
 import { useCampaign } from '../context/CampaignContext';
 import { getAdAccounts } from '../lib/facebookApi';
 
 const AdAccountStep = ({ onNext }) => {
+    const { t } = useTranslation('campaigns');
     const { showWarning } = useToast();
     const { selectedAdAccount, setSelectedAdAccount } = useCampaign();
     const [adAccounts, setAdAccounts] = useState([]);
@@ -41,7 +44,7 @@ const AdAccountStep = ({ onNext }) => {
             }
         } catch (error) {
             console.error('Error fetching ad accounts:', error);
-            setAccountsError(error.message);
+            setAccountsError(translateBackendMessage(error.message));
         } finally {
             setLoadingAccounts(false);
         }
@@ -65,7 +68,7 @@ const AdAccountStep = ({ onNext }) => {
 
     const handleNext = () => {
         if (!selectedAdAccount) {
-            showWarning('Please select an ad account');
+            showWarning(t('adAccountStep.pleaseSelectAnAdAccount'));
             return;
         }
         onNext();
@@ -86,33 +89,33 @@ const AdAccountStep = ({ onNext }) => {
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-2">Select Ad Account</h2>
+            <h2 className="text-2xl font-bold mb-2">{t('adAccountStep.selectAdAccount')}</h2>
             <p className="text-gray-600 mb-6">
-                Choose which Facebook ad account you want to use for this campaign.
+                {t('adAccountStep.chooseWhichFacebookAdAccount')}
             </p>
 
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ad Account *
+                    {t('adAccountStep.adAccount')}
                 </label>
                 {loadingAccounts ? (
                     <div className="flex items-center gap-2 text-gray-500">
                         <Loader className="animate-spin" size={16} />
-                        <span>Loading ad accounts...</span>
+                        <span>{t('adAccountStep.loadingAdAccounts')}</span>
                     </div>
                 ) : accountsError ? (
                     <div className="text-red-600 text-sm">
-                        Error loading ad accounts: {accountsError}
+                        {t('adAccountStep.loadError', { error: accountsError })}
                         <button
                             onClick={fetchAdAccounts}
                             className="ml-2 text-amber-600 hover:underline"
                         >
-                            Retry
+                            {t('adAccountStep.retry')}
                         </button>
                     </div>
                 ) : adAccounts.length === 0 ? (
                     <div className="text-gray-500 text-sm">
-                        No ad accounts found. Please check your access token.
+                        {t('adAccountStep.noAdAccountsFoundPlease')}
                     </div>
                 ) : (
                     <div className="relative">
@@ -129,7 +132,7 @@ const AdAccountStep = ({ onNext }) => {
                                     setSearchQuery('');
                                 }
                             }}
-                            placeholder="Search ad accounts by name or ID..."
+                            placeholder={t('adAccountStep.searchAdAccountsByName')}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         />
 
@@ -144,7 +147,7 @@ const AdAccountStep = ({ onNext }) => {
                                     >
                                         <div className="font-medium text-gray-900">{account.name}</div>
                                         <div className="text-sm text-gray-500">
-                                            ID: {account.accountId} • {account.currency} • {account.status === 1 ? 'Active' : 'Inactive'}
+                                            {t('adAccountStep.idLabel')}: {account.accountId} • {account.currency} • {account.status === 1 ? t('adAccountStep.active') : t('adAccountStep.inactive')}
                                         </div>
                                     </div>
                                 ))}
@@ -171,7 +174,7 @@ const AdAccountStep = ({ onNext }) => {
                             <span>•</span>
                             <span className={`px-2 py-0.5 rounded text-xs font-medium ${selectedAdAccount.status === 1 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                                 }`}>
-                                {selectedAdAccount.status === 1 ? 'Active' : 'Inactive'}
+                                {selectedAdAccount.status === 1 ? t('adAccountStep.active') : t('adAccountStep.inactive')}
                             </span>
                         </div>
                     </div>
@@ -182,7 +185,7 @@ const AdAccountStep = ({ onNext }) => {
                         <div className="flex items-start gap-3">
                             <DollarSign className="text-gray-400 mt-0.5" size={18} />
                             <div>
-                                <div className="text-xs text-gray-500 font-medium">Currency</div>
+                                <div className="text-xs text-gray-500 font-medium">{t('adAccountStep.currency')}</div>
                                 <div className="text-sm text-gray-900">{selectedAdAccount.currency}</div>
                             </div>
                         </div>
@@ -190,7 +193,7 @@ const AdAccountStep = ({ onNext }) => {
                         <div className="flex items-start gap-3">
                             <Calendar className="text-gray-400 mt-0.5" size={18} />
                             <div>
-                                <div className="text-xs text-gray-500 font-medium">Timezone</div>
+                                <div className="text-xs text-gray-500 font-medium">{t('adAccountStep.timezone')}</div>
                                 <div className="text-sm text-gray-900">{selectedAdAccount.timezone}</div>
                             </div>
                         </div>
@@ -200,7 +203,7 @@ const AdAccountStep = ({ onNext }) => {
                             <div className="col-span-2 flex items-start gap-3">
                                 <Building2 className="text-gray-400 mt-0.5" size={18} />
                                 <div>
-                                    <div className="text-xs text-gray-500 font-medium">Business</div>
+                                    <div className="text-xs text-gray-500 font-medium">{t('adAccountStep.business')}</div>
                                     <div className="text-sm text-gray-900">{selectedAdAccount.businessName}</div>
                                 </div>
                             </div>
@@ -216,7 +219,7 @@ const AdAccountStep = ({ onNext }) => {
                     disabled={!selectedAdAccount}
                     className="flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                    Next Step <ChevronRight size={20} />
+                    {t('adAccountStep.nextStep')} <ChevronRight size={20} />
                 </button>
             </div>
         </div>

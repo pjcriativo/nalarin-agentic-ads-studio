@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { translateBackendMessage } from '../i18n/backendErrors';
+import { useTranslation } from 'react-i18next';
+import { countryName } from '../i18n/format';
 import { ChevronRight, Plus, Check, Loader, X } from 'lucide-react';
 import { useCampaign } from '../context/CampaignContext';
 import { useToast } from '../context/ToastContext';
@@ -61,6 +64,7 @@ const COUNTRIES = [
 ];
 
 const AdSetStep = ({ onNext, onBack }) => {
+    const { t } = useTranslation('campaigns');
     const { campaignData, adsetData, setAdsetData, selectedAdAccount } = useCampaign();
     const { showError, showWarning } = useToast();
     const [mode, setMode] = useState('new');
@@ -88,7 +92,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                     setLocationResults(results);
                 } catch (error) {
                     console.error('Error searching locations:', error);
-                    showError('Failed to search locations. Please try again.');
+                    showError(t('adSetStep.failedToSearchLocationsPlease'));
                     setLocationResults([]);
                 } finally {
                     setIsSearchingLocations(false);
@@ -133,7 +137,7 @@ const AdSetStep = ({ onNext, onBack }) => {
             setPixels(fetchedPixels);
         } catch (error) {
             console.error('Error fetching pixels:', error);
-            showWarning('Unable to load pixels. Please check your ad account permissions.');
+            showWarning(t('adSetStep.unableToLoadPixelsPlease'));
         } finally {
             setLoadingPixels(false);
         }
@@ -158,7 +162,7 @@ const AdSetStep = ({ onNext, onBack }) => {
             setExistingAdsets(adSets);
         } catch (error) {
             console.error('Error fetching ad sets:', error);
-            showError(`Error fetching ad sets: ${error.message}`);
+            showError(t('adSetStep.errorFetchingAdSetsMessage', { message: translateBackendMessage(error.message) }));
         } finally {
             setLoadingAdSets(false);
         }
@@ -211,13 +215,13 @@ const AdSetStep = ({ onNext, onBack }) => {
 
     const handleNext = async () => {
         if (mode === 'existing' && !selectedAdset) {
-            showWarning('Please select an ad set');
+            showWarning(t('adSetStep.pleaseSelectAnAdSet'));
             return;
         }
 
         if (mode === 'new') {
             if (!adsetData.name || !adsetData.optimizationGoal) {
-                showWarning('Please fill in all required fields');
+                showWarning(t('adSetStep.pleaseFillInAllRequired'));
                 return;
             }
 
@@ -226,28 +230,28 @@ const AdSetStep = ({ onNext, onBack }) => {
                 adsetData.targeting.countries?.length > 0;
 
             if (!hasCountries) {
-                showWarning('Please specify at least one target country');
+                showWarning(t('adSetStep.pleaseSpecifyAtLeastOne'));
                 return;
             }
 
             // Validate conversion tracking for OFFSITE_CONVERSIONS
             if (adsetData.optimizationGoal === 'OFFSITE_CONVERSIONS') {
                 if (!adsetData.pixelId || !adsetData.conversionEvent) {
-                    showWarning('Pixel ID and Conversion Event are required for conversion optimization');
+                    showWarning(t('adSetStep.pixelIdAndConversionEvent'));
                     return;
                 }
             }
 
             // Validate ABO Budget
             if (campaignData.budgetType === 'ABO' && (!adsetData.dailyBudget || adsetData.dailyBudget <= 0)) {
-                showWarning('Please enter a valid Daily Budget');
+                showWarning(t('adSetStep.pleaseEnterAValidDaily'));
                 return;
             }
 
             // Validate Bid Amount if strategy requires it
             if ((adsetData.bidStrategy === 'LOWEST_COST_WITH_BID_CAP' || adsetData.bidStrategy === 'COST_CAP') &&
                 (!adsetData.bidAmount || adsetData.bidAmount <= 0)) {
-                showWarning('Please enter a valid Bid Amount for the selected strategy');
+                showWarning(t('adSetStep.pleaseEnterAValidBid'));
                 return;
             }
 
@@ -267,7 +271,7 @@ const AdSetStep = ({ onNext, onBack }) => {
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-6">Ad Set Setup</h2>
+            <h2 className="text-2xl font-bold mb-6">{t('adSetStep.adSetSetup')}</h2>
 
             {/* Mode Toggle */}
             <div className="flex gap-4 mb-6">
@@ -286,7 +290,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                         }`}
                 >
                     <Plus className="mx-auto mb-2" size={24} />
-                    <div className="font-semibold">Create New Ad Set</div>
+                    <div className="font-semibold">{t('adSetStep.createNewAdSet')}</div>
                 </button>
                 <button
                     onClick={() => setMode('existing')}
@@ -296,21 +300,21 @@ const AdSetStep = ({ onNext, onBack }) => {
                         }`}
                 >
                     <Check className="mx-auto mb-2" size={24} />
-                    <div className="font-semibold">Use Existing Ad Set</div>
+                    <div className="font-semibold">{t('adSetStep.useExistingAdSet')}</div>
                 </button>
             </div>
 
             {/* Existing Ad Sets List */}
             {mode === 'existing' && (
                 <div className="space-y-2 mb-6">
-                    <h3 className="font-semibold text-gray-700 mb-3">Select an Ad Set</h3>
+                    <h3 className="font-semibold text-gray-700 mb-3">{t('adSetStep.selectAnAdSet')}</h3>
                     {loadingAdSets ? (
                         <div className="flex items-center justify-center gap-2 text-gray-500 py-8">
                             <Loader className="animate-spin" size={20} />
-                            <span>Loading ad sets from Facebook...</span>
+                            <span>{t('adSetStep.loadingAdSetsFromFacebook')}</span>
                         </div>
                     ) : existingAdsets.length === 0 ? (
-                        <p className="text-gray-500 text-center py-8">No ad sets found for this campaign.</p>
+                        <p className="text-gray-500 text-center py-8">{t('adSetStep.noAdSetsFoundFor')}</p>
                     ) : (
                         existingAdsets.map(adset => (
                             <div
@@ -353,13 +357,13 @@ const AdSetStep = ({ onNext, onBack }) => {
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Ad Set Name *
+                            {t('adSetStep.adSetName')}
                         </label>
                         <input
                             type="text"
                             value={adsetData.name}
                             onChange={(e) => handleInputChange('name', e.target.value)}
-                            placeholder="US - Adults 25-55"
+                            placeholder={t('adSetStep.usAdults2555')}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         />
                     </div>
@@ -377,7 +381,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                         <>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Daily Budget (USD) *
+                                    {t('adSetStep.dailyBudgetUsd')}
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -397,16 +401,16 @@ const AdSetStep = ({ onNext, onBack }) => {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Bid Strategy
+                                    {t('adSetStep.bidStrategy')}
                                 </label>
                                 <select
                                     value={adsetData.bidStrategy}
                                     onChange={(e) => handleInputChange('bidStrategy', e.target.value)}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                 >
-                                    <option value="">Select bid strategy...</option>
+                                    <option value="">{t('adSetStep.selectBidStrategy')}</option>
                                     {BID_STRATEGIES.map(strategy => (
-                                        <option key={strategy.value} value={strategy.value}>{strategy.label}</option>
+                                        <option key={strategy.value} value={strategy.value}>{t(`options.adSetBid.${strategy.value}`, { defaultValue: strategy.label })}</option>
                                     ))}
                                 </select>
                             </div>
@@ -414,7 +418,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                             {(adsetData.bidStrategy === 'LOWEST_COST_WITH_BID_CAP' || adsetData.bidStrategy === 'COST_CAP') && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Bid Amount (USD) *
+                                        {t('adSetStep.bidAmountUsd')}
                                     </label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -439,12 +443,12 @@ const AdSetStep = ({ onNext, onBack }) => {
                     {adsetData.optimizationGoal === 'OFFSITE_CONVERSIONS' && (
                         <div className="pb-4">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Facebook Pixel ID *
+                                {t('adSetStep.facebookPixelId')}
                             </label>
                             {loadingPixels ? (
                                 <div className="flex items-center gap-2 text-sm text-gray-500 p-2 border rounded-lg bg-gray-50">
                                     <Loader className="animate-spin" size={16} />
-                                    <span>Loading pixels...</span>
+                                    <span>{t('adSetStep.loadingPixels')}</span>
                                 </div>
                             ) : (
                                 <select
@@ -452,7 +456,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                                     onChange={(e) => handleInputChange('pixelId', e.target.value)}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                 >
-                                    <option value="">Select a pixel...</option>
+                                    <option value="">{t('adSetStep.selectAPixel')}</option>
                                     {pixels.map(pixel => (
                                         <option key={pixel.id} value={pixel.id}>
                                             {pixel.name} ({pixel.id})
@@ -469,7 +473,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                             onClick={() => setIsScheduleOpen(!isScheduleOpen)}
                             className="flex items-center justify-between w-full py-2 text-left focus:outline-none"
                         >
-                            <h3 className="font-semibold text-gray-900">Schedule & Optimization</h3>
+                            <h3 className="font-semibold text-gray-900">{t('adSetStep.scheduleOptimization')}</h3>
                             <ChevronRight
                                 size={20}
                                 className={`text-gray-500 transition-transform ${isScheduleOpen ? 'rotate-90' : ''}`}
@@ -480,7 +484,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                             <div className="space-y-4 mt-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Start Date & Time *
+                                        {t('adSetStep.startDateTime')}
                                     </label>
                                     <input
                                         type="datetime-local"
@@ -489,23 +493,23 @@ const AdSetStep = ({ onNext, onBack }) => {
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                     />
                                     <p className="mt-1 text-xs text-gray-500">
-                                        Defaults to tomorrow at 1:00 AM.
+                                        {t('adSetStep.defaultsToTomorrowAt1')}
                                     </p>
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Optimization Goal *
+                                        {t('adSetStep.optimizationGoal')}
                                     </label>
                                     <select
                                         value={adsetData.optimizationGoal}
                                         onChange={(e) => handleInputChange('optimizationGoal', e.target.value)}
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                     >
-                                        <option value="">Select optimization goal...</option>
+                                        <option value="">{t('adSetStep.selectOptimizationGoal')}</option>
                                         {OPTIMIZATION_GOALS.map(goal => (
                                             <option key={goal.value} value={goal.value}>
-                                                {goal.label} - {goal.description}
+                                                {t(`options.goal.${goal.value}.label`, { defaultValue: goal.label })} - {t(`options.goal.${goal.value}.description`, { defaultValue: goal.description })}
                                             </option>
                                         ))}
                                     </select>
@@ -516,14 +520,14 @@ const AdSetStep = ({ onNext, onBack }) => {
                                     <>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Conversion Event *
+                                                {t('adSetStep.conversionEvent')}
                                             </label>
                                             <select
                                                 value={adsetData.conversionEvent}
                                                 onChange={(e) => handleInputChange('conversionEvent', e.target.value)}
                                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                             >
-                                                <option value="">Select event...</option>
+                                                <option value="">{t('adSetStep.selectEvent')}</option>
                                                 {CONVERSION_EVENTS.map(event => (
                                                     <option key={event} value={event}>{event}</option>
                                                 ))}
@@ -533,7 +537,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                                         {/* Attribution Setting */}
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Attribution Setting
+                                                {t('adSetStep.attributionSetting')}
                                             </label>
                                             <select
                                                 value={adsetData.attributionSetting}
@@ -542,12 +546,12 @@ const AdSetStep = ({ onNext, onBack }) => {
                                             >
                                                 {ATTRIBUTION_SETTINGS.map(setting => (
                                                     <option key={setting.value} value={setting.value}>
-                                                        {setting.label}
+                                                        {t(`options.attribution.${setting.value}`, { defaultValue: setting.label })}
                                                     </option>
                                                 ))}
                                             </select>
                                             <p className="mt-1 text-xs text-gray-500">
-                                                Attribution window for conversion tracking (default: 7-day click)
+                                                {t('adSetStep.attributionWindowForConversionTracking')}
                                             </p>
                                         </div>
                                     </>
@@ -562,7 +566,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                             onClick={() => setIsTargetingOpen(!isTargetingOpen)}
                             className="flex items-center justify-between w-full py-2 text-left focus:outline-none"
                         >
-                            <h3 className="font-semibold text-gray-900">Targeting</h3>
+                            <h3 className="font-semibold text-gray-900">{t('adSetStep.targeting')}</h3>
                             <ChevronRight
                                 size={20}
                                 className={`text-gray-500 transition-transform ${isTargetingOpen ? 'rotate-90' : ''}`}
@@ -573,7 +577,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                             <div className="space-y-6 mt-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Locations *
+                                        {t('adSetStep.locations')}
                                     </label>
 
                                     {/* Advantage+ Audience Toggle */}
@@ -590,10 +594,10 @@ const AdSetStep = ({ onNext, onBack }) => {
                                             </div>
                                             <div className="text-sm">
                                                 <label htmlFor="advantage-audience" className="font-medium text-gray-700">
-                                                    Advantage+ Audience
+                                                    {t('adSetStep.advantageAudience')}
                                                 </label>
                                                 <p className="text-gray-500">
-                                                    Let Facebook automatically find your audience. If unchecked, we'll use your specific targeting options below.
+                                                    {t('adSetStep.letFacebookAutomaticallyFindYour')}
                                                 </p>
                                             </div>
                                         </div>
@@ -611,8 +615,8 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                         : 'bg-red-50 text-red-700 border-red-200'
                                                         }`}
                                                 >
-                                                    <option value="include">Include</option>
-                                                    <option value="exclude">Exclude</option>
+                                                    <option value="include">{t('adSetStep.include')}</option>
+                                                    <option value="exclude">{t('adSetStep.exclude')}</option>
                                                 </select>
                                                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
                                                     <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
@@ -628,7 +632,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                         setShowCountryDropdown(true);
                                                     }}
                                                     onFocus={() => setShowCountryDropdown(true)}
-                                                    placeholder={`Search locations to ${locationMode}...`}
+                                                    placeholder={t('adSetStep.searchLocationsTo', { mode: t(`adSetStep.mode_${locationMode}`, { defaultValue: locationMode }) })}
                                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                                 />
 
@@ -638,7 +642,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                         {isSearchingLocations ? (
                                                             <div className="px-4 py-2 text-gray-500 text-sm flex items-center gap-2">
                                                                 <Loader className="animate-spin" size={14} />
-                                                                Searching...
+                                                                {t('adSetStep.searching')}
                                                             </div>
                                                         ) : locationResults.length > 0 ? (
                                                             locationResults.map(location => (
@@ -694,19 +698,19 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                                     <div>
                                                                         <div className="font-medium text-gray-900">{location.name}</div>
                                                                         <div className="text-xs text-gray-500">
-                                                                            {location.type === 'country' ? 'Country' :
-                                                                                location.type === 'region' ? `${location.country_name} (State/Region)` :
-                                                                                    location.type === 'city' ? `${location.region || ''}, ${location.country_name} (City)` :
-                                                                                        location.type === 'geo_market' ? `${location.country_name} (DMA)` : location.type}
+                                                                            {location.type === 'country' ? t('adSetStep.locCountry') :
+                                                                                location.type === 'region' ? t('adSetStep.locRegion', { country: location.country_name }) :
+                                                                                    location.type === 'city' ? t('adSetStep.locCity', { region: location.region || '', country: location.country_name }) :
+                                                                                        location.type === 'geo_market' ? t('adSetStep.locDma', { country: location.country_name }) : location.type}
                                                                         </div>
                                                                     </div>
                                                                     <span className="text-gray-300 text-xs group-hover:text-gray-500">{location.type}</span>
                                                                 </button>
                                                             ))
                                                         ) : countrySearch.length >= 2 ? (
-                                                            <div className="px-4 py-2 text-gray-500 text-sm">No locations found</div>
+                                                            <div className="px-4 py-2 text-gray-500 text-sm">{t('adSetStep.noLocationsFound')}</div>
                                                         ) : (
-                                                            <div className="px-4 py-2 text-gray-500 text-sm">Type at least 2 characters...</div>
+                                                            <div className="px-4 py-2 text-gray-500 text-sm">{t('adSetStep.typeAtLeast2Characters')}</div>
                                                         )}
                                                     </div>
                                                 )}
@@ -726,8 +730,8 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                             // Handle legacy string countries or new object locations
                                                             const isString = typeof loc === 'string';
                                                             const key = isString ? loc : loc.key;
-                                                            const name = isString ? (COUNTRIES.find(c => c.code === loc)?.name || loc) : loc.name;
-                                                            const subtext = isString ? 'Country' : loc.type;
+                                                            const name = isString ? countryName(loc, COUNTRIES.find(c => c.code === loc)?.name || loc) : loc.name;
+                                                            const subtext = isString ? t('adSetStep.locCountry') : loc.type;
 
                                                             return (
                                                                 <div key={`inc-${type}-${key}-${idx}`} className="flex items-center justify-between bg-green-50 border border-green-100 px-3 py-2 rounded-lg">
@@ -739,7 +743,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                                             <div className="text-sm font-medium text-gray-900">{name}</div>
                                                                             <div className="text-xs text-gray-500 capitalize">{subtext}</div>
                                                                         </div>
-                                                                        <span className="text-xs text-green-600 font-medium px-2 py-0.5 bg-green-100 rounded ml-2">Include</span>
+                                                                        <span className="text-xs text-green-600 font-medium px-2 py-0.5 bg-green-100 rounded ml-2">{t('adSetStep.include')}</span>
                                                                     </div>
                                                                     <button
                                                                         onClick={() => {
@@ -761,8 +765,8 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                         {excludedList.map((loc, idx) => {
                                                             const isString = typeof loc === 'string';
                                                             const key = isString ? loc : loc.key;
-                                                            const name = isString ? (COUNTRIES.find(c => c.code === loc)?.name || loc) : loc.name;
-                                                            const subtext = isString ? 'Country' : loc.type;
+                                                            const name = isString ? countryName(loc, COUNTRIES.find(c => c.code === loc)?.name || loc) : loc.name;
+                                                            const subtext = isString ? t('adSetStep.locCountry') : loc.type;
 
                                                             return (
                                                                 <div key={`exc-${type}-${key}-${idx}`} className="flex items-center justify-between bg-red-50 border border-red-100 px-3 py-2 rounded-lg">
@@ -774,7 +778,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                                             <div className="text-sm font-medium text-gray-900">{name}</div>
                                                                             <div className="text-xs text-gray-500 capitalize">{subtext}</div>
                                                                         </div>
-                                                                        <span className="text-xs text-red-600 font-medium px-2 py-0.5 bg-red-100 rounded ml-2">Exclude</span>
+                                                                        <span className="text-xs text-red-600 font-medium px-2 py-0.5 bg-red-100 rounded ml-2">{t('adSetStep.exclude')}</span>
                                                                     </div>
                                                                     <button
                                                                         onClick={() => {
@@ -801,7 +805,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                 !adsetData.targeting.geo_locations?.[`excluded_${type}`]?.length
                                             ) && (
                                                     <div className="text-sm text-gray-500 italic px-1">
-                                                        No locations selected. Please search and add locations.
+                                                        {t('adSetStep.noLocationsSelectedPleaseSearch')}
                                                     </div>
                                                 )}
                                         </div>
@@ -811,7 +815,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Minimum Age *
+                                            {t('adSetStep.minimumAge')}
                                         </label>
                                         <select
                                             value={adsetData.targeting.ageMin}
@@ -826,7 +830,7 @@ const AdSetStep = ({ onNext, onBack }) => {
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Maximum Age *
+                                            {t('adSetStep.maximumAge')}
                                         </label>
                                         <select
                                             value={adsetData.targeting.ageMax}
@@ -842,7 +846,7 @@ const AdSetStep = ({ onNext, onBack }) => {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Gender *
+                                        {t('adSetStep.gender')}
                                     </label>
                                     <div className="flex gap-4">
                                         <button
@@ -852,7 +856,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                 : 'border-gray-200 hover:border-amber-300 text-gray-600'
                                                 }`}
                                         >
-                                            All
+                                            {t('adSetStep.all')}
                                         </button>
                                         <button
                                             onClick={() => handleTargetingChange('genders', [1])}
@@ -861,7 +865,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                 : 'border-gray-200 hover:border-amber-300 text-gray-600'
                                                 }`}
                                         >
-                                            Men
+                                            {t('adSetStep.men')}
                                         </button>
                                         <button
                                             onClick={() => handleTargetingChange('genders', [2])}
@@ -870,14 +874,14 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                 : 'border-gray-200 hover:border-amber-300 text-gray-600'
                                                 }`}
                                         >
-                                            Women
+                                            {t('adSetStep.women')}
                                         </button>
                                     </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Placements *
+                                        {t('adSetStep.placements')}
                                     </label>
                                     <div className="space-y-3">
                                         {/* Advantage+ (Automatic) */}
@@ -897,10 +901,10 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                         <div className="w-2 h-2 rounded-full bg-white" />
                                                     )}
                                                 </div>
-                                                <span className="font-semibold text-gray-900">Advantage+ placements (Recommended)</span>
+                                                <span className="font-semibold text-gray-900">{t('adSetStep.advantagePlacementsRecommended')}</span>
                                             </div>
                                             <p className="text-sm text-gray-500 ml-7">
-                                                Use Advantage+ placements to maximize your budget and help show your ads to more people.
+                                                {t('adSetStep.useAdvantagePlacementsToMaximize')}
                                             </p>
                                         </div>
 
@@ -925,10 +929,10 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                         <div className="w-2 h-2 rounded-full bg-white" />
                                                     )}
                                                 </div>
-                                                <span className="font-semibold text-gray-900">Manual placements</span>
+                                                <span className="font-semibold text-gray-900">{t('adSetStep.manualPlacements')}</span>
                                             </div>
                                             <p className="text-sm text-gray-500 ml-7 mb-3">
-                                                Manually choose the places to show your ad.
+                                                {t('adSetStep.manuallyChooseThePlacesTo')}
                                             </p>
 
                                             {/* Platform Checkboxes */}
@@ -949,7 +953,7 @@ const AdSetStep = ({ onNext, onBack }) => {
                                                                     }
                                                                     // Prevent deselecting all (which would switch to auto)
                                                                     if (updated.length === 0) {
-                                                                        showWarning('At least one platform must be selected for Manual Placements.');
+                                                                        showWarning(t('adSetStep.atLeastOnePlatformMust'));
                                                                         return;
                                                                     }
                                                                     handleTargetingChange('publisher_platforms', updated);
@@ -977,14 +981,14 @@ const AdSetStep = ({ onNext, onBack }) => {
                     onClick={onBack}
                     className="px-6 py-3 text-gray-600 hover:text-gray-800 font-medium"
                 >
-                    Back
+                    {t('adSetStep.back')}
                 </button>
                 <button
                     onClick={handleNext}
                     disabled={loading}
                     className="flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                    {loading ? 'Saving...' : 'Next Step'} <ChevronRight size={20} />
+                    {loading ? t('adSetStep.saving') : t('adSetStep.nextStep')} <ChevronRight size={20} />
                 </button>
             </div>
         </div >

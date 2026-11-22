@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { LayoutDashboard, Image, Video, Star, TrendingUp, Zap, Wand2, Package, ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 export default function Dashboard() {
     const { authFetch } = useAuth();
+    const { t } = useTranslation('dashboard');
     const [statsData, setStatsData] = useState({
         brands_count: 0,
         products_count: 0,
@@ -32,16 +34,16 @@ export default function Dashboard() {
     }, [authFetch]);
 
     const stats = [
-        { label: 'Total Campaigns', value: statsData.campaigns_count, icon: TrendingUp, color: 'bg-amber-500' },
-        { label: 'Generated Ads', value: statsData.generated_ads_count, icon: Image, color: 'bg-orange-500' },
-        { label: 'Active Brands', value: statsData.brands_count, icon: ShoppingBag, color: 'bg-amber-600' },
-        { label: 'Templates', value: statsData.templates_count, icon: Star, color: 'bg-yellow-500' },
+        { label: t('home.totalCampaigns'), value: statsData.campaigns_count, icon: TrendingUp, color: 'bg-amber-500' },
+        { label: t('home.generatedAds'), value: statsData.generated_ads_count, icon: Image, color: 'bg-orange-500' },
+        { label: t('home.activeBrands'), value: statsData.brands_count, icon: ShoppingBag, color: 'bg-amber-600' },
+        { label: t('home.templates'), value: statsData.templates_count, icon: Star, color: 'bg-yellow-500' },
     ];
 
     const quickActions = [
-        { label: 'Build Creatives', description: 'Create new image or video ads', icon: Wand2, path: '/build-creatives', color: 'from-amber-500 to-orange-500' },
-        { label: 'Manage Brands', description: 'Update brand assets and profiles', icon: ShoppingBag, path: '/brands', color: 'from-orange-500 to-red-500' },
-        { label: 'Browse Templates', description: 'Explore winning ad templates', icon: Star, path: '/winning-ads', color: 'from-amber-600 to-yellow-600' },
+        { label: t('home.buildCreatives'), description: t('home.buildCreativesDesc'), icon: Wand2, path: '/build-creatives', color: 'from-amber-500 to-orange-500' },
+        { label: t('home.manageBrands'), description: t('home.manageBrandsDesc'), icon: ShoppingBag, path: '/brands', color: 'from-orange-500 to-red-500' },
+        { label: t('home.browseTemplates'), description: t('home.browseTemplatesDesc'), icon: Star, path: '/winning-ads', color: 'from-amber-600 to-yellow-600' },
     ];
 
     return (
@@ -50,9 +52,9 @@ export default function Dashboard() {
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                     <LayoutDashboard size={32} className="text-amber-600" />
-                    Dashboard
+                    {t('home.title')}
                 </h1>
-                <p className="text-gray-600 mt-2">Welcome to your Ad Builder workspace</p>
+                <p className="text-gray-600 mt-2">{t('home.subtitle')}</p>
             </div>
 
             {/* Stats Grid */}
@@ -75,7 +77,7 @@ export default function Dashboard() {
 
             {/* Quick Actions */}
             <div className="mb-8">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">{t('home.quickActions')}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {quickActions.map((action, index) => {
                         const Icon = action.icon;
@@ -98,11 +100,11 @@ export default function Dashboard() {
 
             {/* Recent Activity */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">{t('home.recentActivity')}</h2>
                 <div className="text-center py-12 text-gray-500">
                     <Zap size={48} className="mx-auto mb-4 text-gray-400" />
-                    <p>No recent activity yet</p>
-                    <p className="text-sm mt-2">Start creating ads to see your activity here</p>
+                    <p>{t('home.noActivity')}</p>
+                    <p className="text-sm mt-2">{t('home.noActivityHint')}</p>
                 </div>
             </div>
         </div>

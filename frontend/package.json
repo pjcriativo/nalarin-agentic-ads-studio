@@ -19,6 +19,8 @@
     "test:auth": "bash tests/agent-browser/smoke-auth.sh",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
+    "i18n:check": "node scripts/check-i18n.mjs",
+    "test:i18n": "node scripts/check-i18n.mjs && vitest run src/i18n",
     "test:coverage": "vitest run --coverage",
     "test:all": "npm run test:unit && npm run test:smoke"
   },
@@ -31,10 +33,13 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "i18next": "^27.2.4",
+    "i18next-browser-languagedetector": "^8.3.1",
     "lucide-react": "^0.554.0",
     "multer": "^2.0.2",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
+    "react-i18next": "^18.0.3",
     "react-router-dom": "^7.9.6",
     "recharts": "^2.15.0"
   },

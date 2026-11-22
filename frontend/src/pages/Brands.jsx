@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useBrands } from '../context/BrandContext';
 import BrandForm from '../components/BrandForm';
 import { Plus, Edit2, Trash2, Briefcase, LayoutGrid, List } from 'lucide-react';
 import ConfirmationModal from '../components/ConfirmationModal';
 
 const Brands = () => {
+    const { t } = useTranslation('brands');
     const { brands, addBrand, updateBrand, deleteBrand } = useBrands();
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingBrand, setEditingBrand] = useState(null);
@@ -49,23 +51,23 @@ const Brands = () => {
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                         <Briefcase size={32} className="text-amber-600" />
-                        Brand Management
+                        {t('brands.title')}
                     </h1>
-                    <p className="text-gray-600 mt-2">Manage your brands, assets, and styles.</p>
+                    <p className="text-gray-600 mt-2">{t('brands.subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="flex bg-gray-100 p-1 rounded-lg">
                         <button
                             onClick={() => setViewMode('list')}
                             className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500 hover:text-gray-700'}`}
-                            title="List View"
+                            title={t('common.listView')}
                         >
                             <List size={20} />
                         </button>
                         <button
                             onClick={() => setViewMode('grid')}
                             className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500 hover:text-gray-700'}`}
-                            title="Grid View"
+                            title={t('common.gridView')}
                         >
                             <LayoutGrid size={20} />
                         </button>
@@ -75,7 +77,7 @@ const Brands = () => {
                         className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium shadow-sm"
                     >
                         <Plus size={20} />
-                        Add Brand
+                        {t('brands.add')}
                     </button>
                 </div>
             </div>
@@ -85,13 +87,13 @@ const Brands = () => {
                     <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Briefcase className="text-amber-600" size={32} />
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No brands yet</h3>
-                    <p className="text-gray-500 mb-6">Create your first brand to start generating consistent ads.</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">{t('brands.emptyTitle')}</h3>
+                    <p className="text-gray-500 mb-6">{t('brands.emptyBody')}</p>
                     <button
                         onClick={() => setIsFormOpen(true)}
                         className="text-amber-600 font-medium hover:underline"
                     >
-                        Create a brand
+                        {t('brands.createCta')}
                     </button>
                 </div>
             ) : (
@@ -133,13 +135,13 @@ const Brands = () => {
                                             <div className="flex items-center gap-2">
                                                 <div className="w-4 h-4 rounded-full" style={{ backgroundColor: brand.colors.primary }}></div>
                                                 <div className="w-4 h-4 rounded-full" style={{ backgroundColor: brand.colors.secondary }}></div>
-                                                <span className="text-gray-400 text-xs ml-1">Brand Colors</span>
+                                                <span className="text-gray-400 text-xs ml-1">{t('brands.brandColors')}</span>
                                             </div>
                                             <p className="line-clamp-2">
-                                                <span className="font-medium text-gray-900">Voice:</span> {brand.voice || 'Not specified'}
+                                                <span className="font-medium text-gray-900">{t('brands.voice')}:</span> {brand.voice || t('common.notSpecified')}
                                             </p>
                                             <p>
-                                                <span className="font-medium text-gray-900">Products:</span> {brand.products.length}
+                                                <span className="font-medium text-gray-900">{t('brands.products')}:</span> {brand.products.length}
                                             </p>
                                         </div>
                                     </div>
@@ -151,11 +153,11 @@ const Brands = () => {
                             <table className="w-full text-left">
                                 <thead className="bg-gray-50 border-b border-gray-200">
                                     <tr>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Brand</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Colors</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Voice</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Products</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('brands.colBrand')}</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('brands.colColors')}</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('brands.voice')}</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('brands.products')}</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{t('common.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
@@ -178,12 +180,12 @@ const Brands = () => {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-6 h-6 rounded border border-gray-200" style={{ backgroundColor: brand.colors.primary }} title="Primary"></div>
-                                                    <div className="w-6 h-6 rounded border border-gray-200" style={{ backgroundColor: brand.colors.secondary }} title="Secondary"></div>
+                                                    <div className="w-6 h-6 rounded border border-gray-200" style={{ backgroundColor: brand.colors.primary }} title={t('brands.primary')}></div>
+                                                    <div className="w-6 h-6 rounded border border-gray-200" style={{ backgroundColor: brand.colors.secondary }} title={t('brands.secondary')}></div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
-                                                {brand.voice || <span className="text-gray-400 italic">Not specified</span>}
+                                                {brand.voice || <span className="text-gray-400 italic">{t('common.notSpecified')}</span>}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-600">
                                                 {brand.products.length}
@@ -193,14 +195,14 @@ const Brands = () => {
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleEdit(brand); }}
                                                         className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-                                                        title="Edit"
+                                                        title={t('common.edit')}
                                                     >
                                                         <Edit2 size={16} />
                                                     </button>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleDelete(brand.id); }}
                                                         className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                        title="Delete"
+                                                        title={t('common.delete')}
                                                     >
                                                         <Trash2 size={16} />
                                                     </button>
@@ -227,9 +229,9 @@ const Brands = () => {
                 isOpen={!!brandToDelete}
                 onClose={() => setBrandToDelete(null)}
                 onConfirm={confirmDelete}
-                title="Delete Brand"
-                message="Are you sure you want to delete this brand? This action cannot be undone."
-                confirmText="Delete"
+                title={t('brands.deleteTitle')}
+                message={t('brands.deleteMessage')}
+                confirmText={t('common.delete')}
                 isDestructive={true}
             />
         </div>

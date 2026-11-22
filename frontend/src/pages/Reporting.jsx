@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowUpRight, ArrowDownRight, MousePointer, Eye, BarChart2, BarChart, Download } from 'lucide-react';
 
 const StatCard = ({ title, value, change, trend, icon: Icon }) => (
@@ -18,11 +19,12 @@ const StatCard = ({ title, value, change, trend, icon: Icon }) => (
 );
 
 const Reporting = () => {
+    const { t } = useTranslation('dashboard');
     const stats = [
-        { label: "Total Impressions", value: "124.5K", change: "+12.3%", trend: "up", icon: Eye, color: "text-amber-600" },
-        { label: "Total Clicks", value: "3,842", change: "+5.4%", trend: "up", icon: MousePointer, color: "text-green-600" },
-        { label: "Avg. CTR", value: "3.1%", change: "-0.2%", trend: "down", icon: BarChart2, color: "text-red-600" },
-        { label: "Conversion Rate", value: "1.8%", change: "+0.1%", trend: "up", icon: BarChart, color: "text-purple-600" },
+        { label: t('reporting.totalImpressions'), value: "124.5K", change: "+12.3%", trend: "up", icon: Eye, color: "text-amber-600" },
+        { label: t('reporting.totalClicks'), value: "3,842", change: "+5.4%", trend: "up", icon: MousePointer, color: "text-green-600" },
+        { label: t('reporting.avgCtr'), value: "3.1%", change: "-0.2%", trend: "down", icon: BarChart2, color: "text-red-600" },
+        { label: t('reporting.conversionRate'), value: "1.8%", change: "+0.1%", trend: "up", icon: BarChart, color: "text-purple-600" },
     ];
 
     return (
@@ -32,18 +34,18 @@ const Reporting = () => {
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
                         <BarChart size={32} className="text-amber-600" />
-                        Campaign Reporting
+                        {t('reporting.title')}
                     </h1>
-                    <p className="text-gray-600">Track performance across all your campaigns</p>
+                    <p className="text-gray-600">{t('reporting.subtitle')}</p>
                 </div>
                 <div className="flex gap-2">
                     <select className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent">
-                        <option>Last 7 Days</option>
-                        <option>Last 30 Days</option>
-                        <option>This Month</option>
-                        <option>Last Month</option>
+                        <option>{t('datePresets.last_7d')}</option>
+                        <option>{t('datePresets.last_30d')}</option>
+                        <option>{t('datePresets.this_month')}</option>
+                        <option>{t('datePresets.last_month')}</option>
                     </select>
-                    <button className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
+                    <button aria-label={t('reporting.download')} className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
                         <Download size={20} />
                     </button>
                 </div>
@@ -72,7 +74,7 @@ const Reporting = () => {
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                    <h3 className="text-lg font-bold text-gray-900 mb-6">Performance Over Time</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-6">{t('reporting.performanceOverTime')}</h3>
                     <div className="h-64 flex items-end justify-between gap-2">
                         {[...Array(12)].map((_, i) => (
                             <div key={i} className="w-full bg-amber-100 rounded-t-sm relative group">
@@ -86,7 +88,7 @@ const Reporting = () => {
                 </div>
 
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                    <h3 className="text-lg font-bold text-gray-900 mb-6">Platform Distribution</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-6">{t('reporting.platformDistribution')}</h3>
                     <div className="flex items-center justify-center h-64">
                         <div className="relative w-48 h-48">
                             <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">

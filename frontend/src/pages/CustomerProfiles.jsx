@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useBrands } from '../context/BrandContext';
 import CustomerProfileForm from '../components/CustomerProfileForm';
 import { Plus, Edit2, Trash2, Users, LayoutGrid, List, Search, UserCircle } from 'lucide-react';
 import ConfirmationModal from '../components/ConfirmationModal';
 
 const CustomerProfiles = () => {
+    const { t } = useTranslation('brands');
     const { customerProfiles, brands, addProfile, updateProfile, deleteProfile } = useBrands();
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingProfile, setEditingProfile] = useState(null);
@@ -59,16 +61,16 @@ const CustomerProfiles = () => {
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                         <Users size={32} className="text-amber-600" />
-                        Customer Profiles
+                        {t('profiles.title')}
                     </h1>
-                    <p className="text-gray-600 mt-2">Define and manage target audiences for your brands.</p>
+                    <p className="text-gray-600 mt-2">{t('profiles.subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-4 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                         <input
                             type="text"
-                            placeholder="Search profiles..."
+                            placeholder={t('profiles.search')}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -93,7 +95,7 @@ const CustomerProfiles = () => {
                         className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors shrink-0 font-medium shadow-sm"
                     >
                         <Plus size={20} />
-                        Add Profile
+                        {t('profiles.add')}
                     </button>
                 </div>
             </div>
@@ -103,13 +105,13 @@ const CustomerProfiles = () => {
                     <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Users className="text-amber-600" size={32} />
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No customer profiles yet</h3>
-                    <p className="text-gray-500 mb-6">Create profiles to better target your ad copy.</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">{t('profiles.emptyTitle')}</h3>
+                    <p className="text-gray-500 mb-6">{t('profiles.emptyBody')}</p>
                     <button
                         onClick={() => setIsFormOpen(true)}
                         className="text-amber-600 font-medium hover:underline"
                     >
-                        Add a Profile
+                        {t('profiles.addCta')}
                     </button>
                 </div>
             ) : (
@@ -164,7 +166,7 @@ const CustomerProfiles = () => {
                                             </div>
                                             <p className="text-sm text-gray-500 line-clamp-2 mb-2">{profile.demographics}</p>
                                             <div className="space-y-1">
-                                                <p className="text-xs text-gray-400 uppercase font-semibold">Pain Points</p>
+                                                <p className="text-xs text-gray-400 uppercase font-semibold">{t('profiles.painPoints')}</p>
                                                 <p className="text-sm text-gray-600 line-clamp-2">{profile.painPoints}</p>
                                             </div>
                                         </div>
@@ -177,10 +179,10 @@ const CustomerProfiles = () => {
                             <table className="w-full text-left">
                                 <thead className="bg-gray-50 border-b border-gray-200">
                                     <tr>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Profile Name</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Linked Brands</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Demographics</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('profiles.colName')}</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('profiles.colBrands')}</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('profiles.demographics')}</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{t('common.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
@@ -212,7 +214,7 @@ const CustomerProfiles = () => {
                                                                 {brand.name[0]}
                                                             </div>
                                                         )) : (
-                                                            <span className="text-xs text-gray-400 italic">None</span>
+                                                            <span className="text-xs text-gray-400 italic">{t('common.none')}</span>
                                                         )}
                                                         {linkedBrands.length > 3 && (
                                                             <div className="w-6 h-6 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-[10px] text-gray-600 font-bold">
@@ -229,14 +231,14 @@ const CustomerProfiles = () => {
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleEdit(profile); }}
                                                             className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-                                                            title="Edit"
+                                                            title={t('common.edit')}
                                                         >
                                                             <Edit2 size={16} />
                                                         </button>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleDelete(profile.id); }}
                                                             className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                            title="Delete"
+                                                            title={t('common.delete')}
                                                         >
                                                             <Trash2 size={16} />
                                                         </button>
@@ -264,9 +266,9 @@ const CustomerProfiles = () => {
                 isOpen={!!profileToDelete}
                 onClose={() => setProfileToDelete(null)}
                 onConfirm={confirmDelete}
-                title="Delete Customer Profile"
-                message="Are you sure you want to delete this profile? It will be unlinked from all brands."
-                confirmText="Delete"
+                title={t('profiles.deleteTitle')}
+                message={t('profiles.deleteMessage')}
+                confirmText={t('common.delete')}
                 isDestructive={true}
             />
         </div>

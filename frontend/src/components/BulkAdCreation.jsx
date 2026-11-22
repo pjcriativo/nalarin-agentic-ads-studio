@@ -1,4 +1,6 @@
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
+import { translateBackendMessage } from '../i18n/backendErrors';
 import { useAuth } from '../context/AuthContext';
 import React, { useState } from 'react';
 import { ChevronRight, Plus, Trash2, Loader, Film, Image } from 'lucide-react';
@@ -8,6 +10,7 @@ import { createCompleteAd, createFacebookCampaign, createFacebookAdSet } from '.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 const BulkAdCreation = ({ onNext, onBack }) => {
+    const { t } = useTranslation('campaigns');
     const { showWarning, showError } = useToast();
     const { authFetch } = useAuth();
     const { campaignData, adsetData, creativeData, adsData, setAdsData, selectedAdAccount } = useCampaign();
@@ -73,19 +76,19 @@ const BulkAdCreation = ({ onNext, onBack }) => {
 
     const handleSubmit = async () => {
         if (adsData.length === 0) {
-            showWarning('Please add at least one ad');
+            showWarning(t('bulkAdCreation.pleaseAddAtLeastOne'));
             return;
         }
 
         setLoading(true);
         setErrors([]);
-        setProgress({ current: 0, total: adsData.length, status: 'Starting...' });
+        setProgress({ current: 0, total: adsData.length, status: t('bulk.starting') });
 
         try {
             // Step 1: Create Facebook Campaign (if new)
             let fbCampaignId = campaignData.fbCampaignId;
             if (!campaignData.isExisting) {
-                setProgress(prev => ({ ...prev, status: 'Creating campaign on Facebook...' }));
+                setProgress(prev => ({ ...prev, status: t('bulk.creatingCampaign') }));
                 fbCampaignId = await createFacebookCampaign(campaignData, selectedAdAccount.accountId);
             }
 
@@ -103,7 +106,7 @@ const BulkAdCreation = ({ onNext, onBack }) => {
                 });
                 if (!saveCampRes.ok) {
                     const err = await saveCampRes.json();
-                    throw new Error(`Failed to save campaign locally: ${err.detail || err.message}`);
+                    throw new Error(t('bulk.saveCampaignFailed', { detail: translateBackendMessage(err.detail || err.message) }));
                 }
             } catch (err) {
                 console.error('Error saving campaign locally:', err);
@@ -113,7 +116,7 @@ const BulkAdCreation = ({ onNext, onBack }) => {
             // Step 2: Create Facebook Ad Set (if new)
             let fbAdsetId = adsetData.fbAdsetId;
             if (!adsetData.isExisting) {
-                setProgress(prev => ({ ...prev, status: 'Creating ad set on Facebook...' }));
+                setProgress(prev => ({ ...prev, status: t('bulk.creatingAdSet') }));
 
                 // For CBO campaigns, pass the bid strategy and bid amount from campaign level
                 const adsetPayload = {
@@ -144,7 +147,7 @@ const BulkAdCreation = ({ onNext, onBack }) => {
                 });
                 if (!saveAdSetRes.ok) {
                     const err = await saveAdSetRes.json();
-                    throw new Error(`Failed to save ad set locally: ${err.detail || err.message}`);
+                    throw new Error(t('bulk.saveAdSetFailed', { detail: translateBackendMessage(err.detail || err.message) }));
                 }
             } catch (err) {
                 console.error('Error saving ad set locally:', err);
@@ -158,7 +161,7 @@ const BulkAdCreation = ({ onNext, onBack }) => {
                 setProgress({
                     current: i + 1,
                     total: adsData.length,
-                    status: `Creating ad ${i + 1} of ${adsData.length}...`
+                    status: t('bulk.creatingAd', { current: i + 1, total: adsData.length })
                 });
 
                 try {
@@ -180,7 +183,7 @@ const BulkAdCreation = ({ onNext, onBack }) => {
                     };
 
                     if (!creativeData.pageId) {
-                        throw new Error('Page ID is missing. Please go back to the Creative step and select a Facebook Page.');
+                        throw new Error(t('bulkAdCreation.pageIdIsMissingPlease'));
                     }
 
                     console.log(`Submitting ${isVideo ? 'Video' : 'Image'} Ad with Page ID:`, creativeData.pageId);
@@ -189,7 +192,7 @@ const BulkAdCreation = ({ onNext, onBack }) => {
                     if (isVideo) {
                         setProgress(prev => ({
                             ...prev,
-                            status: `Uploading video ${i + 1} of ${adsData.length}... (this may take a while)`
+                            status: t('bulk.uploadingVideo', { current: i + 1, total: adsData.length })
                         }));
                     }
 
@@ -237,14 +240,14 @@ const BulkAdCreation = ({ onNext, onBack }) => {
                     });
                 } catch (error) {
                     console.error(`Error creating ad ${ad.name}:`, error);
-                    setErrors(prev => [...prev, `Failed to create ${ad.name}: ${error.message}`]);
+                    setErrors(prev => [...prev, t('bulk.createAdFailed', { name: ad.name, message: translateBackendMessage(error.message) })]);
                 }
             }
 
             setProgress({
                 current: adsData.length,
                 total: adsData.length,
-                status: 'Complete!'
+                status: t('bulk.complete')
             });
 
             // Wait a moment to show completion
@@ -254,43 +257,43 @@ const BulkAdCreation = ({ onNext, onBack }) => {
 
         } catch (error) {
             console.error('Error in bulk ad creation:', error);
-            showError(`Error: ${error.message}`);
+            showError(t('bulkAdCreation.errorMessage', { message: translateBackendMessage(error.message) }));
             setLoading(false);
         }
     };
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-6">Bulk Ad Creation</h2>
+            <h2 className="text-2xl font-bold mb-6">{t('bulkAdCreation.bulkAdCreation')}</h2>
             <p className="text-gray-600 mb-6">
-                Add multiple ads to be created with the same creative structure. Each ad will use the dynamic creative you configured.
+                {t('bulkAdCreation.addMultipleAdsToBe')}
             </p>
 
             {/* Summary */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h3 className="font-semibold text-blue-900 mb-2">Summary</h3>
+                <h3 className="font-semibold text-blue-900 mb-2">{t('bulkAdCreation.summary')}</h3>
                 <div className="text-sm text-blue-800 space-y-1">
-                    <div><strong>Campaign:</strong> {campaignData.name}</div>
+                    <div><strong>{t('bulkAdCreation.campaign')}</strong> {campaignData.name}</div>
                     {campaignData.budgetType === 'CBO' && (
-                        <div><strong>Campaign Budget:</strong> ${Number(campaignData.dailyBudget).toFixed(2)} / day</div>
+                        <div><strong>{t('bulkAdCreation.campaignBudget')}</strong> ${Number(campaignData.dailyBudget).toFixed(2)} / day</div>
                     )}
-                    <div><strong>Ad Set:</strong> {adsetData.name}</div>
+                    <div><strong>{t('bulkAdCreation.adSet')}</strong> {adsetData.name}</div>
                     {campaignData.budgetType === 'ABO' && (
-                        <div><strong>Ad Set Budget:</strong> ${Number(adsetData.dailyBudget).toFixed(2)} / day</div>
+                        <div><strong>{t('bulkAdCreation.adSetBudget')}</strong> ${Number(adsetData.dailyBudget).toFixed(2)} / day</div>
                     )}
-                    <div><strong>Creative Name:</strong> {creativeData.creativeName}</div>
+                    <div><strong>{t('bulkAdCreation.creativeName')}</strong> {creativeData.creativeName}</div>
                     <div>
-                        <strong>Media:</strong>{' '}
+                        <strong>{t('bulkAdCreation.media')}</strong>{' '}
                         {(() => {
                             const images = creativeData.creatives?.filter(c => c.mediaType !== 'video').length || 0;
                             const videos = creativeData.creatives?.filter(c => c.mediaType === 'video').length || 0;
                             const parts = [];
-                            if (images > 0) parts.push(`${images} image${images !== 1 ? 's' : ''}`);
-                            if (videos > 0) parts.push(`${videos} video${videos !== 1 ? 's' : ''}`);
+                            if (images > 0) parts.push(t('adCreativeStep.imagesN', { count: images }));
+                            if (videos > 0) parts.push(t('adCreativeStep.videosN', { count: videos }));
                             return parts.join(', ') || '0 files';
                         })()}
                     </div>
-                    <div><strong>Ad Copy:</strong> Standard (Single Body & Headline)</div>
+                    <div><strong>{t('bulkAdCreation.adCopy')}</strong> {t('bulkAdCreation.standardSingleBodyHeadline')}</div>
                 </div>
             </div>
 
@@ -321,7 +324,7 @@ const BulkAdCreation = ({ onNext, onBack }) => {
                                                 <>
                                                     <img
                                                         src={creative.previewUrl}
-                                                        alt="Thumbnail"
+                                                        alt={t('bulkAdCreation.thumbnail')}
                                                         className="w-full h-full object-cover"
                                                     />
                                                     <div className="absolute bottom-0 right-0 bg-blue-600 text-white p-0.5 rounded-tl">
@@ -336,7 +339,7 @@ const BulkAdCreation = ({ onNext, onBack }) => {
                                             type="text"
                                             value={ad.name}
                                             onChange={(e) => updateAdName(index, e.target.value)}
-                                            placeholder={`Ad ${index + 1} name`}
+                                            placeholder={t('bulk.adNamePlaceholder', { index: index + 1 })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         />
                                     </div>
@@ -357,13 +360,13 @@ const BulkAdCreation = ({ onNext, onBack }) => {
                         className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors flex items-center justify-center gap-2"
                     >
                         <Plus size={20} />
-                        Add Another Ad
+                        {t('bulkAdCreation.addAnotherAd')}
                     </button>
 
                     {/* Errors */}
                     {errors.length > 0 && (
                         <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
-                            <h3 className="font-semibold text-red-900 mb-2">Errors</h3>
+                            <h3 className="font-semibold text-red-900 mb-2">{t('bulkAdCreation.errors')}</h3>
                             <ul className="text-sm text-red-800 space-y-1">
                                 {errors.map((error, index) => (
                                     <li key={index}>• {error}</li>
@@ -378,14 +381,14 @@ const BulkAdCreation = ({ onNext, onBack }) => {
                             onClick={onBack}
                             className="px-6 py-3 text-gray-600 hover:text-gray-800 font-medium"
                         >
-                            Back
+                            {t('bulkAdCreation.back')}
                         </button>
                         <button
                             onClick={handleSubmit}
                             disabled={adsData.length === 0}
                             className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                         >
-                            Create {adsData.length} Ad{adsData.length !== 1 ? 's' : ''} on Facebook
+                            {t('bulk.createOnFacebook', { count: adsData.length })}
                         </button>
                     </div>
                 </>
@@ -402,7 +405,7 @@ const BulkAdCreation = ({ onNext, onBack }) => {
                             />
                         </div>
                         <p className="text-gray-600">
-                            {progress.current} of {progress.total} ads created
+                            {t('bulk.progress', { current: progress.current, total: progress.total })}
                         </p>
                     </div>
                 </>

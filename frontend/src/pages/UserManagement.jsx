@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatDate } from '../i18n/format';
+import { translateBackendMessage } from '../i18n/backendErrors';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Users, Shield, Trash2, Plus, X, Check, UserCheck, UserX, Pencil } from 'lucide-react';
@@ -7,6 +10,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 const UserManagement = () => {
+    const { t } = useTranslation('settings');
     const [users, setUsers] = useState([]);
     const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -36,7 +40,7 @@ const UserManagement = () => {
                 setUsers(data);
             }
         } catch (err) {
-            showError('Failed to fetch users');
+            showError(t('userManagement.failedToFetchUsers'));
         } finally {
             setLoading(false);
         }
@@ -68,15 +72,15 @@ const UserManagement = () => {
             });
 
             if (response.ok) {
-                showSuccess('User roles updated');
+                showSuccess(t('userManagement.userRolesUpdated'));
                 setEditingUser(null);
                 fetchUsers();
             } else {
                 const data = await response.json();
-                showError(data.detail || 'Failed to update roles');
+                showError(translateBackendMessage(data.detail) || t('userManagement.failedToUpdateRoles'));
             }
         } catch (err) {
-            showError('Failed to update roles');
+            showError(t('userManagement.failedToUpdateRoles'));
         }
     };
 
@@ -89,14 +93,14 @@ const UserManagement = () => {
             });
 
             if (response.ok) {
-                showSuccess(`User ${user.is_active ? 'deactivated' : 'activated'}`);
+                showSuccess(t('userManagement.userActivated', { activated: user.is_active ? 'deactivated' : 'activated' }));
                 fetchUsers();
             } else {
                 const data = await response.json();
-                showError(data.detail || 'Failed to update user');
+                showError(translateBackendMessage(data.detail) || t('userManagement.failedToUpdateUser'));
             }
         } catch (err) {
-            showError('Failed to update user');
+            showError(t('userManagement.failedToUpdateUser'));
         }
     };
 
@@ -113,15 +117,15 @@ const UserManagement = () => {
             });
 
             if (response.ok) {
-                showSuccess('User deleted');
+                showSuccess(t('userManagement.userDeleted'));
                 setUserToDelete(null);
                 fetchUsers();
             } else {
                 const data = await response.json();
-                showError(data.detail || 'Failed to delete user');
+                showError(translateBackendMessage(data.detail) || t('userManagement.failedToDeleteUser'));
             }
         } catch (err) {
-            showError('Failed to delete user');
+            showError(t('userManagement.failedToDeleteUser'));
         }
     };
 
@@ -145,7 +149,7 @@ const UserManagement = () => {
     const handleAddUser = async (e) => {
         e.preventDefault();
         if (!newUser.email || !newUser.password) {
-            showError('Email and password are required');
+            showError(t('userManagement.emailAndPasswordAreRequired'));
             return;
         }
 
@@ -164,7 +168,7 @@ const UserManagement = () => {
 
             if (!registerResponse.ok) {
                 const data = await registerResponse.json();
-                showError(data.detail || 'Failed to create user');
+                showError(translateBackendMessage(data.detail) || t('userManagement.failedToCreateUser'));
                 return;
             }
 
@@ -179,12 +183,12 @@ const UserManagement = () => {
                 });
             }
 
-            showSuccess('User created successfully');
+            showSuccess(t('userManagement.userCreatedSuccessfully'));
             setShowAddModal(false);
             setNewUser({ name: '', email: '', password: '', role_ids: [] });
             fetchUsers();
         } catch (err) {
-            showError('Failed to create user');
+            showError(t('userManagement.failedToCreateUser'));
         } finally {
             setAddingUser(false);
         }
@@ -221,15 +225,15 @@ const UserManagement = () => {
             });
 
             if (response.ok) {
-                showSuccess('User updated successfully');
+                showSuccess(t('userManagement.userUpdatedSuccessfully'));
                 setShowEditUserModal(false);
                 fetchUsers();
             } else {
                 const data = await response.json();
-                showError(data.detail || 'Failed to update user');
+                showError(translateBackendMessage(data.detail) || t('userManagement.failedToUpdateUser'));
             }
         } catch (err) {
-            showError('Failed to update user');
+            showError(t('userManagement.failedToUpdateUser'));
         } finally {
             setUpdatingUser(false);
         }
@@ -253,20 +257,20 @@ const UserManagement = () => {
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                         <Users size={32} className="text-amber-600" />
-                        User Management
+                        {t('userManagement.userManagement')}
                     </h1>
-                    <p className="text-gray-600 mt-2">Manage users, roles, and permissions.</p>
+                    <p className="text-gray-600 mt-2">{t('userManagement.manageUsersRolesAndPermissions')}</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <span className="text-sm text-gray-500">
-                        {users.length} user{users.length !== 1 ? 's' : ''}
+                        {t('userManagement.usersCount', { count: users.length })}
                     </span>
                     <button
                         onClick={() => setShowAddModal(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium shadow-sm"
                     >
                         <Plus size={20} />
-                        Add User
+                        {t('userManagement.addUser')}
                     </button>
                 </div>
             </div>
@@ -276,11 +280,11 @@ const UserManagement = () => {
                 <table className="w-full text-left">
                     <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
-                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
-                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Roles</th>
-                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Created</th>
-                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('userManagement.user')}</th>
+                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('userManagement.status')}</th>
+                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('userManagement.roles')}</th>
+                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('userManagement.created')}</th>
+                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{t('userManagement.actions')}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -293,10 +297,10 @@ const UserManagement = () => {
                                         </div>
                                         <div>
                                             <div className="font-medium text-gray-900 flex items-center gap-2">
-                                                {user.name || 'No name'}
+                                                {user.name || t('userManagement.noName')}
                                                 {user.is_superuser && (
                                                     <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full font-medium">
-                                                        Superuser
+                                                        {t('userManagement.superuser')}
                                                     </span>
                                                 )}
                                             </div>
@@ -306,7 +310,7 @@ const UserManagement = () => {
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                        {user.is_active ? 'Active' : 'Inactive'}
+                                        {user.is_active ? t('userManagement.active') : t('userManagement.inactive')}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
@@ -317,33 +321,33 @@ const UserManagement = () => {
                                             </span>
                                         ))}
                                         {user.roles.length === 0 && (
-                                            <span className="text-gray-400 text-sm italic">No roles</span>
+                                            <span className="text-gray-400 text-sm italic">{t('userManagement.noRoles')}</span>
                                         )}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 text-sm text-gray-500">
-                                    {new Date(user.created_at).toLocaleDateString()}
+                                    {formatDate(user.created_at)}
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center justify-end gap-1">
                                         <button
                                             onClick={() => handleEditUserClick(user)}
                                             className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                            title="Edit user details"
+                                            title={t('userManagement.editUserDetails')}
                                         >
                                             <Pencil size={16} />
                                         </button>
                                         <button
                                             onClick={() => handleEditRoles(user)}
                                             className="p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                                            title="Edit roles"
+                                            title={t('userManagement.editRoles2')}
                                         >
                                             <Shield size={16} />
                                         </button>
                                         <button
                                             onClick={() => handleToggleActive(user)}
                                             className={`p-2 rounded-lg transition-colors ${user.is_active ? 'text-gray-500 hover:text-yellow-600 hover:bg-yellow-50' : 'text-gray-500 hover:text-green-600 hover:bg-green-50'}`}
-                                            title={user.is_active ? 'Deactivate' : 'Activate'}
+                                            title={user.is_active ? t('userManagement.deactivate') : t('userManagement.activate')}
                                             disabled={user.id === currentUser?.id}
                                         >
                                             {user.is_active ? <UserX size={16} /> : <UserCheck size={16} />}
@@ -351,7 +355,7 @@ const UserManagement = () => {
                                         <button
                                             onClick={() => handleDeleteClick(user)}
                                             className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                            title="Delete user"
+                                            title={t('userManagement.deleteUser')}
                                             disabled={user.id === currentUser?.id}
                                         >
                                             <Trash2 size={16} />
@@ -374,7 +378,7 @@ const UserManagement = () => {
                                     <Shield className="text-amber-600" size={20} />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-gray-900">Edit Roles</h3>
+                                    <h3 className="text-lg font-bold text-gray-900">{t('userManagement.editRoles')}</h3>
                                     <p className="text-sm text-gray-500">{editingUser.email}</p>
                                 </div>
                             </div>
@@ -411,14 +415,14 @@ const UserManagement = () => {
                                 onClick={() => setEditingUser(null)}
                                 className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium"
                             >
-                                Cancel
+                                {t('userManagement.cancel')}
                             </button>
                             <button
                                 onClick={handleSaveRoles}
                                 className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors font-medium shadow-sm flex items-center gap-2"
                             >
                                 <Check size={16} />
-                                Save Changes
+                                {t('userManagement.saveChanges')}
                             </button>
                         </div>
                     </div>
@@ -434,7 +438,7 @@ const UserManagement = () => {
                                 <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                                     <Plus className="text-amber-600" size={20} />
                                 </div>
-                                <h3 className="text-lg font-bold text-gray-900">Add New User</h3>
+                                <h3 className="text-lg font-bold text-gray-900">{t('userManagement.addNewUser')}</h3>
                             </div>
                             <button
                                 onClick={() => {
@@ -450,34 +454,34 @@ const UserManagement = () => {
                         <form onSubmit={handleAddUser} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Name
+                                    {t('userManagement.name')}
                                 </label>
                                 <input
                                     type="text"
                                     value={newUser.name}
                                     onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                    placeholder="John Doe"
+                                    placeholder={t('userManagement.johnDoe')}
                                 />
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Email <span className="text-red-500">*</span>
+                                    {t('userManagement.email')} <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="email"
                                     value={newUser.email}
                                     onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                    placeholder="user@example.com"
+                                    placeholder={t('userManagement.userExampleCom')}
                                     required
                                 />
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Password <span className="text-red-500">*</span>
+                                    {t('userManagement.password')} <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="password"
@@ -492,7 +496,7 @@ const UserManagement = () => {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Roles
+                                    {t('userManagement.roles')}
                                 </label>
                                 <div className="space-y-2">
                                     {roles.map((role) => (
@@ -526,7 +530,7 @@ const UserManagement = () => {
                                     }}
                                     className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium"
                                 >
-                                    Cancel
+                                    {t('userManagement.cancel')}
                                 </button>
                                 <button
                                     type="submit"
@@ -539,12 +543,12 @@ const UserManagement = () => {
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                             </svg>
-                                            Creating...
+                                            {t('userManagement.creating')}
                                         </>
                                     ) : (
                                         <>
                                             <Check size={16} />
-                                            Create User
+                                            {t('userManagement.createUser')}
                                         </>
                                     )}
                                 </button>
@@ -563,7 +567,7 @@ const UserManagement = () => {
                                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                                     <Pencil className="text-blue-600" size={20} />
                                 </div>
-                                <h3 className="text-lg font-bold text-gray-900">Edit User</h3>
+                                <h3 className="text-lg font-bold text-gray-900">{t('userManagement.editUser')}</h3>
                             </div>
                             <button
                                 onClick={() => setShowEditUserModal(false)}
@@ -576,41 +580,41 @@ const UserManagement = () => {
                         <form onSubmit={handleUpdateUser} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Name
+                                    {t('userManagement.name')}
                                 </label>
                                 <input
                                     type="text"
                                     value={editUserFormData.name}
                                     onChange={(e) => setEditUserFormData(prev => ({ ...prev, name: e.target.value }))}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="John Doe"
+                                    placeholder={t('userManagement.johnDoe')}
                                 />
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Email <span className="text-red-500">*</span>
+                                    {t('userManagement.email')} <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="email"
                                     value={editUserFormData.email}
                                     onChange={(e) => setEditUserFormData(prev => ({ ...prev, email: e.target.value }))}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="user@example.com"
+                                    placeholder={t('userManagement.userExampleCom')}
                                     required
                                 />
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    New Password <span className="text-gray-400 font-normal">(optional)</span>
+                                    {t('userManagement.newPassword')} <span className="text-gray-400 font-normal">{t('userManagement.optional')}</span>
                                 </label>
                                 <input
                                     type="password"
                                     value={editUserFormData.password}
                                     onChange={(e) => setEditUserFormData(prev => ({ ...prev, password: e.target.value }))}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="Leave blank to keep current"
+                                    placeholder={t('userManagement.leaveBlankToKeepCurrent')}
                                     minLength={6}
                                 />
                             </div>
@@ -621,7 +625,7 @@ const UserManagement = () => {
                                     onClick={() => setShowEditUserModal(false)}
                                     className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium"
                                 >
-                                    Cancel
+                                    {t('userManagement.cancel')}
                                 </button>
                                 <button
                                     type="submit"
@@ -634,12 +638,12 @@ const UserManagement = () => {
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                             </svg>
-                                            Saving...
+                                            {t('userManagement.saving')}
                                         </>
                                     ) : (
                                         <>
                                             <Check size={16} />
-                                            Save Changes
+                                            {t('userManagement.saveChanges')}
                                         </>
                                     )}
                                 </button>
@@ -654,9 +658,9 @@ const UserManagement = () => {
                 isOpen={!!userToDelete}
                 onClose={() => setUserToDelete(null)}
                 onConfirm={handleConfirmDelete}
-                title="Delete User"
-                message={`Are you sure you want to delete ${userToDelete?.email}? This action cannot be undone.`}
-                confirmText="Delete"
+                title={t('userManagement.deleteUser2')}
+                message={t('userManagement.deleteConfirm', { email: userToDelete?.email })}
+                confirmText={t('userManagement.delete')}
                 isDestructive={true}
             />
         </div>

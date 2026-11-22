@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
+import { translateBackendMessage } from '../i18n/backendErrors';
+import { useTranslation } from 'react-i18next';
 import { X, Plus, Trash2, Link as LinkIcon, Unlink } from 'lucide-react';
 import { useBrands } from '../context/BrandContext';
 import { useToast } from '../context/ToastContext';
 import { validateBrandName, validateHexColor, validateProductName, validateProductDescription, validateBrandVoice, validateTextInput } from '../utils/validation';
 
 const BrandForm = ({ onClose, onSave, initialData = null }) => {
+    const { t } = useTranslation('brands');
     const { customerProfiles, brands } = useBrands();
     const { showError } = useToast();
 
@@ -88,7 +91,7 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
             };
             onSave(validatedData);
         } catch (err) {
-            showError(err.message);
+            showError(translateBackendMessage(err.message));
         }
     };
 
@@ -97,7 +100,7 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
             <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center p-6 border-b border-gray-100">
                     <h2 className="text-xl font-bold text-gray-900">
-                        {initialData ? 'Edit Brand' : 'Add New Brand'}
+                        {initialData ? t('form.editBrand') : t('form.addBrand')}
                     </h2>
                     <button onClick={onClose} className="text-gray-500 hover:bg-gray-100 p-2 rounded-full">
                         <X size={20} />
@@ -108,7 +111,7 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
                     {/* Basic Info */}
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Brand Name</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.brandName')}</label>
                             <input
                                 required
                                 type="text"
@@ -116,29 +119,29 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
                                 value={formData.name}
                                 onChange={e => setFormData({ ...formData, name: e.target.value })}
                                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                placeholder="e.g. Acme Corp"
+                                placeholder={t('form.brandNamePlaceholder')}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Brand Voice/Tone</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.brandVoice')}</label>
                             <textarea
                                 value={formData.voice}
                                 maxLength={500}
                                 onChange={e => setFormData({ ...formData, voice: e.target.value })}
                                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                 rows="2"
-                                placeholder="e.g. Professional, Friendly, Witty..."
+                                placeholder={t('form.brandVoicePlaceholder')}
                             />
                         </div>
                     </div>
 
                     {/* Colors */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Brand Colors</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">{t('brands.brandColors')}</label>
                         <div className="flex gap-4">
                             <div>
-                                <label className="text-xs text-gray-500 block mb-1">Primary</label>
+                                <label className="text-xs text-gray-500 block mb-1">{t('form.primary')}</label>
                                 <div className="flex items-center gap-2">
                                     <input
                                         type="color"
@@ -150,7 +153,7 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
                                 </div>
                             </div>
                             <div>
-                                <label className="text-xs text-gray-500 block mb-1">Secondary</label>
+                                <label className="text-xs text-gray-500 block mb-1">{t('form.secondary')}</label>
                                 <div className="flex items-center gap-2">
                                     <input
                                         type="color"
@@ -162,7 +165,7 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
                                 </div>
                             </div>
                             <div>
-                                <label className="text-xs text-gray-500 block mb-1">Highlight</label>
+                                <label className="text-xs text-gray-500 block mb-1">{t('form.highlight')}</label>
                                 <div className="flex items-center gap-2">
                                     <input
                                         type="color"
@@ -178,7 +181,7 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
 
                     {/* Products */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Products</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">{t('brands.products')}</label>
                         <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                             <div className="flex gap-2">
                                 <select
@@ -186,7 +189,7 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
                                     onChange={(e) => setSelectedProductId(e.target.value)}
                                     className="flex-1 p-2 border border-gray-300 rounded-lg text-sm"
                                 >
-                                    <option value="">Select a product to assign...</option>
+                                    <option value="">{t('form.selectProduct')}</option>
                                     {allProducts
                                         .filter(p => !formData.products.find(fp => fp.id === p.id))
                                         .map(product => (
@@ -218,7 +221,7 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
                                                 type="button"
                                                 onClick={() => removeProduct(product.id)}
                                                 className="text-red-500 hover:bg-red-50 p-1 rounded"
-                                                title="Remove Product"
+                                                title={t('form.removeProduct')}
                                             >
                                                 <Unlink size={16} />
                                             </button>
@@ -228,7 +231,7 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
                             )}
                             {allProducts.length === 0 && (
                                 <p className="text-xs text-gray-500 mt-1">
-                                    No products available. Create them in the Products page first.
+                                    {t('form.noProducts')}
                                 </p>
                             )}
                         </div>
@@ -236,7 +239,7 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
 
                     {/* Customer Profiles */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Linked Customer Profiles</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">{t('form.linkedProfiles')}</label>
                         <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                             <div className="flex gap-2">
                                 <select
@@ -244,7 +247,7 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
                                     onChange={(e) => setSelectedProfileId(e.target.value)}
                                     className="flex-1 p-2 border border-gray-300 rounded-lg text-sm"
                                 >
-                                    <option value="">Select a profile to link...</option>
+                                    <option value="">{t('form.selectProfile')}</option>
                                     {customerProfiles
                                         .filter(p => !(formData.profileIds || []).includes(p.id))
                                         .map(profile => (
@@ -279,7 +282,7 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
                                                     type="button"
                                                     onClick={() => handleUnlinkProfile(profile.id)}
                                                     className="text-red-500 hover:bg-red-50 p-1 rounded"
-                                                    title="Unlink Profile"
+                                                    title={t('form.unlinkProfile')}
                                                 >
                                                     <Unlink size={16} />
                                                 </button>
@@ -290,7 +293,7 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
                             )}
                             {customerProfiles.length === 0 && (
                                 <p className="text-xs text-gray-500 mt-1">
-                                    No profiles available. Create them in the Customer Profiles page first.
+                                    {t('form.noProfiles')}
                                 </p>
                             )}
                         </div>
@@ -302,13 +305,13 @@ const BrandForm = ({ onClose, onSave, initialData = null }) => {
                             onClick={onClose}
                             className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
                         >
-                            Cancel
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="submit"
                             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
                         >
-                            Save Brand
+                            {t('form.saveBrand')}
                         </button>
                     </div>
                 </form>

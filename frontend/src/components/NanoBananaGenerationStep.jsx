@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, Wand2, RefreshCw, Check, Image as ImageIcon } from 'lucide-react';
 
 const NanoBananaGenerationStep = ({ copyData, selectedTemplate, onImagesGenerated, onNext, onBack }) => {
+    const { t } = useTranslation('creatives');
     const [generating, setGenerating] = useState(false);
     const [generatedImages, setGeneratedImages] = useState([]);
     const [selectedImages, setSelectedImages] = useState([]);
@@ -38,15 +40,15 @@ const NanoBananaGenerationStep = ({ copyData, selectedTemplate, onImagesGenerate
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-2">Generate Images</h2>
-            <p className="text-gray-600 mb-8">Create stunning visuals using Nano Banana Pro AI.</p>
+            <h2 className="text-2xl font-bold mb-2">{t('nanoBananaGenerationStep.generateImages')}</h2>
+            <p className="text-gray-600 mb-8">{t('nanoBananaGenerationStep.createStunningVisualsUsingNano')}</p>
 
             {/* Generation Controls */}
             <div className="bg-white border border-gray-200 rounded-xl p-6 mb-8">
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h3 className="font-bold text-gray-900">Generation Settings</h3>
-                        <p className="text-sm text-gray-500">Based on your copy and selected template</p>
+                        <h3 className="font-bold text-gray-900">{t('nanoBananaGenerationStep.generationSettings')}</h3>
+                        <p className="text-sm text-gray-500">{t('nanoBananaGenerationStep.basedOnYourCopyAnd')}</p>
                     </div>
                     <button
                         onClick={handleGenerate}
@@ -56,12 +58,12 @@ const NanoBananaGenerationStep = ({ copyData, selectedTemplate, onImagesGenerate
                         {generating ? (
                             <>
                                 <RefreshCw className="animate-spin" size={20} />
-                                Generating...
+                                {t('nanoBananaGenerationStep.generating')}
                             </>
                         ) : (
                             <>
                                 <Wand2 size={20} />
-                                Generate Images
+                                {t('nanoBananaGenerationStep.generateImages')}
                             </>
                         )}
                     </button>
@@ -70,11 +72,11 @@ const NanoBananaGenerationStep = ({ copyData, selectedTemplate, onImagesGenerate
                 {/* Context Summary */}
                 <div className="flex gap-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
                     <span className="flex items-center gap-1">
-                        <span className="font-semibold">Headline:</span> {copyData.headline || 'N/A'}
+                        <span className="font-semibold">{t('nanoBananaGenerationStep.headline')}</span> {copyData.headline || 'N/A'}
                     </span>
                     <span className="text-gray-300">|</span>
                     <span className="flex items-center gap-1">
-                        <span className="font-semibold">Template:</span> {selectedTemplate?.name || 'N/A'}
+                        <span className="font-semibold">{t('nanoBananaGenerationStep.template')}</span> {selectedTemplate?.name || 'N/A'}
                     </span>
                 </div>
             </div>
@@ -83,7 +85,7 @@ const NanoBananaGenerationStep = ({ copyData, selectedTemplate, onImagesGenerate
             {generatedImages.length > 0 && (
                 <div className="mb-8">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-bold text-lg">Generated Results</h3>
+                        <h3 className="font-bold text-lg">{t('nanoBananaGenerationStep.generatedResults')}</h3>
                         <span className="text-sm text-gray-500">{selectedImages.length} selected</span>
                     </div>
 
@@ -125,8 +127,8 @@ const NanoBananaGenerationStep = ({ copyData, selectedTemplate, onImagesGenerate
                     <div className="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
                         <ImageIcon size={32} />
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">Ready to Generate</h3>
-                    <p className="text-gray-500">Click the generate button to create images with Nano Banana Pro.</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">{t('nanoBananaGenerationStep.readyToGenerate')}</h3>
+                    <p className="text-gray-500">{t('nanoBananaGenerationStep.clickTheGenerateButtonTo')}</p>
                 </div>
             )}
 
@@ -136,7 +138,7 @@ const NanoBananaGenerationStep = ({ copyData, selectedTemplate, onImagesGenerate
                     onClick={onBack}
                     className="px-6 py-3 text-gray-600 hover:text-gray-800 font-medium"
                 >
-                    Back
+                    {t('nanoBananaGenerationStep.back')}
                 </button>
                 <button
                     onClick={handleContinue}

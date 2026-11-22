@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 import Overview from './Overview';
 
@@ -22,6 +21,9 @@ vi.mock('../components/PerformanceTable', () => ({
         </div>
     ),
 }));
+
+// OptimizationPanel has its own data source (/optimization/status) and is not under test here.
+vi.mock('../components/OptimizationPanel', () => ({ default: () => null }));
 
 vi.mock('react-router-dom', () => ({
     Link: ({ to, children }) => <a href={to}>{children}</a>,

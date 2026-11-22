@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { translateError } from '../i18n/backendErrors';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { UserPlus, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { APP_NAME, APP_LOGO, APP_TAGLINE } from '../lib/branding';
 
 const Register = () => {
+    const { t } = useTranslation('auth');
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -21,12 +25,12 @@ const Register = () => {
         e.preventDefault();
 
         if (password !== confirmPassword) {
-            showError('Passwords do not match');
+            showError(t('register.mismatch'));
             return;
         }
 
         if (password.length < 6) {
-            showError('Password must be at least 6 characters');
+            showError(t('register.tooShort'));
             return;
         }
 
@@ -34,10 +38,10 @@ const Register = () => {
 
         try {
             await register(email, password, name);
-            showSuccess('Account created successfully!');
+            showSuccess(t('register.success'));
             navigate('/');
         } catch (err) {
-            showError(err.message || 'Failed to create account');
+            showError(translateError(err, 'auth:register.failed'));
         } finally {
             setIsLoading(false);
         }
@@ -45,6 +49,9 @@ const Register = () => {
 
     return (
         <div className="min-h-screen bg-[#FFFAF0] flex items-center justify-center px-4 py-10">
+            <div className="fixed top-3 right-5 z-30">
+                <LanguageSwitcher />
+            </div>
             <div className="max-w-md w-full">
                 <div className="bg-white rounded-2xl shadow-sm border border-amber-200 p-6 sm:p-8">
                     {/* Brand header — same identity as the login page. */}
@@ -56,15 +63,15 @@ const Register = () => {
                         <p className="text-sm text-amber-600 mt-1">{APP_TAGLINE}</p>
                     </div>
 
-                    <h2 className="text-lg font-semibold text-gray-900 mb-1">Create account</h2>
-                    <p className="text-sm text-gray-500 mb-6">Sign up to get started</p>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('register.title')}</h2>
+                    <p className="text-sm text-gray-500 mb-6">{t('register.subtitle')}</p>
 
                     {/* Form */}
                     <form onSubmit={handleSubmit} className="space-y-5">
                         {/* Name Field */}
                         <div>
                             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                                Full Name
+                                {t('fields.fullName')}
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -76,7 +83,7 @@ const Register = () => {
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                    placeholder="John Doe"
+                                    placeholder={t('register.namePlaceholder')}
                                     autoComplete="name"
                                 />
                             </div>
@@ -85,7 +92,7 @@ const Register = () => {
                         {/* Email Field */}
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                                Email Address
+                                {t('fields.email')}
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -97,7 +104,7 @@ const Register = () => {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                    placeholder="you@example.com"
+                                    placeholder={t('fields.emailPlaceholder')}
                                     required
                                     autoComplete="email"
                                 />
@@ -107,7 +114,7 @@ const Register = () => {
                         {/* Password Field */}
                         <div>
                             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                                Password
+                                {t('fields.password')}
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -119,14 +126,14 @@ const Register = () => {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     className="w-full pl-10 pr-12 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                    placeholder="Min. 6 characters"
+                                    placeholder={t('register.passwordPlaceholder')}
                                     required
                                     autoComplete="new-password"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                    aria-label={showPassword ? t('fields.hidePassword') : t('fields.showPassword')}
                                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-amber-700"
                                 >
                                     {showPassword ? (
@@ -141,7 +148,7 @@ const Register = () => {
                         {/* Confirm Password Field */}
                         <div>
                             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                                Confirm Password
+                                {t('fields.confirmPassword')}
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -153,7 +160,7 @@ const Register = () => {
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                    placeholder="Confirm your password"
+                                    placeholder={t('register.confirmPlaceholder')}
                                     required
                                     autoComplete="new-password"
                                 />
@@ -172,12 +179,12 @@ const Register = () => {
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                     </svg>
-                                    Creating account...
+                                    {t('register.creating')}
                                 </>
                             ) : (
                                 <>
                                     <UserPlus className="h-5 w-5" />
-                                    Create Account
+                                    {t('register.create')}
                                 </>
                             )}
                         </button>
@@ -186,9 +193,9 @@ const Register = () => {
                     {/* Login Link */}
                     <div className="mt-6 text-center">
                         <p className="text-gray-500">
-                            Already have an account?{' '}
+                            {t('register.haveAccount')}{' '}
                             <Link to="/login" className="text-amber-700 hover:text-amber-900 font-medium">
-                                Sign in
+                                {t('register.signIn')}
                             </Link>
                         </p>
                     </div>

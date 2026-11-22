@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, Check, Wand2, Layout, Image as ImageIcon, Briefcase, LayoutGrid, List, Search, BarChart2, Layers } from 'lucide-react';
 import CopyBuilder from './CopyBuilder';
 import TemplateSelector from './TemplateSelector';
@@ -11,6 +12,7 @@ import { useCampaign } from '../context/CampaignContext';
 import { useToast } from '../context/ToastContext';
 
 const Wizard = () => {
+    const { t } = useTranslation('creatives');
     const { showSuccess } = useToast();
     const [step, setStep] = useState(1);
     const { brands, customerProfiles, activeBrand, setActiveBrand } = useBrands();
@@ -67,21 +69,21 @@ const Wizard = () => {
     };
 
     const steps = [
-        { id: 1, name: 'Select Brand', icon: Briefcase },
-        { id: 2, name: 'Brand Options', icon: Search },
-        { id: 3, name: 'Choose Template', icon: Layout },
-        { id: 4, name: 'Analyze', icon: BarChart2 },
-        { id: 5, name: 'Copy Builder', icon: Wand2 },
-        { id: 6, name: 'Generate', icon: ImageIcon },
-        { id: 7, name: 'Create Batch', icon: Layers },
+        { id: 1, name: t('wizard.selectBrand'), icon: Briefcase },
+        { id: 2, name: t('wizard.brandOptions'), icon: Search },
+        { id: 3, name: t('wizard.chooseTemplate'), icon: Layout },
+        { id: 4, name: t('wizard.analyze'), icon: BarChart2 },
+        { id: 5, name: t('wizard.copyBuilder'), icon: Wand2 },
+        { id: 6, name: t('wizard.generate'), icon: ImageIcon },
+        { id: 7, name: t('wizard.createBatch'), icon: Layers },
     ];
 
     return (
         <div className="max-w-6xl mx-auto">
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900">Video Ad Builder</h1>
-                <p className="text-gray-600 mt-1">Create video ads with AI-generated content</p>
+                <h1 className="text-3xl font-bold text-gray-900">{t('wizard.videoAdBuilder')}</h1>
+                <p className="text-gray-600 mt-1">{t('wizard.createVideoAdsWithAi')}</p>
             </div>
 
             {/* Progress Bar */}
@@ -118,7 +120,7 @@ const Wizard = () => {
                 {step === 1 && (
                     <div>
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold">Select a Brand</h2>
+                            <h2 className="text-2xl font-bold">{t('wizard.selectABrand')}</h2>
                             <div className="flex bg-gray-100 p-1 rounded-lg">
                                 <button
                                     onClick={() => setViewMode('list')}
@@ -137,8 +139,8 @@ const Wizard = () => {
 
                         {brands.length === 0 ? (
                             <div className="text-center py-12">
-                                <p className="text-gray-500 mb-4">No brands found. Create a brand to get started.</p>
-                                <a href="/brands" className="text-blue-600 font-medium hover:underline">Go to Brand Management</a>
+                                <p className="text-gray-500 mb-4">{t('wizard.noBrandsFoundCreateA')}</p>
+                                <a href="/brands" className="text-blue-600 font-medium hover:underline">{t('wizard.goToBrandManagement')}</a>
                             </div>
                         ) : (
                             <>
@@ -163,7 +165,7 @@ const Wizard = () => {
                                                     <span className="font-bold text-gray-900">{brand.name}</span>
                                                 </div>
                                                 <div className="text-xs text-gray-500">
-                                                    {brand.products.length} Products • {brand.voice || 'No voice set'}
+                                                    {t('common.productsCount', { count: brand.products.length })} • {brand.voice || t('common.noVoice')}
                                                 </div>
                                             </div>
                                         ))}
@@ -202,7 +204,7 @@ const Wizard = () => {
                                                             <div>
                                                                 <span className="font-bold text-gray-900 block">{brand.name}</span>
                                                                 <span className="text-xs text-gray-500">
-                                                                    {brand.products.length} Products • {brandProfiles.length} Profiles
+                                                                    {t('common.productsCount', { count: brand.products.length })} • {t('common.profilesCount', { count: brandProfiles.length })}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -222,7 +224,7 @@ const Wizard = () => {
                                                     {/* Customer Profiles (Collapsible) */}
                                                     {isExpanded && brandProfiles.length > 0 && (
                                                         <div className="bg-gray-50 border-t border-gray-200 p-4">
-                                                            <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Customer Profiles</h4>
+                                                            <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">{t('wizard.customerProfiles')}</h4>
                                                             <div className="space-y-2">
                                                                 {brandProfiles.map(profile => (
                                                                     <div
@@ -237,7 +239,7 @@ const Wizard = () => {
                                                                         )}
                                                                         {profile.pain_points && (
                                                                             <div className="text-xs text-gray-500">
-                                                                                Pain Points: {profile.pain_points}
+                                                                                {t('common.painPointsValue', { value: profile.pain_points })}
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -262,7 +264,7 @@ const Wizard = () => {
                                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                     }`}
                             >
-                                Next Step <ChevronRight size={20} />
+                                {t('wizard.nextStep')} <ChevronRight size={20} />
                             </button>
                         </div>
                     </div>
@@ -323,7 +325,7 @@ const Wizard = () => {
                 {/* Step 7: Create Batch */}
                 {step === 7 && (
                     <BulkAdCreation
-                        onNext={() => showSuccess('Campaign Created Successfully!')}
+                        onNext={() => showSuccess(t('wizard.campaignCreatedSuccessfully'))}
                         onBack={handleBack}
                     />
                 )}

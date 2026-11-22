@@ -1,0 +1,86 @@
+{
+  "datePresets": {
+    "last_7d": "Últimos 7 dias",
+    "last_30d": "Últimos 30 dias",
+    "this_month": "Este mês",
+    "last_month": "Mês passado"
+  },
+  "columns": {
+    "platform": "Plataforma",
+    "campaign": "Campanha",
+    "impressions": "Impressões",
+    "clicks": "Cliques",
+    "spend": "Gasto",
+    "conversions": "Conversões",
+    "cpa": "CPA",
+    "cost": "Custo"
+  },
+  "performance": {
+    "empty": "Nenhuma campanha ainda. Conecte uma conta para ver os dados de desempenho.",
+    "actions": "Ações",
+    "loading": "Carregando…"
+  },
+  "overview": {
+    "title": "Visão geral",
+    "subtitle": "Desempenho das campanhas do Meta e do Google Ads, lado a lado",
+    "loadFailed": "Falha ao carregar a visão geral",
+    "spendByPlatform": "Gasto por plataforma",
+    "connectTitle": "Conecte sua primeira conta de anúncios",
+    "connectBody": "Vincule o Meta Ads, o Google Ads ou o TikTok Ads para ver aqui o desempenho entre plataformas.",
+    "connectMeta": "Conectar Meta Ads",
+    "connectGoogle": "Conectar Google Ads",
+    "connectTikTok": "Conectar TikTok Ads",
+    "noCampaignsInRange": "Nenhuma campanha neste período."
+  },
+  "home": {
+    "title": "Painel",
+    "subtitle": "Bem-vindo ao seu espaço de trabalho do Ad Builder",
+    "totalCampaigns": "Total de campanhas",
+    "generatedAds": "Anúncios gerados",
+    "activeBrands": "Marcas ativas",
+    "templates": "Modelos",
+    "buildCreatives": "Criar criativos",
+    "buildCreativesDesc": "Crie novos anúncios de imagem ou vídeo",
+    "manageBrands": "Gerenciar marcas",
+    "manageBrandsDesc": "Atualize os ativos e perfis das marcas",
+    "browseTemplates": "Explorar modelos",
+    "browseTemplatesDesc": "Explore modelos de anúncios vencedores",
+    "quickActions": "Ações rápidas",
+    "recentActivity": "Atividade recente",
+    "noActivity": "Nenhuma atividade recente ainda",
+    "noActivityHint": "Comece a criar anúncios para ver sua atividade aqui"
+  },
+  "reporting": {
+    "title": "Relatório de campanhas",
+    "subtitle": "Acompanhe o desempenho de todas as suas campanhas",
+    "totalImpressions": "Total de impressões",
+    "totalClicks": "Total de cliques",
+    "avgCtr": "CTR médio",
+    "conversionRate": "Taxa de conversão",
+    "download": "Baixar relatório",
+    "performanceOverTime": "Desempenho ao longo do tempo",
+    "platformDistribution": "Distribuição por plataforma"
+  },
+  "optimization": {
+    "loadFailed": "Falha ao carregar o status da otimização",
+    "networkError": "Erro de rede ao carregar o status da otimização",
+    "testPassed": "Teste da política do modo automático aprovado (Modo: AUTO)",
+    "testManual": "Política avaliada (Modo: MANUAL, Motivo: {{reason}})",
+    "simulationFailed": "Falha ao avaliar a simulação da política",
+    "loading": "Carregando política de otimização...",
+    "title": "Otimização agêntica e modo automático",
+    "subtitle": "Gestão autônoma de campanhas protegida por limites de segurança",
+    "killSwitch": "Kill-switch ativo",
+    "autoOn": "Modo automático ATIVO",
+    "manualOnly": "Somente limites manuais",
+    "allowedActions": "Ações automáticas permitidas",
+    "safetyCeilings": "Limites de segurança",
+    "maxBudget": "Orçamento máx.",
+    "maxDailySpend": "Gasto diário máx.",
+    "unlimited": "Ilimitado",
+    "operatingWindow": "Janela de operação",
+    "monitored": "Monitorado 24/7",
+    "simulate": "Simular avaliação de regras",
+    "verdict": "Veredito"
+  }
+}

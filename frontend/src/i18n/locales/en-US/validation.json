@@ -1,0 +1,11 @@
+{
+  "defaultField": "Input",
+  "brandNameRequired": "Brand name is required",
+  "brandNameMax": "Brand name must be less than 100 characters",
+  "hexColor": "Invalid color format. Must be a 6-digit hex code (e.g., #FF5733)",
+  "productNameRequired": "Product name is required",
+  "productNameMax": "Product name must be less than 100 characters",
+  "productDescriptionMax": "Product description must be less than 500 characters",
+  "brandVoiceMax": "Brand voice must be less than 500 characters",
+  "textMax": "{{field}} must be less than {{max}} characters"
+}

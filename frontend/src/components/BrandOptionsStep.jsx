@@ -1,13 +1,15 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, Package, Check } from 'lucide-react';
 
 const BrandOptionsStep = ({ activeBrand, selectedProduct, onSelectProduct, onNext, onBack }) => {
+    const { t } = useTranslation('brands');
     if (!activeBrand) return null;
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-2">Brand Options</h2>
-            <p className="text-gray-600 mb-8">Select a product to feature in this ad campaign.</p>
+            <h2 className="text-2xl font-bold mb-2">{t('options.title')}</h2>
+            <p className="text-gray-600 mb-8">{t('options.subtitle')}</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 {activeBrand.products && activeBrand.products.length > 0 ? (
@@ -36,9 +38,9 @@ const BrandOptionsStep = ({ activeBrand, selectedProduct, onSelectProduct, onNex
                     ))
                 ) : (
                     <div className="col-span-2 text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                        <p className="text-gray-500">No products found for this brand.</p>
+                        <p className="text-gray-500">{t('options.none')}</p>
                         <button className="mt-4 text-blue-600 font-medium hover:underline">
-                            Add a Product
+                            {t('options.addProduct')}
                         </button>
                     </div>
                 )}
@@ -50,14 +52,14 @@ const BrandOptionsStep = ({ activeBrand, selectedProduct, onSelectProduct, onNex
                     onClick={onBack}
                     className="px-6 py-3 text-gray-600 hover:text-gray-800 font-medium"
                 >
-                    Back
+                    {t('common.back')}
                 </button>
                 <button
                     onClick={onNext}
                     disabled={!selectedProduct}
                     className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                    Next Step <ChevronRight size={20} />
+                    {t('common.nextStep')} <ChevronRight size={20} />
                 </button>
             </div>
         </div>

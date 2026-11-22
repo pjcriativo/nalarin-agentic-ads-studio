@@ -1,14 +1,16 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check } from 'lucide-react';
 
 export default function BrandSelectionStep({ brands = [], selectedBrand, onSelect }) {
+    const { t } = useTranslation('creatives');
     if (!brands || brands.length === 0) {
         return (
             <div>
-                <h3 className="text-xl font-bold mb-4">Select Your Brand</h3>
-                <p className="text-gray-600 mb-6">Choose the brand for this ad campaign</p>
+                <h3 className="text-xl font-bold mb-4">{t('brandSelectionStep.selectYourBrand')}</h3>
+                <p className="text-gray-600 mb-6">{t('brandSelectionStep.chooseTheBrandForThis')}</p>
                 <div className="p-8 text-center text-gray-500 bg-gray-50 rounded-xl border border-gray-200">
-                    No brands available. Please create a brand first.
+                    {t('brandSelectionStep.noBrandsAvailablePleaseCreate')}
                 </div>
             </div>
         );
@@ -16,8 +18,8 @@ export default function BrandSelectionStep({ brands = [], selectedBrand, onSelec
 
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">Select Your Brand</h3>
-            <p className="text-gray-600 mb-6">Choose the brand for this ad campaign</p>
+            <h3 className="text-xl font-bold mb-4">{t('brandSelectionStep.selectYourBrand')}</h3>
+            <p className="text-gray-600 mb-6">{t('brandSelectionStep.chooseTheBrandForThis')}</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {brands.map(brand => (
                     <div
@@ -38,7 +40,7 @@ export default function BrandSelectionStep({ brands = [], selectedBrand, onSelec
                             <div className="flex-1">
                                 <div className="font-bold text-gray-900">{brand.name}</div>
                                 <div className="text-xs text-gray-500">
-                                    {brand.products.length} Products • {brand.profileIds?.length || 0} Profiles
+                                    {t('common.productsCount', { count: brand.products.length })} • {t('common.profilesCount', { count: brand.profileIds?.length || 0 })}
                                 </div>
                             </div>
                             {selectedBrand?.id === brand.id && (

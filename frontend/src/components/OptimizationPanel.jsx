@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Shield, ShieldAlert, Cpu, CheckCircle2, AlertTriangle, Play, Pause, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -8,6 +9,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 export default function OptimizationPanel() {
     const { authFetch } = useAuth();
     const { showSuccess, showError } = useToast();
+    const { t } = useTranslation('dashboard');
 
     const [statusData, setStatusData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -22,10 +24,10 @@ export default function OptimizationPanel() {
                 const data = await res.json();
                 setStatusData(data);
             } else {
-                showError('Failed to load optimization status');
+                showError(t('optimization.loadFailed'));
             }
         } catch (err) {
-            showError('Network error loading optimization status');
+            showError(t('optimization.networkError'));
         } finally {
             setLoading(false);
         }
@@ -54,12 +56,12 @@ export default function OptimizationPanel() {
             const data = await res.json();
             setTestResult(data);
             if (data.ok) {
-                showSuccess('Auto-mode policy test passed (Mode: AUTO)');
+                showSuccess(t('optimization.testPassed'));
             } else {
-                showSuccess(`Policy evaluated (Mode: MANUAL, Reason: ${data.reason})`);
+                showSuccess(t('optimization.testManual', { reason: data.reason }));
             }
         } catch (err) {
-            showError('Failed to evaluate policy simulation');
+            showError(t('optimization.simulationFailed'));
         } finally {
             setEvaluating(false);
         }
@@ -68,7 +70,7 @@ export default function OptimizationPanel() {
     if (loading) {
         return (
             <div className="bg-white rounded-lg border border-gray-200 p-6 flex items-center justify-center text-gray-500">
-                <RefreshCw className="w-5 h-5 animate-spin mr-2" /> Loading optimization policy...
+                <RefreshCw className="w-5 h-5 animate-spin mr-2" /> {t('optimization.loading')}
             </div>
         );
     }
@@ -83,23 +85,23 @@ export default function OptimizationPanel() {
                         <Cpu className="w-6 h-6" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-semibold text-gray-900">Agentic Optimization & Auto-Mode</h2>
-                        <p className="text-sm text-gray-500">Guardrail-protected autonomous campaign management</p>
+                        <h2 className="text-lg font-semibold text-gray-900">{t('optimization.title')}</h2>
+                        <p className="text-sm text-gray-500">{t('optimization.subtitle')}</p>
                     </div>
                 </div>
 
                 <div className="flex items-center space-x-2">
                     {statusData.kill_switch_active ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            <ShieldAlert className="w-3.5 h-3.5 mr-1" /> Kill-Switch Active
+                            <ShieldAlert className="w-3.5 h-3.5 mr-1" /> {t('optimization.killSwitch')}
                         </span>
                     ) : statusData.auto_enabled ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Auto-Mode ON
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> {t('optimization.autoOn')}
                         </span>
                     ) : (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                            <Shield className="w-3.5 h-3.5 mr-1" /> Manual Guardrail Only
+                            <Shield className="w-3.5 h-3.5 mr-1" /> {t('optimization.manualOnly')}
                         </span>
                     )}
                 </div>
@@ -107,7 +109,7 @@ export default function OptimizationPanel() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                    <span className="text-gray-500 block text-xs uppercase font-semibold">Allowed Auto Actions</span>
+                    <span className="text-gray-500 block text-xs uppercase font-semibold">{t('optimization.allowedActions')}</span>
                     <div className="mt-2 flex flex-wrap gap-1">
                         {statusData.allowed_actions.map(act => (
                             <span key={act} className="px-2 py-0.5 bg-white border border-gray-200 rounded text-xs text-gray-700 font-mono">
@@ -118,20 +120,20 @@ export default function OptimizationPanel() {
                 </div>
 
                 <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                    <span className="text-gray-500 block text-xs uppercase font-semibold">Safety Ceilings</span>
+                    <span className="text-gray-500 block text-xs uppercase font-semibold">{t('optimization.safetyCeilings')}</span>
                     <div className="mt-2 space-y-1 text-xs text-gray-700">
-                        <div>Max Budget: <span className="font-semibold">{statusData.max_budget_micros ? `$${(statusData.max_budget_micros / 1000000).toFixed(2)}` : 'Unlimited'}</span></div>
-                        <div>Max Daily Spend: <span className="font-semibold">{statusData.max_daily_spend_micros ? `$${(statusData.max_daily_spend_micros / 1000000).toFixed(2)}` : 'Unlimited'}</span></div>
+                        <div>{t('optimization.maxBudget')}: <span className="font-semibold">{statusData.max_budget_micros ? `$${(statusData.max_budget_micros / 1000000).toFixed(2)}` : t('optimization.unlimited')}</span></div>
+                        <div>{t('optimization.maxDailySpend')}: <span className="font-semibold">{statusData.max_daily_spend_micros ? `$${(statusData.max_daily_spend_micros / 1000000).toFixed(2)}` : t('optimization.unlimited')}</span></div>
                     </div>
                 </div>
 
                 <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                    <span className="text-gray-500 block text-xs uppercase font-semibold">Operating Window</span>
+                    <span className="text-gray-500 block text-xs uppercase font-semibold">{t('optimization.operatingWindow')}</span>
                     <div className="mt-2 text-xs text-gray-700">
                         {statusData.operating_hours.start_wib !== null && statusData.operating_hours.end_wib !== null ? (
                             <span>{statusData.operating_hours.start_wib}:00 - {statusData.operating_hours.end_wib}:00 WIB</span>
                         ) : (
-                            <span>24/7 Monitored</span>
+                            <span>{t('optimization.monitored')}</span>
                         )}
                     </div>
                 </div>
@@ -144,12 +146,12 @@ export default function OptimizationPanel() {
                     className="inline-flex items-center px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-50"
                 >
                     {evaluating ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Play className="w-4 h-4 mr-2" />}
-                    Simulate Rule Evaluation
+                    {t('optimization.simulate')}
                 </button>
 
                 {testResult && (
                     <div className="text-xs font-mono px-3 py-1.5 bg-gray-100 rounded border border-gray-200">
-                        Verdict: <span className={testResult.ok ? "text-green-600 font-bold" : "text-amber-600 font-bold"}>{testResult.mode.toUpperCase()}</span> ({testResult.reason || 'policy-pass'})
+                        {t('optimization.verdict')}: <span className={testResult.ok ? "text-green-600 font-bold" : "text-amber-600 font-bold"}>{testResult.mode.toUpperCase()}</span> ({testResult.reason || 'policy-pass'})
                     </div>
                 )}
             </div>

@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { formatDate } from '../i18n/format';
+import { useTranslation } from 'react-i18next';
+import { translateBackendMessage } from '../i18n/backendErrors';
 import { useToast } from '../context/ToastContext';
 import { createBrandScrape, getBrandScrapes, getBrandScrape, deleteBrandScrape } from '../api/research';
 import { Search, Trash2, ChevronDown, ChevronRight, ExternalLink, Image, Video, Loader2, RefreshCw } from 'lucide-react';
 
 const BrandScrapes = () => {
+    const { t } = useTranslation('research');
     const { showSuccess, showError, showInfo } = useToast();
     const [brandName, setBrandName] = useState('');
     const [pageInput, setPageInput] = useState('');
@@ -42,7 +46,7 @@ const BrandScrapes = () => {
             const data = await getBrandScrapes();
             setScrapes(Array.isArray(data) ? data : []);
         } catch (error) {
-            showError('Failed to load brand scrapes');
+            showError(t('brandScrapes.failedToLoadBrandScrapes'));
             setScrapes([]);
         }
     };
@@ -51,29 +55,29 @@ const BrandScrapes = () => {
         e.preventDefault();
 
         if (!brandName.trim()) {
-            showError('Please enter a brand name');
+            showError(t('brandScrapes.pleaseEnterABrandName'));
             return;
         }
         if (!pageInput.trim()) {
-            showError('Please enter a Facebook Page ID or Ads Library URL');
+            showError(t('brandScrapes.pleaseEnterAFacebookPage'));
             return;
         }
 
         const pageUrl = buildPageUrl(pageInput);
         if (!pageUrl) {
-            showError('Invalid input. Enter a Page ID (numbers) or a Facebook Ads Library URL');
+            showError(t('brandScrapes.invalidInputEnterAPage'));
             return;
         }
 
         setLoading(true);
         try {
             await createBrandScrape(brandName, pageUrl);
-            showSuccess('Brand scrape started! Check back soon for results.');
+            showSuccess(t('brandScrapes.brandScrapeStartedCheckBack'));
             setBrandName('');
             setPageInput('');
             fetchScrapes();
         } catch (error) {
-            const message = error.response?.data?.detail || 'Failed to start scrape';
+            const message = translateBackendMessage(error.response?.data?.detail) || t('brandScrapes.failedToStartScrape');
             showError(message);
         } finally {
             setLoading(false);
@@ -96,7 +100,7 @@ const BrandScrapes = () => {
             }
             setScrapeDetails(details);
         } catch (error) {
-            showError('Failed to load scrape details');
+            showError(t('brandScrapes.failedToLoadScrapeDetails'));
             setScrapeDetails(null);
         }
     };
@@ -111,7 +115,7 @@ const BrandScrapes = () => {
 
         try {
             await deleteBrandScrape(scrapeToDelete.id);
-            showSuccess('Brand scrape deleted');
+            showSuccess(t('brandScrapes.brandScrapeDeleted'));
             setShowDeleteModal(false);
             setScrapeToDelete(null);
             if (expandedScrape === scrapeToDelete.id) {
@@ -120,7 +124,7 @@ const BrandScrapes = () => {
             }
             fetchScrapes();
         } catch (error) {
-            showError('Failed to delete brand scrape');
+            showError(t('brandScrapes.failedToDeleteBrandScrape'));
         }
     };
 
@@ -133,13 +137,13 @@ const BrandScrapes = () => {
         };
         return (
             <span className={`px-2 py-1 text-xs font-medium rounded-full ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
-                {status}
+                {t(`brandScrapes.status_${status}`, { defaultValue: status })}
             </span>
         );
     };
 
-    const formatDate = (dateStr) => {
-        return new Date(dateStr).toLocaleDateString('en-US', {
+    const formatScrapeDate = (dateStr) => {
+        return formatDate(dateStr, {
             month: 'short',
             day: 'numeric',
             year: 'numeric',
@@ -152,25 +156,25 @@ const BrandScrapes = () => {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-amber-900">Scrape Brand Ads</h1>
-                    <p className="text-amber-600 text-sm">Download all ads from a Facebook page to R2 storage</p>
+                    <h1 className="text-2xl font-bold text-amber-900">{t('brandScrapes.scrapeBrandAds')}</h1>
+                    <p className="text-amber-600 text-sm">{t('brandScrapes.downloadAllAdsFromA')}</p>
                 </div>
                 <button
                     onClick={fetchScrapes}
                     className="flex items-center gap-2 px-3 py-2 text-sm text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg"
                 >
                     <RefreshCw size={16} />
-                    Refresh
+                    {t('brandScrapes.refresh')}
                 </button>
             </div>
 
             {/* Scrape Form */}
             <div className="bg-white rounded-xl border border-amber-200 p-6">
-                <h2 className="text-lg font-semibold text-amber-900 mb-4">New Brand Scrape</h2>
+                <h2 className="text-lg font-semibold text-amber-900 mb-4">{t('brandScrapes.newBrandScrape')}</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label htmlFor="brandName" className="block text-sm font-medium text-gray-700 mb-1">
-                            Brand Name
+                            {t('brandScrapes.brandName')}
                         </label>
                         <input
                             id="brandName"
@@ -178,14 +182,14 @@ const BrandScrapes = () => {
                             type="text"
                             value={brandName}
                             onChange={(e) => setBrandName(e.target.value)}
-                            placeholder="e.g., Nike, Apple, etc."
+                            placeholder={t('brandScrapes.eGNikeAppleEtc')}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                         />
-                        <p className="text-xs text-gray-500 mt-1">This will be the folder name on R2 storage</p>
+                        <p className="text-xs text-gray-500 mt-1">{t('brandScrapes.thisWillBeTheFolder')}</p>
                     </div>
                     <div>
                         <label htmlFor="pageInput" className="block text-sm font-medium text-gray-700 mb-1">
-                            Facebook Page ID or Ads Library URL
+                            {t('brandScrapes.facebookPageIdOrAds')}
                         </label>
                         <input
                             id="pageInput"
@@ -193,11 +197,11 @@ const BrandScrapes = () => {
                             type="text"
                             value={pageInput}
                             onChange={(e) => setPageInput(e.target.value)}
-                            placeholder="123456789 or https://www.facebook.com/ads/library/?...&view_all_page_id=123456789"
+                            placeholder={t('brandScrapes.t123456789OrHttpsWwwFacebook')}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                            Paste a Page ID or full Ads Library URL - we'll handle the rest
+                            {t('brandScrapes.pasteAPageIdOr')}
                         </p>
                     </div>
                     <button
@@ -208,12 +212,12 @@ const BrandScrapes = () => {
                         {loading ? (
                             <>
                                 <Loader2 size={18} className="animate-spin" />
-                                Starting...
+                                {t('brandScrapes.starting')}
                             </>
                         ) : (
                             <>
                                 <Search size={18} />
-                                Start Scrape
+                                {t('brandScrapes.startScrape')}
                             </>
                         )}
                     </button>
@@ -223,12 +227,12 @@ const BrandScrapes = () => {
             {/* Scrapes List */}
             <div className="bg-white rounded-xl border border-amber-200">
                 <div className="p-4 border-b border-amber-100">
-                    <h2 className="text-lg font-semibold text-amber-900">Brand Scrapes</h2>
+                    <h2 className="text-lg font-semibold text-amber-900">{t('brandScrapes.brandScrapes')}</h2>
                 </div>
 
                 {scrapes.length === 0 ? (
                     <div className="p-8 text-center text-gray-500">
-                        No brand scrapes yet. Start one above!
+                        {t('brandScrapes.noBrandScrapesYetStart')}
                     </div>
                 ) : (
                     <div className="divide-y divide-amber-100">
@@ -249,22 +253,22 @@ const BrandScrapes = () => {
                                         <div>
                                             <h3 className="font-medium text-gray-900">{scrape.brand_name}</h3>
                                             <p className="text-sm text-gray-500">
-                                                {scrape.page_name || `Page ID: ${scrape.page_id}`}
+                                                {scrape.page_name || t('brandScrapes.pageId', { id: scrape.page_id })}
                                             </p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-6">
                                         <div className="text-right">
                                             <p className="text-sm font-medium text-gray-900">
-                                                {scrape.total_ads} ads
+                                                {t('brandScrapes.adsCount', { count: scrape.total_ads })}
                                             </p>
                                             <p className="text-xs text-gray-500">
-                                                {scrape.media_downloaded} media files
+                                                {t('brandScrapes.mediaFiles', { count: scrape.media_downloaded })}
                                             </p>
                                         </div>
                                         {getStatusBadge(scrape.status)}
                                         <span className="text-xs text-gray-400">
-                                            {formatDate(scrape.created_at)}
+                                            {formatScrapeDate(scrape.created_at)}
                                         </span>
                                         <button
                                             onClick={(e) => {
@@ -327,7 +331,7 @@ const BrandScrapes = () => {
                                                             )}
                                                             {ad.media_urls && ad.media_urls.length > 1 && (
                                                                 <span className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/60 text-white text-xs rounded">
-                                                                    +{ad.media_urls.length - 1} more
+                                                                    {t('brandScrapes.more', { count: ad.media_urls.length - 1 })}
                                                                 </span>
                                                             )}
                                                         </div>
@@ -346,7 +350,7 @@ const BrandScrapes = () => {
                                                                             rel="noopener noreferrer"
                                                                             className="text-indigo-400 hover:text-indigo-600 flex-shrink-0"
                                                                             onClick={(e) => e.stopPropagation()}
-                                                                            title="View all ads from this page"
+                                                                            title={t('brandScrapes.viewAllAdsFromThis')}
                                                                         >
                                                                             <ExternalLink size={10} />
                                                                         </a>
@@ -370,7 +374,7 @@ const BrandScrapes = () => {
                                                             )}
                                                             <div className="mt-2 flex items-center justify-between">
                                                                 <span className="text-xs text-gray-400">
-                                                                    {ad.start_date || 'Unknown date'}
+                                                                    {ad.start_date || t('brandScrapes.unknownDate')}
                                                                 </span>
                                                                 {ad.ad_link && (
                                                                     <a
@@ -379,7 +383,7 @@ const BrandScrapes = () => {
                                                                         rel="noopener noreferrer"
                                                                         className="text-amber-600 hover:text-amber-800"
                                                                         onClick={(e) => e.stopPropagation()}
-                                                                        title="View ad in library"
+                                                                        title={t('brandScrapes.viewAdInLibrary')}
                                                                     >
                                                                         <ExternalLink size={14} />
                                                                     </a>
@@ -394,10 +398,10 @@ const BrandScrapes = () => {
                                                 {scrape.status === 'scraping' ? (
                                                     <div className="flex items-center justify-center gap-2">
                                                         <Loader2 size={20} className="animate-spin" />
-                                                        Scraping in progress...
+                                                        {t('brandScrapes.scrapingInProgress')}
                                                     </div>
                                                 ) : (
-                                                    'No ads found'
+                                                    t('brandScrapes.noAdsFound')
                                                 )}
                                             </div>
                                         )}
@@ -414,10 +418,10 @@ const BrandScrapes = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                            Delete Brand Scrape?
+                            {t('brandScrapes.deleteBrandScrape')}
                         </h3>
                         <p className="text-gray-600 mb-4">
-                            This will delete all {scrapeToDelete.total_ads} ads and {scrapeToDelete.media_downloaded} media files from R2 storage. This action cannot be undone.
+                            {t('brandScrapes.deleteWarning', { ads: scrapeToDelete.total_ads, files: scrapeToDelete.media_downloaded })}
                         </p>
                         <div className="flex gap-3 justify-end">
                             <button
@@ -427,13 +431,13 @@ const BrandScrapes = () => {
                                 }}
                                 className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
                             >
-                                Cancel
+                                {t('brandScrapes.cancel')}
                             </button>
                             <button
                                 onClick={handleDelete}
                                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
                             >
-                                Delete
+                                {t('brandScrapes.delete')}
                             </button>
                         </div>
                     </div>

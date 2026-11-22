@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { translateBackendMessage } from '../i18n/backendErrors';
 import { Check, Target, Users, Image as ImageIcon, Zap, CheckCircle, CreditCard, Megaphone, CheckCircle2, ArrowRight } from 'lucide-react';
 import { CampaignProvider } from '../context/CampaignContext';
 import AdAccountStep from '../components/AdAccountStep';
@@ -13,6 +15,7 @@ import { useToast } from '../context/ToastContext';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 const FacebookCampaignWizard = () => {
+    const { t } = useTranslation('campaigns');
     const { authFetch } = useAuth();
     const { showError, showSuccess } = useToast();
     const [currentStep, setCurrentStep] = useState(1);
@@ -30,12 +33,12 @@ const FacebookCampaignWizard = () => {
     });
 
     const steps = [
-        { id: 1, label: 'Ad Account', icon: CreditCard },
-        { id: 2, label: 'Campaign', icon: Target },
-        { id: 3, label: 'Ad Set', icon: Users },
-        { id: 4, label: 'Creative', icon: ImageIcon },
-        { id: 5, label: 'Bulk Ads', icon: Megaphone },
-        { id: 6, label: 'Review & Launch', icon: CheckCircle2 },
+        { id: 1, label: t('steps.adAccount'), icon: CreditCard },
+        { id: 2, label: t('steps.campaign'), icon: Target },
+        { id: 3, label: t('steps.adSet'), icon: Users },
+        { id: 4, label: t('steps.creative'), icon: ImageIcon },
+        { id: 5, label: t('steps.bulkAds'), icon: Megaphone },
+        { id: 6, label: t('steps.reviewLaunch'), icon: CheckCircle2 },
     ];
 
     // Sprint 8: surface lapsed/expiring Meta user tokens so the operator
@@ -46,8 +49,8 @@ const FacebookCampaignWizard = () => {
         const expiry = new Date(connection.token_expires_at).getTime();
         if (!Number.isFinite(expiry)) return null;
         const daysLeft = (expiry - Date.now()) / 86400000;
-        if (daysLeft <= 0) return 'Access token has expired. Reconnect Meta Ads to keep reporting and campaign actions working.';
-        if (daysLeft <= 7) return `Access token expires in ${Math.ceil(daysLeft)} day${daysLeft > 1 ? 's' : ''}. Reconnect soon to avoid interruption.`;
+        if (daysLeft <= 0) return t('facebook.tokenExpired');
+        if (daysLeft <= 7) return t('facebook.tokenExpiresSoon', { count: Math.ceil(daysLeft) });
         return null;
     })();
 
@@ -57,10 +60,11 @@ const FacebookCampaignWizard = () => {
             const response = await authFetch(`${API_URL}/facebook/connection`);
             if (response.ok) setConnection(await response.json());
         } catch (error) {
-            showError(error.message || 'Failed to load Meta Ads connection');
+            showError(translateBackendMessage(error.message) || t('facebookCampaigns.failedToLoadMetaAds'));
         } finally {
             setConnectionLoading(false);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `t` only formats messages; changing language must not re-fetch data
     }, [authFetch, showError]);
 
     const loadConnections = useCallback(async () => {
@@ -84,12 +88,13 @@ const FacebookCampaignWizard = () => {
         loadConnections();
         const query = new URLSearchParams(window.location.search);
         if (query.get('connected') === '1') {
-            showSuccess('Meta Ads account connected');
+            showSuccess(t('facebookCampaigns.metaAdsAccountConnected'));
             window.history.replaceState({}, '', window.location.pathname);
         } else if (query.get('select') === '1') {
             setSelectingAccount(true);
             window.history.replaceState({}, '', window.location.pathname);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `t` only formats messages; changing language must not re-fetch data
     }, [loadConnection, loadConnections, showSuccess]);
 
     const connectMeta = async () => {
@@ -97,11 +102,11 @@ const FacebookCampaignWizard = () => {
             const response = await authFetch(`${API_URL}/facebook/oauth/start`);
             if (!response.ok) {
                 const error = await response.json().catch(() => ({}));
-                throw new Error(error.detail || 'Failed to start Meta connection');
+                throw new Error(translateBackendMessage(error.detail) || t('facebookCampaigns.failedToStartMetaConnection'));
             }
             window.location.href = (await response.json()).oauth_url;
         } catch (error) {
-            showError(error.message || 'Failed to start Meta connection');
+            showError(translateBackendMessage(error.message) || t('facebookCampaigns.failedToStartMetaConnection'));
         }
     };
 
@@ -109,12 +114,12 @@ const FacebookCampaignWizard = () => {
         setDisconnecting(true);
         try {
             const response = await authFetch(`${API_URL}/facebook/connection`, { method: 'DELETE' });
-            if (!response.ok) throw new Error('Failed to disconnect Meta Ads');
+            if (!response.ok) throw new Error(t('facebookCampaigns.failedToDisconnectMetaAds'));
             setConnection({ connected: false });
             setConnections((current) => current.map((candidate) => ({ ...candidate, selected: false })));
-            showSuccess('Meta Ads disconnected');
+            showSuccess(t('facebookCampaigns.metaAdsDisconnected'));
         } catch (error) {
-            showError(error.message || 'Failed to disconnect Meta Ads');
+            showError(translateBackendMessage(error.message) || t('facebookCampaigns.failedToDisconnectMetaAds'));
         } finally {
             setDisconnecting(false);
         }
@@ -130,7 +135,7 @@ const FacebookCampaignWizard = () => {
             });
             if (!response.ok) {
                 const error = await response.json().catch(() => ({}));
-                throw new Error(error.detail || 'Failed to select Meta ad account');
+                throw new Error(translateBackendMessage(error.detail) || t('facebookCampaigns.failedToSelectMetaAd'));
             }
             setConnection(await response.json());
             setConnections((current) => current.map((candidate) => ({
@@ -138,9 +143,9 @@ const FacebookCampaignWizard = () => {
                 selected: candidate.ad_account_id === adAccountId,
             })));
             setSelectingAccount(false);
-            showSuccess('Meta ad account selected');
+            showSuccess(t('facebookCampaigns.metaAdAccountSelected'));
         } catch (error) {
-            showError(error.message || 'Failed to select Meta ad account');
+            showError(translateBackendMessage(error.message) || t('facebookCampaigns.failedToSelectMetaAd'));
         } finally {
             setSelectingAccountId(null);
         }
@@ -150,7 +155,7 @@ const FacebookCampaignWizard = () => {
         // Guard: don't advance past a step whose required choice is missing —
         // the user would land on the next step with no data to act on.
         if (!isStepValid()) {
-            showError('Complete this step before continuing (pick the required selection first).');
+            showError(t('facebookCampaigns.completeThisStepBeforeContinuing'));
             return;
         }
         if (currentStep < steps.length) {
@@ -181,9 +186,9 @@ const FacebookCampaignWizard = () => {
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
                         <Megaphone size={32} className="text-amber-600" />
-                        Facebook Campaigns
+                        {t('facebookCampaigns.facebookCampaigns')}
                     </h1>
-                    <p className="text-gray-600">Create and manage your Facebook ad campaigns</p>
+                    <p className="text-gray-600">{t('facebookCampaigns.createAndManageYourFacebook')}</p>
                 </div>
 
                 {!connectionLoading && (
@@ -201,7 +206,7 @@ const FacebookCampaignWizard = () => {
                         />
                         {connection?.connected && connections.length > 1 && !selectingAccount && (
                             <button type="button" onClick={() => setSelectingAccount(true)} className="text-sm font-medium text-amber-700 hover:text-amber-900">
-                                Change Meta ad account
+                                {t('facebookCampaigns.changeMetaAdAccount')}
                             </button>
                         )}
                     </div>
@@ -209,7 +214,7 @@ const FacebookCampaignWizard = () => {
 
                 {selectingAccount && connections.length > 0 && (
                     <section aria-labelledby="meta-account-heading" className="border-y border-gray-200 py-5">
-                        <h2 id="meta-account-heading" className="text-lg font-bold text-gray-900 mb-3">Choose a Meta ad account</h2>
+                        <h2 id="meta-account-heading" className="text-lg font-bold text-gray-900 mb-3">{t('facebookCampaigns.chooseAMetaAdAccount')}</h2>
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                             {connections.map((candidate) => (
                                 <button
@@ -220,9 +225,9 @@ const FacebookCampaignWizard = () => {
                                     aria-pressed={candidate.selected}
                                     className={`min-h-16 border px-4 py-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:opacity-60 ${candidate.selected ? 'border-amber-600 bg-amber-50' : 'border-gray-300 bg-white hover:border-amber-500'}`}
                                 >
-                                    <span className="block font-semibold text-gray-900">{candidate.account_name || 'Meta ad account'}</span>
+                                    <span className="block font-semibold text-gray-900">{candidate.account_name || t('facebook.accountFallback')}</span>
                                     <span className="block text-sm text-gray-500">{candidate.ad_account_id}</span>
-                                    {selectingAccountId === candidate.ad_account_id && <span className="block text-xs text-amber-700 mt-1">Selecting…</span>}
+                                    {selectingAccountId === candidate.ad_account_id && <span className="block text-xs text-amber-700 mt-1">{t('facebookCampaigns.selecting')}</span>}
                                 </button>
                             ))}
                         </div>
@@ -316,9 +321,9 @@ const FacebookCampaignWizard = () => {
                         {currentStep === 6 && (
                             <div className="text-center py-12">
                                 <CheckCircle2 className="mx-auto mb-4 text-amber-500" size={64} />
-                                <h2 className="text-3xl font-bold mb-4">Campaign Ready to Launch!</h2>
+                                <h2 className="text-3xl font-bold mb-4">{t('facebookCampaigns.campaignReadyToLaunch')}</h2>
                                 <p className="text-gray-600 mb-8">
-                                    Review your settings and launch your Facebook ad campaign.
+                                    {t('facebookCampaigns.reviewYourSettingsAndLaunch')}
                                 </p>
                             </div>
                         )}

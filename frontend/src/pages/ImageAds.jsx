@@ -1,4 +1,6 @@
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
+import { sizeLabel, sizeShort, sizeDescription } from '../i18n/format';
 import { useAuth } from '../context/AuthContext';
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronLeft, Check, Briefcase, Package, Users, Image, Hash, FileText, Sparkles, Download, ChevronDown, ChevronUp, Settings, CheckCircle2, ArrowRight } from 'lucide-react';
@@ -12,6 +14,7 @@ import StyleSelector from '../components/StyleSelector';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 export default function ImageAds() {
+    const { t } = useTranslation('creatives');
     const { brands, customerProfiles } = useBrands();
     const { showError } = useToast();
     const { authFetch } = useAuth();
@@ -61,14 +64,14 @@ export default function ImageAds() {
     }, [wizardData.campaignDetails]);
 
     const steps = [
-        { id: 1, name: 'Brand', icon: Briefcase },
-        { id: 2, name: 'Product', icon: Package },
-        { id: 3, name: 'Profile', icon: Users },
-        { id: 4, name: 'Template', icon: Image },
-        { id: 5, name: 'Variations', icon: Hash },
-        { id: 6, name: 'Size', icon: Image },
-        { id: 7, name: 'Campaign', icon: FileText },
-        { id: 8, name: 'Review', icon: Check }
+        { id: 1, name: t('imageAds.brand2'), icon: Briefcase },
+        { id: 2, name: t('imageAds.product2'), icon: Package },
+        { id: 3, name: t('imageAds.profile'), icon: Users },
+        { id: 4, name: t('imageAds.template2'), icon: Image },
+        { id: 5, name: t('imageAds.variations'), icon: Hash },
+        { id: 6, name: t('imageAds.size2'), icon: Image },
+        { id: 7, name: t('imageAds.campaign'), icon: FileText },
+        { id: 8, name: t('imageAds.review'), icon: Check }
     ];
 
     const updateData = (field, value) => {
@@ -141,7 +144,7 @@ export default function ImageAds() {
             });
 
             if (!response.ok) {
-                throw new Error('Copy generation failed');
+                throw new Error(t('imageAds.copyGenerationFailed'));
             }
 
             const data = await response.json();
@@ -150,7 +153,7 @@ export default function ImageAds() {
             setCurrentStep(9);
         } catch (error) {
             console.error('Copy generation error:', error);
-            showError('Failed to generate copy. Please try again.');
+            showError(t('imageAds.failedToGenerateCopyPlease'));
         } finally {
             setGenerating(false);
         }
@@ -179,7 +182,7 @@ export default function ImageAds() {
             });
 
             if (!response.ok) {
-                throw new Error('Image generation failed');
+                throw new Error(t('imageAds.imageGenerationFailed'));
             }
 
             const data = await response.json();
@@ -220,7 +223,7 @@ export default function ImageAds() {
                 });
 
                 if (!saveResponse.ok) {
-                    throw new Error(`Batch save failed: ${saveResponse.statusText}`);
+                    throw new Error(t('imageAds.batchSaveFailed', { status: saveResponse.statusText }));
                 }
 
                 console.log('✅ Saved generated ads to database with bundle ID:', bundleId);
@@ -232,7 +235,7 @@ export default function ImageAds() {
             setCurrentStep(10); // Move to image result step
         } catch (error) {
             console.error('Image generation error:', error);
-            showError('Failed to generate images. Please try again.');
+            showError(t('imageAds.failedToGenerateImagesPlease'));
         } finally {
             setGenerating(false);
         }
@@ -244,9 +247,9 @@ export default function ImageAds() {
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                     <Image size={32} className="text-amber-600" />
-                    Create Image Ads
+                    {t('imageAds.createImageAds')}
                 </h1>
-                <p className="text-gray-600 mt-1">Generate AI-powered ads using winning templates</p>
+                <p className="text-gray-600 mt-1">{t('imageAds.generateAiPoweredAdsUsing')}</p>
             </div>
 
             {/* Progress Steps */}
@@ -299,9 +302,9 @@ export default function ImageAds() {
                     <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-xl">
                         <div className="w-16 h-16 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin mb-4"></div>
                         <h3 className="text-xl font-bold text-gray-900">
-                            {currentStep === 9 ? 'Generating High-Converting Images...' : 'Generating Ad Copy...'}
+                            {currentStep === 9 ? t('imageAds.generatingHighConvertingImages') : t('imageAds.generatingAdCopy')}
                         </h3>
-                        <p className="text-gray-500 mt-2">Using AI to create your perfect ads</p>
+                        <p className="text-gray-500 mt-2">{t('imageAds.usingAiToCreateYour')}</p>
                     </div>
                 )}
 
@@ -348,9 +351,9 @@ export default function ImageAds() {
                 {/* Step 4: Template/Style Selection */}
                 {currentStep === 4 && (
                     <div>
-                        <h3 className="text-xl font-bold mb-4">Select a Template or Style</h3>
+                        <h3 className="text-xl font-bold mb-4">{t('imageAds.selectATemplateOrStyle')}</h3>
                         <p className="text-gray-600 mb-6">
-                            Choose a proven ad style archetype or browse existing templates
+                            {t('imageAds.chooseAProvenAdStyle')}
                         </p>
 
                         {/* Mode Toggle */}
@@ -364,7 +367,7 @@ export default function ImageAds() {
                             >
                                 <div className="flex items-center gap-2">
                                     <Sparkles size={18} />
-                                    Browse Styles
+                                    {t('imageAds.browseStyles')}
                                 </div>
                             </button>
                             <button
@@ -376,7 +379,7 @@ export default function ImageAds() {
                             >
                                 <div className="flex items-center gap-2">
                                     <Image size={18} />
-                                    Browse Templates
+                                    {t('imageAds.browseTemplates')}
                                 </div>
                             </button>
                         </div>
@@ -471,13 +474,13 @@ export default function ImageAds() {
                             <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <FileText size={32} />
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Generation Error</h3>
-                            <p className="text-gray-600 mb-6">Something went wrong displaying the generated images.</p>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">{t('imageAds.generationError')}</h3>
+                            <p className="text-gray-600 mb-6">{t('imageAds.somethingWentWrongDisplayingThe')}</p>
                             <button
                                 onClick={() => setCurrentStep(9)}
                                 className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
                             >
-                                Go Back
+                                {t('imageAds.goBack')}
                             </button>
                         </div>
                     )
@@ -496,7 +499,7 @@ export default function ImageAds() {
                             }`}
                     >
                         <ChevronLeft size={20} />
-                        Back
+                        {t('imageAds.back')}
                     </button>
 
                     {currentStep === 8 ? (
@@ -506,7 +509,7 @@ export default function ImageAds() {
                             className="flex items-center gap-2 px-8 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             <Sparkles size={20} className={generating ? 'animate-spin' : ''} />
-                            {generating ? 'Generating Magic...' : 'Generate Ad Copy'}
+                            {generating ? t('imageAds.generatingMagic') : t('imageAds.generateAdCopy')}
                         </button>
                     ) : (
                         <button
@@ -514,8 +517,8 @@ export default function ImageAds() {
                             disabled={!canProceed()}
                             className="flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                            Continue
-                            <ChevronRight size={20} />
+                            {t('imageAds.continue')}
+                                            <ChevronRight size={20} />
                         </button>
                     )}
                 </div>
@@ -528,10 +531,11 @@ export default function ImageAds() {
 
 
 function VariationCountStep({ count, onChange }) {
+    const { t } = useTranslation('creatives');
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">How Many Variations?</h3>
-            <p className="text-gray-600 mb-6">Choose how many ad variations to generate (1-10)</p>
+            <h3 className="text-xl font-bold mb-4">{t('imageAds.howManyVariations')}</h3>
+            <p className="text-gray-600 mb-6">{t('imageAds.chooseHowManyAdVariations')}</p>
 
             <div className="max-w-md mx-auto">
                 <div className="flex items-center gap-4 mb-6">
@@ -550,7 +554,7 @@ function VariationCountStep({ count, onChange }) {
 
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                     <p className="text-sm text-amber-800">
-                        <strong>Tip:</strong> More variations give you more options to choose from, but will take longer to generate.
+                        <strong>{t('imageAds.tip')}</strong> {t('imageAds.moreVariationsGiveYouMore')}
                     </p>
                 </div>
             </div>
@@ -559,6 +563,7 @@ function VariationCountStep({ count, onChange }) {
 }
 
 function ImageSizeStep({ selectedSizes = [], onSelect, resolution, onResolutionChange, model, onModelChange }) {
+    const { t } = useTranslation('creatives');
     const [showAdvanced, setShowAdvanced] = useState(false);
 
     const sizeOptions = [
@@ -609,9 +614,9 @@ function ImageSizeStep({ selectedSizes = [], onSelect, resolution, onResolutionC
 
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">Select Image Sizes & Quality</h3>
-            <p className="text-gray-600 mb-2">Square is required. Select up to 2 additional sizes.</p>
-            <p className="text-sm text-amber-600 font-medium mb-6">{selectedSizes.length} of 3 selected</p>
+            <h3 className="text-xl font-bold mb-4">{t('imageAds.selectImageSizesQuality')}</h3>
+            <p className="text-gray-600 mb-2">{t('imageAds.squareIsRequiredSelectUp')}</p>
+            <p className="text-sm text-amber-600 font-medium mb-6">{t('imageAds.sizesSelected', { count: selectedSizes.length })}</p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
                 {sizeOptions.map((size) => {
@@ -635,7 +640,7 @@ function ImageSizeStep({ selectedSizes = [], onSelect, resolution, onResolutionC
                             {/* Required Badge or Checkbox */}
                             {isRequired ? (
                                 <div className="absolute top-3 right-3 px-2 py-1 bg-amber-600 text-white text-xs font-bold rounded">
-                                    REQUIRED
+                                    {t('imageAds.required')}
                                 </div>
                             ) : (
                                 <div className={`absolute top-3 right-3 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-amber-600 border-amber-600' : 'bg-white border-gray-400'
@@ -645,15 +650,15 @@ function ImageSizeStep({ selectedSizes = [], onSelect, resolution, onResolutionC
                             )}
 
                             <div className="text-4xl mb-3 text-center">{size.icon}</div>
-                            <h4 className="font-bold text-gray-900 mb-2 text-center">{size.name}</h4>
-                            <p className="text-sm text-gray-600 mb-3 text-center">{size.description}</p>
+                            <h4 className="font-bold text-gray-900 mb-2 text-center">{sizeLabel(size.name)}</h4>
+                            <p className="text-sm text-gray-600 mb-3 text-center">{sizeDescription(size)}</p>
                             <div className="bg-white rounded-lg p-3 border border-gray-200">
                                 <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                    <span>Dimensions:</span>
+                                    <span>{t('imageAds.dimensions')}</span>
                                     <span className="font-medium text-gray-900">{size.width}×{size.height}</span>
                                 </div>
                                 <div className="flex justify-between text-xs text-gray-500">
-                                    <span>Aspect Ratio:</span>
+                                    <span>{t('imageAds.aspectRatio')}</span>
                                     <span className="font-medium text-gray-900">{size.aspectRatio}</span>
                                 </div>
                             </div>
@@ -669,7 +674,7 @@ function ImageSizeStep({ selectedSizes = [], onSelect, resolution, onResolutionC
                     className="flex items-center gap-2 text-gray-600 font-medium hover:text-amber-600 transition-colors mb-4"
                 >
                     <Settings size={18} />
-                    <span>Advanced Settings (Quality & Model)</span>
+                    <span>{t('imageAds.advancedSettingsQualityModel')}</span>
                     {showAdvanced ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                 </button>
 
@@ -679,9 +684,9 @@ function ImageSizeStep({ selectedSizes = [], onSelect, resolution, onResolutionC
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                             <div className="flex items-center gap-2 mb-4">
                                 <Sparkles className="text-amber-600" size={20} />
-                                <h4 className="font-bold text-gray-900">Image Quality</h4>
+                                <h4 className="font-bold text-gray-900">{t('imageAds.imageQuality')}</h4>
                             </div>
-                            <p className="text-sm text-gray-600 mb-4">Select the resolution for your generated images</p>
+                            <p className="text-sm text-gray-600 mb-4">{t('imageAds.selectTheResolutionForYour')}</p>
 
                             <div className="grid grid-cols-3 gap-3">
                                 {['1K', '2K', '4K'].map((res) => (
@@ -695,9 +700,9 @@ function ImageSizeStep({ selectedSizes = [], onSelect, resolution, onResolutionC
                                     >
                                         <div className="font-bold text-lg">{res}</div>
                                         <div className="text-xs mt-1">
-                                            {res === '1K' && 'Fast & Efficient'}
-                                            {res === '2K' && 'Balanced Quality'}
-                                            {res === '4K' && 'Highest Quality'}
+                                            {res === '1K' && t('imageAds.res1k')}
+                                            {res === '2K' && t('imageAds.res2k')}
+                                            {res === '4K' && t('imageAds.res4k')}
                                         </div>
                                     </button>
                                 ))}
@@ -705,15 +710,15 @@ function ImageSizeStep({ selectedSizes = [], onSelect, resolution, onResolutionC
 
                             <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3">
                                 <p className="text-sm text-amber-800">
-                                    <strong>Tip:</strong> Higher resolutions produce better quality but take longer to generate. 1K is recommended for quick previews.
+                                    <strong>{t('imageAds.tip')}</strong> {t('imageAds.higherResolutionsProduceBetterQuality')}
                                 </p>
                             </div>
                         </div>
 
                         {/* Model Selection */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <h3 className="text-xl font-bold mb-4">Select AI Model (Primary Image)</h3>
-                            <p className="text-gray-600 mb-4">Choose the model used to generate the initial square image. Resizing always uses Nano Banana Pro Edit.</p>
+                            <h3 className="text-xl font-bold mb-4">{t('imageAds.selectAiModelPrimaryImage')}</h3>
+                            <p className="text-gray-600 mb-4">{t('imageAds.chooseTheModelUsedTo')}</p>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div
@@ -727,7 +732,7 @@ function ImageSizeStep({ selectedSizes = [], onSelect, resolution, onResolutionC
                                         <span className="font-bold text-lg">Nano Banana Pro</span>
                                         {model === 'nano-banana-pro' && <Check className="text-amber-600" size={20} />}
                                     </div>
-                                    <p className="text-sm text-gray-600">Fast, efficient, and great for most styles. (Default)</p>
+                                    <p className="text-sm text-gray-600">{t('imageAds.fastEfficientAndGreatFor')}</p>
                                 </div>
 
                                 <div
@@ -741,7 +746,7 @@ function ImageSizeStep({ selectedSizes = [], onSelect, resolution, onResolutionC
                                         <span className="font-bold text-lg">Google Imagen 3</span>
                                         {model === 'imagen4' && <Check className="text-amber-600" size={20} />}
                                     </div>
-                                    <p className="text-sm text-gray-600">High fidelity, photorealistic quality. Slower generation time.</p>
+                                    <p className="text-sm text-gray-600">{t('imageAds.highFidelityPhotorealisticQualitySlower')}</p>
                                 </div>
                             </div>
                         </div>
@@ -753,6 +758,7 @@ function ImageSizeStep({ selectedSizes = [], onSelect, resolution, onResolutionC
 }
 
 function CampaignDetailsStep({ details, onChange }) {
+    const { t } = useTranslation('creatives');
     const offerInputRef = React.useRef(null);
 
     React.useEffect(() => {
@@ -763,45 +769,45 @@ function CampaignDetailsStep({ details, onChange }) {
 
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">Campaign Details</h3>
-            <p className="text-gray-600 mb-6">Provide details to customize your ad copy</p>
+            <h3 className="text-xl font-bold mb-4">{t('imageAds.campaignDetails')}</h3>
+            <p className="text-gray-600 mb-6">{t('imageAds.provideDetailsToCustomizeYour')}</p>
 
             <div className="max-w-2xl space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Offer / Promotion *
+                        {t('imageAds.offerPromotion')}
                     </label>
                     <input
                         ref={offerInputRef}
                         type="text"
                         value={details.offer}
                         onChange={(e) => onChange('offer', e.target.value)}
-                        placeholder="e.g., 50% off Black Friday, Buy 2 Get 1 Free"
+                        placeholder={t('imageAds.eG50OffBlack')}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     />
                 </div>
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Urgency / Timing
+                        {t('imageAds.urgencyTiming')}
                     </label>
                     <input
                         type="text"
                         value={details.urgency}
                         onChange={(e) => onChange('urgency', e.target.value)}
-                        placeholder="e.g., Limited time, Ends tonight, While supplies last"
+                        placeholder={t('imageAds.eGLimitedTimeEnds')}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     />
                 </div>
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Key Messaging *
+                        {t('imageAds.keyMessaging')}
                     </label>
                     <textarea
                         value={details.messaging}
                         onChange={(e) => onChange('messaging', e.target.value)}
-                        placeholder="e.g., Science-backed results, Trusted by 10,000+ customers, Clinically proven"
+                        placeholder={t('imageAds.eGScienceBackedResults')}
                         rows={3}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     />
@@ -809,17 +815,17 @@ function CampaignDetailsStep({ details, onChange }) {
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Visual Angle (Optional)
+                        {t('imageAds.visualAngleOptional')}
                     </label>
                     <input
                         type="text"
                         value={details.angle || ''}
                         onChange={(e) => onChange('angle', e.target.value)}
-                        placeholder="e.g., Low angle hero shot, Top down flat lay, Close up macro"
+                        placeholder={t('imageAds.eGLowAngleHero')}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                        Overrides the template's default subject matter/angle.
+                        {t('imageAds.overridesTheTemplateSDefault')}
                     </p>
                 </div>
             </div>
@@ -828,6 +834,7 @@ function CampaignDetailsStep({ details, onChange }) {
 }
 
 function ReviewStep({ wizardData }) {
+    const { t } = useTranslation('creatives');
     const [showPrompt, setShowPrompt] = useState(false);
     const [customPrompt, setCustomPrompt] = useState('');
 
@@ -897,47 +904,47 @@ Return ONLY valid JSON in this exact format:
 
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">Review Your Selections</h3>
-            <p className="text-gray-600 mb-6">Verify everything looks correct before generating</p>
+            <h3 className="text-xl font-bold mb-4">{t('imageAds.reviewYourSelections')}</h3>
+            <p className="text-gray-600 mb-6">{t('imageAds.verifyEverythingLooksCorrectBefore')}</p>
 
             <div className="grid grid-cols-2 gap-3 max-w-3xl">
                 <ReviewItem
-                    label="Brand"
+                    label={t('imageAds.brand2')}
                     value={wizardData.brand?.name}
                     icon={Briefcase}
                 />
                 <ReviewItem
-                    label="Product"
+                    label={t('imageAds.product2')}
                     value={wizardData.product?.name}
                     icon={Package}
                 />
                 <ReviewItem
-                    label="Target Audience"
+                    label={t('imageAds.targetAudience')}
                     value={wizardData.profile?.name}
                     icon={Users}
                 />
                 <ReviewItem
-                    label="Template"
+                    label={t('imageAds.template2')}
                     value={wizardData.template?.name || wizardData.template?.template_category}
                     icon={Image}
                 />
                 <ReviewItem
-                    label="Variations"
-                    value={`${wizardData.variationCount} ads`}
+                    label={t('imageAds.variations')}
+                    value={t('imageAds.adsCount', { count: wizardData.variationCount })}
                     icon={Hash}
                 />
                 <ReviewItem
-                    label="Image Sizes"
-                    value={`${wizardData.imageSizes.length} size${wizardData.imageSizes.length > 1 ? 's' : ''}`}
+                    label={t('imageAds.imageSizes')}
+                    value={t('imageAds.sizesCount', { count: wizardData.imageSizes.length })}
                     icon={Image}
                 />
                 <ReviewItem
-                    label="Offer"
+                    label={t('imageAds.offer')}
                     value={wizardData.campaignDetails.offer}
                     icon={FileText}
                 />
                 <ReviewItem
-                    label="Messaging"
+                    label={t('imageAds.messaging')}
                     value={wizardData.campaignDetails.messaging}
                     icon={FileText}
                 />
@@ -951,8 +958,8 @@ Return ONLY valid JSON in this exact format:
                 >
                     <div className="flex items-center gap-2">
                         <Sparkles className="text-amber-600" size={18} />
-                        <h4 className="font-bold text-gray-900 text-sm">AI Copy Generation Prompt</h4>
-                        <span className="text-xs text-gray-500">(Advanced)</span>
+                        <h4 className="font-bold text-gray-900 text-sm">{t('imageAds.aiCopyGenerationPrompt')}</h4>
+                        <span className="text-xs text-gray-500">{t('imageAds.advanced')}</span>
                     </div>
                     <ChevronRight
                         className={`text-gray-400 transition-transform ${showPrompt ? 'rotate-90' : ''}`}
@@ -962,21 +969,21 @@ Return ONLY valid JSON in this exact format:
 
                 {showPrompt && (
                     <div className="px-4 pb-4 border-t border-gray-100">
-                        <p className="text-xs text-gray-600 mb-3 mt-3">Customize the AI prompt used to generate your ad copy:</p>
+                        <p className="text-xs text-gray-600 mb-3 mt-3">{t('imageAds.customizeTheAiPromptUsed')}</p>
                         <textarea
                             value={customPrompt}
                             onChange={(e) => setCustomPrompt(e.target.value)}
                             className="w-full h-64 p-3 text-xs font-mono border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
-                            placeholder="Enter your custom prompt..."
+                            placeholder={t('imageAds.enterYourCustomPrompt')}
                         />
                         <div className="flex items-center justify-between mt-2">
                             <button
                                 onClick={() => setCustomPrompt(buildPrompt())}
                                 className="text-xs text-amber-600 hover:text-amber-700 font-medium"
                             >
-                                Reset to Default
+                                {t('imageAds.resetToDefault')}
                             </button>
-                            <span className="text-xs text-gray-500">{customPrompt.length} characters</span>
+                            <span className="text-xs text-gray-500">{t('imageAds.characters', { count: customPrompt.length })}</span>
                         </div>
                     </div>
                 )}
@@ -984,7 +991,7 @@ Return ONLY valid JSON in this exact format:
 
             <div className="mt-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4 max-w-3xl">
                 <p className="text-sm text-amber-900">
-                    <strong>Ready to generate!</strong> Click "Generate Ad Copy" to create {wizardData.variationCount} AI-powered ad{wizardData.variationCount > 1 ? 's' : ''} based on your selections.
+                    <strong>{t('imageAds.readyToGenerate')}</strong> {t('imageAds.readyToGenerateBody', { count: wizardData.variationCount })}
                 </p>
             </div>
         </div>
@@ -1004,6 +1011,7 @@ function ReviewItem({ label, value, icon: Icon }) {
 }
 
 function CopySelectionStep({ generatedCopy, wizardData, onBack, onRegenerate, isRegenerating, onProceed, customImagePrompt, setCustomImagePrompt, authFetch }) {
+    const { t } = useTranslation('creatives');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [editedCopy, setEditedCopy] = useState(null);
     const [regeneratingField, setRegeneratingField] = useState(null);
@@ -1155,7 +1163,7 @@ Style: ${designStyle}`);
                 })
             });
 
-            if (!response.ok) throw new Error('Regeneration failed');
+            if (!response.ok) throw new Error(t('imageAds.regenerationFailed'));
 
             const data = await response.json();
             handleEdit(field, data.newValue);
@@ -1177,7 +1185,7 @@ Style: ${designStyle}`);
             onClick={() => handleRegenerateField(field)}
             disabled={regeneratingField === field}
             className="ml-2 p-1 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-full transition-colors"
-            title="Regenerate this field"
+            title={t('imageAds.regenerateThisField')}
         >
             <Sparkles size={14} className={regeneratingField === field ? 'animate-spin text-amber-600' : ''} />
         </button>
@@ -1185,9 +1193,9 @@ Style: ${designStyle}`);
 
     return (
         <div>
-            <h3 className="text-xl font-bold mb-2">Generated Ad Copy</h3>
+            <h3 className="text-xl font-bold mb-2">{t('imageAds.generatedAdCopy')}</h3>
             <p className="text-gray-600 mb-6">
-                Select a variation and edit if needed. Generated {generatedCopy.variations.length} variations based on your template and brand.
+                {t('imageAds.selectVariationHint', { count: generatedCopy.variations.length })}
             </p>
 
             {/* Variation Selector */}
@@ -1204,7 +1212,7 @@ Style: ${designStyle}`);
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                     >
-                        Variation {index + 1}
+                        {t('imageAds.variationN', { index: index + 1 })}
                     </button>
                 ))}
             </div>
@@ -1215,7 +1223,7 @@ Style: ${designStyle}`);
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            Headline
+                            {t('imageAds.headline')}
                             <RegenerateButton field="headline" />
                         </label>
                         <input
@@ -1223,7 +1231,7 @@ Style: ${designStyle}`);
                             value={currentCopy.headline}
                             onChange={(e) => handleEdit('headline', e.target.value)}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                            placeholder="Enter headline"
+                            placeholder={t('imageAds.enterHeadline')}
                         />
                         <div className="text-xs text-gray-500 mt-1">
                             {currentCopy.headline.length} / 40 characters
@@ -1232,7 +1240,7 @@ Style: ${designStyle}`);
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            Body Copy
+                            {t('imageAds.bodyCopy')}
                             <RegenerateButton field="body" />
                         </label>
                         <textarea
@@ -1240,16 +1248,16 @@ Style: ${designStyle}`);
                             onChange={(e) => handleEdit('body', e.target.value)}
                             rows={3}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                            placeholder="Enter body copy"
+                            placeholder={t('imageAds.enterBodyCopy')}
                         />
                         <div className="text-xs text-gray-500 mt-1">
-                            {currentCopy.body.length} / 125 characters (recommended)
+                            {t('imageAds.bodyLengthHint', { count: currentCopy.body.length })}
                         </div>
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            Call to Action
+                            {t('imageAds.callToAction')}
                             <RegenerateButton field="cta" />
                         </label>
                         <input
@@ -1257,7 +1265,7 @@ Style: ${designStyle}`);
                             value={currentCopy.cta}
                             onChange={(e) => handleEdit('cta', e.target.value)}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                            placeholder="Enter CTA"
+                            placeholder={t('imageAds.enterCta')}
                         />
                         <div className="text-xs text-gray-500 mt-1">
                             {currentCopy.cta.length} / 20 characters
@@ -1268,7 +1276,7 @@ Style: ${designStyle}`);
                 {/* Preview */}
                 <div>
                     <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-6">
-                        <div className="text-xs font-medium text-amber-600 mb-3">PREVIEW</div>
+                        <div className="text-xs font-medium text-amber-600 mb-3">{t('imageAds.preview')}</div>
                         <div className="bg-white rounded-lg p-4 shadow-sm">
                             <div className="font-bold text-lg text-gray-900 mb-2">
                                 {currentCopy.headline}
@@ -1281,9 +1289,9 @@ Style: ${designStyle}`);
                             </button>
                         </div>
                         <div className="mt-4 text-xs text-gray-600 space-y-1">
-                            <div><strong>Brand:</strong> {wizardData.brand.name}</div>
-                            <div><strong>Product:</strong> {wizardData.product.name}</div>
-                            <div><strong>Template:</strong> {wizardData.template?.name || 'Custom'}</div>
+                            <div><strong>{t('imageAds.brand')}</strong> {wizardData.brand.name}</div>
+                            <div><strong>{t('imageAds.product')}</strong> {wizardData.product.name}</div>
+                            <div><strong>{t('imageAds.template')}</strong> {wizardData.template?.name || 'Custom'}</div>
                         </div>
                     </div>
                 </div>
@@ -1297,7 +1305,7 @@ Style: ${designStyle}`);
                 >
                     <div className="flex items-center gap-2">
                         <Sparkles className="text-amber-600" size={18} />
-                        <h4 className="font-bold text-gray-900 text-sm">Custom Image Generation Prompt (Advanced)</h4>
+                        <h4 className="font-bold text-gray-900 text-sm">{t('imageAds.customImageGenerationPromptAdvanced')}</h4>
                     </div>
                     {showPrompt ? <ChevronUp size={18} className="text-gray-500" /> : <ChevronDown size={18} className="text-gray-500" />}
                 </button>
@@ -1305,12 +1313,12 @@ Style: ${designStyle}`);
                 {showPrompt && (
                     <div className="p-4 animate-in slide-in-from-top-2 duration-200">
                         <p className="text-xs text-gray-600 mb-3">
-                            <strong>Optional:</strong> Override the AI-generated prompt. Leave empty to automatically build a comprehensive prompt using your brand, product, copy, and template details.
+                            <strong>{t('imageAds.optional')}</strong> {t('imageAds.overrideTheAiGeneratedPrompt')}
                         </p>
                         <textarea
                             value={customImagePrompt}
                             onChange={(e) => setCustomImagePrompt(e.target.value)}
-                            placeholder="Leave empty to auto-generate comprehensive prompt from your brand, product, and copy..."
+                            placeholder={t('imageAds.leaveEmptyToAutoGenerate')}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm font-mono"
                             rows={4}
                         />
@@ -1319,12 +1327,12 @@ Style: ${designStyle}`);
                                 onClick={handleResetPrompt}
                                 className="text-xs text-amber-600 hover:text-amber-700 font-medium"
                             >
-                                ↺ Reset to Generated Prompt
+                                {t('imageAds.resetToGeneratedPrompt')}
                             </button>
                             <span className="text-xs text-gray-500">
                                 {customImagePrompt.length > 0
-                                    ? `${customImagePrompt.length} characters`
-                                    : '✨ Auto-generating comprehensive prompt'}
+                                    ? t('imageAds.characters', { count: customImagePrompt.length })
+                                    : t('imageAds.autoGenerating')}
                             </span>
                         </div>
                     </div>
@@ -1338,13 +1346,13 @@ Style: ${designStyle}`);
                     className="flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
                 >
                     <ChevronLeft size={20} />
-                    Back to Review
+                    {t('imageAds.backToReview')}
                 </button>
                 <button
                     onClick={handleProceed}
                     className="flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium shadow-lg transition-colors"
                 >
-                    Generate Image
+                    {t('imageAds.generateImage')}
                     <ChevronRight size={20} />
                 </button>
             </div>
@@ -1353,11 +1361,12 @@ Style: ${designStyle}`);
 }
 
 function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack, onRestart }) {
+    const { t } = useTranslation('creatives');
     const [selectedImageIndex, setSelectedImageIndex] = useState(null);
     const [imgError, setImgError] = useState(false);
 
     if (!generatedImages || generatedImages.length === 0) {
-        return <div className="text-center p-8 text-red-600">Error: No image data available.</div>;
+        return <div className="text-center p-8 text-red-600">{t('imageAds.errorNoImageDataAvailable')}</div>;
     }
 
     // Filter to show only square images in the main grid
@@ -1392,8 +1401,8 @@ function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack
                 <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Check size={40} />
                 </div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">Ads Generated Successfully!</h2>
-                <p className="text-gray-600">Click on any image to view details and download</p>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">{t('imageAds.adsGeneratedSuccessfully')}</h2>
+                <p className="text-gray-600">{t('imageAds.clickOnAnyImageTo')}</p>
             </div>
 
             {/* Image Tile Gallery (Square Images Only) */}
@@ -1406,20 +1415,20 @@ function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack
                     >
                         <img
                             src={img.url}
-                            alt={`Ad ${index + 1}`}
+                            alt={t('imageAds.adAlt', { index: index + 1 })}
                             className="w-full h-full object-cover"
                         />
                         {/* Overlay on hover */}
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
                             <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-center p-4">
                                 <Image size={32} className="mx-auto mb-2" />
-                                <p className="text-sm font-medium">{img.size}</p>
+                                <p className="text-sm font-medium">{sizeLabel(img.size)}</p>
                                 <p className="text-xs">{img.dimensions}</p>
                             </div>
                         </div>
                         {/* Size badge */}
                         <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1 text-xs font-medium text-gray-900 text-center">
-                            {img.size}
+                            {sizeLabel(img.size)}
                         </div>
                     </button>
                 ))}
@@ -1432,13 +1441,13 @@ function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack
                     className="flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
                 >
                     <ChevronLeft size={20} />
-                    Back to Copy
+                    {t('imageAds.backToCopy')}
                 </button>
                 <button
                     onClick={onRestart}
                     className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium shadow-lg transition-colors"
                 >
-                    Create New Ad
+                    {t('imageAds.createNewAd')}
                 </button>
             </div>
 
@@ -1454,7 +1463,7 @@ function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack
                     >
                         {/* Modal Header */}
                         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
-                            <h3 className="text-xl font-bold text-gray-900">Ad Details</h3>
+                            <h3 className="text-xl font-bold text-gray-900">{t('imageAds.adDetails')}</h3>
                             <button
                                 onClick={() => setSelectedImageIndex(null)}
                                 className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
@@ -1472,12 +1481,12 @@ function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack
                                     <div className="bg-gray-100 rounded-xl overflow-hidden aspect-square flex items-center justify-center">
                                         {imgError ? (
                                             <div className="p-8 text-center text-red-500 bg-red-50">
-                                                <p className="font-bold mb-2">Failed to load image</p>
+                                                <p className="font-bold mb-2">{t('imageAds.failedToLoadImage')}</p>
                                             </div>
                                         ) : (
                                             <img
                                                 src={viewedImage.url}
-                                                alt="Selected Ad"
+                                                alt={t('imageAds.selectedAd')}
                                                 className="w-full h-full object-contain"
                                                 onError={() => setImgError(true)}
                                             />
@@ -1487,7 +1496,7 @@ function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack
                                     {/* Bundle Thumbnails */}
                                     {bundleImages.length > 1 && (
                                         <div>
-                                            <p className="text-sm font-medium text-gray-700 mb-2">Available Sizes:</p>
+                                            <p className="text-sm font-medium text-gray-700 mb-2">{t('imageAds.availableSizes')}</p>
                                             <div className="flex gap-2 overflow-x-auto pb-2">
                                                 {bundleImages.map((img, idx) => (
                                                     <button
@@ -1503,11 +1512,11 @@ function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack
                                                     >
                                                         <img
                                                             src={img.url}
-                                                            alt={img.size}
+                                                            alt={sizeLabel(img.size)}
                                                             className="w-full h-full object-cover"
                                                         />
                                                         <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] py-0.5 text-center truncate px-1">
-                                                            {img.size.split(' ')[0]}
+                                                            {sizeShort(img.size)}
                                                         </div>
                                                     </button>
                                                 ))}
@@ -1522,19 +1531,19 @@ function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack
                                     <div className="bg-amber-50 p-5 rounded-xl border border-amber-200">
                                         <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                                             <FileText size={20} className="text-amber-600" />
-                                            Ad Copy
+                                            {t('imageAds.adCopy')}
                                         </h4>
                                         <div className="space-y-3">
                                             <div>
-                                                <label className="text-xs font-medium text-amber-700 uppercase">Headline</label>
+                                                <label className="text-xs font-medium text-amber-700 uppercase">{t('imageAds.headline')}</label>
                                                 <p className="font-bold text-gray-900 mt-1">{displayCopy.headline}</p>
                                             </div>
                                             <div>
-                                                <label className="text-xs font-medium text-amber-700 uppercase">Body Text</label>
+                                                <label className="text-xs font-medium text-amber-700 uppercase">{t('imageAds.bodyText')}</label>
                                                 <p className="text-gray-700 text-sm whitespace-pre-line mt-1">{displayCopy.body}</p>
                                             </div>
                                             <div>
-                                                <label className="text-xs font-medium text-amber-700 uppercase">Call to Action</label>
+                                                <label className="text-xs font-medium text-amber-700 uppercase">{t('imageAds.callToAction')}</label>
                                                 <div className="mt-1">
                                                     <span className="inline-block px-3 py-1 bg-amber-600 text-white rounded-full text-sm font-medium">
                                                         {displayCopy.cta}
@@ -1548,19 +1557,19 @@ function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack
                                     <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
                                         <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                                             <Image size={20} className="text-gray-600" />
-                                            Image Details
+                                            {t('imageAds.imageDetails')}
                                         </h4>
                                         <div className="space-y-2 text-sm">
                                             <div className="flex justify-between">
-                                                <span className="text-gray-500">Size:</span>
-                                                <span className="font-medium text-gray-900">{viewedImage.size}</span>
+                                                <span className="text-gray-500">{t('imageAds.size')}</span>
+                                                <span className="font-medium text-gray-900">{sizeLabel(viewedImage.size)}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-gray-500">Dimensions:</span>
+                                                <span className="text-gray-500">{t('imageAds.dimensions')}</span>
                                                 <span className="font-medium text-gray-900">{viewedImage.dimensions}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-gray-500">Format:</span>
+                                                <span className="text-gray-500">{t('imageAds.format')}</span>
                                                 <span className="font-medium text-gray-900">PNG</span>
                                             </div>
                                         </div>
@@ -1575,7 +1584,7 @@ function ImageGenerationStep({ generatedImages, wizardData, selectedCopy, onBack
                                         className="w-full py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-bold flex items-center justify-center gap-2 transition-colors"
                                     >
                                         <Download size={20} />
-                                        Download Image
+                                        {t('imageAds.downloadImage')}
                                     </a>
                                 </div>
                             </div>

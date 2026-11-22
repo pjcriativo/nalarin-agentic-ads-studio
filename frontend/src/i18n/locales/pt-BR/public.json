@@ -1,0 +1,95 @@
+{
+  "operatedBy": "Operado por {{operator}}",
+  "operatorSignIn": "Entrada do operador",
+  "updated": "Em vigor e atualizado pela última vez em: {{date}}",
+  "updatedAt": "22 de julho de 2026",
+  "nav": {
+    "about": "Sobre",
+    "privacy": "Privacidade",
+    "terms": "Termos"
+  },
+  "about": {
+    "eyebrow": "Operações de mídia paga",
+    "summary": "Uma plataforma privada de operações de publicidade usada pela {{operator}} para conectar contas de anúncios autorizadas, analisar o desempenho e gerenciar campanhas com aprovação humana.",
+    "content": [
+      {
+        "heading": "O que a plataforma faz",
+        "body": "O {{appName}} reúne os relatórios do Google Ads, Meta Ads e TikTok Ads em um único espaço de trabalho autenticado. Os usuários do Google Ads escolhem explicitamente uma conta de cliente autorizada antes de qualquer dado de campanha ser carregado."
+      },
+      {
+        "heading": "Alterações controladas por pessoas",
+        "body": "As alterações de campanha nunca são executadas silenciosamente. Novas campanhas de Pesquisa do Google são criadas pausadas, e toda ação de criar, pausar, ativar ou adicionar palavra-chave negativa exige confirmação explícita do operador após uma prévia."
+      },
+      {
+        "heading": "Quem opera a plataforma",
+        "body": "A plataforma é operada pela {{operator}}, uma agência indonésia de marketing digital. O acesso é limitado a operadores autorizados que gerenciam contas de publicidade em nome da {{operator}} e de seus clientes."
+      }
+    ]
+  },
+  "privacy": {
+    "eyebrow": "Privacidade",
+    "title": "Política de Privacidade",
+    "summary": "Como a {{operator}} e o {{appName}} coletam, usam, protegem e excluem informações conectadas por meio de provedores de publicidade.",
+    "content": [
+      {
+        "heading": "Informações que coletamos",
+        "body": "Processamos identificadores de contas, configurações de campanhas e métricas de desempenho que um usuário autorizado permite por meio do Google Ads ou de outro provedor de publicidade. Também processamos o nome e o e-mail usados para autenticação no {{appName}}. Não solicitamos nem armazenamos senhas de contas Google."
+      },
+      {
+        "heading": "Como as informações são usadas",
+        "body": "Os dados dos provedores são usados apenas para exibir o desempenho dos anúncios, preparar relatórios e executar ações de campanha solicitadas e confirmadas explicitamente por um operador autorizado. Não vendemos dados de usuários do Google, não os usamos para perfis publicitários nem os transferimos a corretores de dados."
+      },
+      {
+        "heading": "Dados de usuário das APIs do Google",
+        "body": "O uso e a transferência de informações recebidas das APIs do Google seguem a Política de Dados do Usuário dos Serviços de API do Google, incluindo os requisitos de Uso Limitado. As credenciais OAuth do Google Ads são usadas apenas para oferecer os recursos de gerenciamento de publicidade descritos nesta página."
+      },
+      {
+        "heading": "Segurança",
+        "body": "Os tokens OAuth de acesso e atualização são criptografados em repouso. As senhas da aplicação e as chaves de API de máquina são armazenadas como hash. O tráfego de produção usa HTTPS, as credenciais dos provedores não são expostas ao navegador após o OAuth e os bots de relatórios têm acesso somente leitura, sem rotas de escrita em campanhas."
+      },
+      {
+        "heading": "Retenção e exclusão",
+        "body": "Os dados de conexão de publicidade são mantidos enquanto a conexão estiver ativa e forem necessários para prestar o serviço. Um operador pode desconectar uma conta no {{appName}}. Os usuários também podem revogar o acesso nas permissões da conta Google. Para solicitar a exclusão de dados da conta ou de credenciais OAuth, entre em contato pelo endereço abaixo; as solicitações verificadas são processadas em até 30 dias."
+      },
+      {
+        "heading": "Compartilhamento e operadores",
+        "body": "Compartilhamos dados apenas com provedores de infraestrutura necessários para operar o serviço ou quando exigido por lei. Não permitimos que esses provedores usem dados de usuários do Google para fins publicitários independentes."
+      },
+      {
+        "heading": "Contato",
+        "body": "Solicitações de privacidade e exclusão de dados: privacy@your-domain.example. Operadora: {{operator}}."
+      }
+    ]
+  },
+  "terms": {
+    "eyebrow": "Termos",
+    "title": "Termos de Serviço",
+    "summary": "Regras para o uso autorizado do {{appName}} e de suas integrações com provedores de publicidade.",
+    "content": [
+      {
+        "heading": "Uso autorizado",
+        "body": "O {{appName}} destina-se a operadores autorizados da {{operator}} e a contas de publicidade de clientes aprovadas. Os usuários devem ter permissão para acessar todas as contas conectadas e cumprir as políticas do Google Ads, as leis aplicáveis e as instruções dos clientes."
+      },
+      {
+        "heading": "Responsabilidade do operador",
+        "body": "Os usuários são responsáveis por revisar os detalhes da campanha, orçamentos, segmentação e prévias antes da confirmação. Ativar uma campanha pode gerar gasto com publicidade. A plataforma não garante desempenho de campanhas, leads, receita ou retorno sobre o investimento em anúncios."
+      },
+      {
+        "heading": "Uso proibido",
+        "body": "Os usuários não podem contornar controles de acesso, conectar contas sem autorização, extrair credenciais, revender dados dos provedores, automatizar atividades abusivas nem usar a plataforma para violar as políticas dos provedores de publicidade."
+      },
+      {
+        "heading": "Disponibilidade e alterações",
+        "body": "O serviço depende de APIs de publicidade de terceiros e pode ser interrompido por indisponibilidade dos provedores, restrições de conta, mudanças de política ou revisões de nível de acesso. Os recursos podem ser alterados para preservar a segurança, a conformidade ou a compatibilidade com os provedores."
+      },
+      {
+        "heading": "Suspensão e encerramento",
+        "body": "O acesso pode ser suspenso quando uma conta for comprometida, a autorização for retirada, as políticas forem violadas ou a continuidade da operação puder prejudicar um cliente, um provedor ou a plataforma."
+      },
+      {
+        "heading": "Contato",
+        "body": "Dúvidas sobre estes termos: privacy@your-domain.example. Operadora: {{operator}}."
+      }
+    ]
+  }
+}

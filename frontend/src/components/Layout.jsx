@@ -3,6 +3,8 @@ import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, BarChart3, Package, Users, Video, Wand2, Settings, LogOut, Image, ShoppingBag, Target, ChevronLeft, ChevronRight, FileImage, Search, ChevronDown, UserCog, TrendingUp, Music2, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './LanguageSwitcher';
 import { APP_NAME, APP_LOGO, APP_TAGLINE } from '../lib/branding';
 
 export default function Layout() {
@@ -10,7 +12,8 @@ export default function Layout() {
     const navigate = useNavigate();
     const { user, logout, hasRole } = useAuth();
     const { showSuccess } = useToast();
-    const [expandedMenus, setExpandedMenus] = useState({ Brands: false, Research: false });
+    const { t } = useTranslation('layout');
+    const [expandedMenus, setExpandedMenus] = useState({ brands: false, research: false });
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     // Mobile off-canvas nav. md+ always shows the desktop sidebar; the
@@ -24,37 +27,39 @@ export default function Layout() {
 
     const handleLogout = async () => {
         await logout();
-        showSuccess('Logged out successfully');
+        showSuccess(t('toast.loggedOut'));
         navigate('/login');
     };
 
     const menuItems = [
-        { icon: LayoutDashboard, label: 'Overview', path: '/' },
-        { icon: BarChart3, label: 'Dashboard', path: '/dashboard' },
+        { icon: LayoutDashboard, id: 'overview', label: t('menu.overview'), path: '/' },
+        { icon: BarChart3, id: 'dashboard', label: t('menu.dashboard'), path: '/dashboard' },
         {
             icon: Search,
-            label: 'Research',
+            id: 'research',
+            label: t('menu.research'),
             subItems: [
-                { label: 'Research', path: '/research' },
-                { label: 'Scrape Brand Ads', path: '/research/brand-scrapes' },
-                { label: 'Settings', path: '/research/settings' }
+                { label: t('menu.research'), path: '/research' },
+                { label: t('menu.scrapeBrandAds'), path: '/research/brand-scrapes' },
+                { label: t('menu.settings'), path: '/research/settings' }
             ]
         },
-        { icon: Wand2, label: 'Build Creatives', path: '/build-creatives' },
+        { icon: Wand2, id: 'build', label: t('menu.buildCreatives'), path: '/build-creatives' },
         {
             icon: ShoppingBag,
-            label: 'Brands',
+            id: 'brands',
+            label: t('menu.brands'),
             subItems: [
-                { label: 'Brands', path: '/brands' },
-                { label: 'Products', path: '/products' },
-                { label: 'Customer Profiles', path: '/profiles' }
+                { label: t('menu.brands'), path: '/brands' },
+                { label: t('menu.products'), path: '/products' },
+                { label: t('menu.customerProfiles'), path: '/profiles' }
             ]
         },
-        { icon: Image, label: 'Winning Ads', path: '/winning-ads' },
-        { icon: FileImage, label: 'Generated Ads', path: '/generated-ads' },
-        { icon: Target, label: 'Facebook Campaigns', path: '/facebook-campaigns' },
-        { icon: TrendingUp, label: 'Google Ads', path: '/google-ads' },
-        { icon: Music2, label: 'TikTok Ads', path: '/tiktok-ads' },
+        { icon: Image, id: 'winning', label: t('menu.winningAds'), path: '/winning-ads' },
+        { icon: FileImage, id: 'generated', label: t('menu.generatedAds'), path: '/generated-ads' },
+        { icon: Target, id: 'fb', label: t('menu.facebookCampaigns'), path: '/facebook-campaigns' },
+        { icon: TrendingUp, id: 'google', label: t('menu.googleAds'), path: '/google-ads' },
+        { icon: Music2, id: 'tiktok', label: t('menu.tiktokAds'), path: '/tiktok-ads' },
     ];
 
     const toggleMenu = (label) => {
@@ -70,7 +75,7 @@ export default function Layout() {
             <header className="md:hidden fixed top-0 inset-x-0 z-40 bg-white border-b border-amber-200 flex items-center justify-between px-4 h-14 shadow-sm">
                 <button
                     onClick={() => setMobileOpen(true)}
-                    aria-label="Open navigation menu"
+                    aria-label={t('nav.open')}
                     className="p-2 -ml-2 rounded-lg text-amber-800 hover:bg-amber-50"
                 >
                     <Menu size={22} />
@@ -79,7 +84,7 @@ export default function Layout() {
                     <img src={APP_LOGO} alt={APP_NAME} className="w-7 h-7 rounded-lg object-cover flex-shrink-0" />
                     <span className="font-bold text-amber-900 truncate text-sm">{APP_NAME}</span>
                 </div>
-                <span className="w-8" aria-hidden="true" />
+                <LanguageSwitcher />
             </header>
 
             {/* Mobile drawer backdrop */}
@@ -99,14 +104,14 @@ export default function Layout() {
                 <button
                     onClick={() => (window.matchMedia('(min-width: 768px)').matches ? setIsCollapsed(!isCollapsed) : setMobileOpen(false))}
                     className={`absolute -right-3 top-9 bg-white border border-amber-200 rounded-full p-1 shadow-sm hover:bg-amber-50 text-amber-600 z-10 hidden md:block`}
-                    title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    title={isCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
                 >
                     {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
                 </button>
                 <button
                     onClick={() => setMobileOpen(false)}
                     className="absolute right-3 top-4 p-1 rounded-lg text-gray-400 hover:text-amber-700 hover:bg-amber-50 md:hidden"
-                    aria-label="Close navigation menu"
+                    aria-label={t('nav.close')}
                 >
                     <X size={20} />
                 </button>
@@ -131,14 +136,14 @@ export default function Layout() {
 
                         // Handle items with submenus
                         if (item.subItems) {
-                            const isExpanded = expandedMenus[item.label];
+                            const isExpanded = expandedMenus[item.id];
                             const isActive = item.subItems.some(sub => location.pathname === sub.path);
 
                             return (
-                                <div key={item.label} className="space-y-1">
+                                <div key={item.id} className="space-y-1">
                                     <button
                                         onClick={() => {
-                                            if (!isCollapsed) toggleMenu(item.label);
+                                            if (!isCollapsed) toggleMenu(item.id);
                                             // Navigate to first subitem
                                             if (item.subItems?.[0]?.path) {
                                                 navigate(item.subItems[0].path);
@@ -212,14 +217,14 @@ export default function Layout() {
                                     ? 'bg-amber-100 text-amber-900 font-medium shadow-sm'
                                     : 'text-gray-600 hover:bg-amber-50 hover:text-amber-800'
                             } ${isCollapsed ? 'justify-center px-2' : ''}`}
-                            title={isCollapsed ? 'User Management' : ''}
+                            title={isCollapsed ? t('menu.userManagement') : ''}
                         >
                             <UserCog size={20} className={`flex-shrink-0 ${
                                 location.pathname === '/users'
                                     ? 'text-amber-600'
                                     : 'text-gray-400 group-hover:text-amber-600'
                             }`} />
-                            {!isCollapsed && <span className="whitespace-nowrap overflow-hidden">User Management</span>}
+                            {!isCollapsed && <span className="whitespace-nowrap overflow-hidden">{t('menu.userManagement')}</span>}
                         </Link>
                     )}
                     <Link
@@ -229,14 +234,14 @@ export default function Layout() {
                                 ? 'bg-amber-100 text-amber-900 font-medium shadow-sm'
                                 : 'text-gray-600 hover:bg-amber-50 hover:text-amber-800'
                         } ${isCollapsed ? 'justify-center px-2' : ''}`}
-                        title={isCollapsed ? 'Settings' : ''}
+                        title={isCollapsed ? t('menu.settings') : ''}
                     >
                         <Settings size={20} className={`flex-shrink-0 ${
                             location.pathname === '/settings'
                                 ? 'text-amber-600'
                                 : 'text-gray-400 group-hover:text-amber-600'
                         }`} />
-                        {!isCollapsed && <span className="whitespace-nowrap overflow-hidden">Settings</span>}
+                        {!isCollapsed && <span className="whitespace-nowrap overflow-hidden">{t('menu.settings')}</span>}
                     </Link>
 
                     {/* User Info */}
@@ -252,16 +257,22 @@ export default function Layout() {
                     <button
                         onClick={handleLogout}
                         className={`flex items-center gap-3 px-4 py-3 w-full text-red-600 hover:bg-red-50 rounded-xl transition-colors mt-1 ${isCollapsed ? 'justify-center px-2' : ''}`}
-                        title={isCollapsed ? 'Logout' : ''}
+                        title={isCollapsed ? t('menu.logout') : ''}
                     >
                         <LogOut size={20} className="flex-shrink-0" />
-                        {!isCollapsed && <span className="whitespace-nowrap overflow-hidden">Logout</span>}
+                        {!isCollapsed && <span className="whitespace-nowrap overflow-hidden">{t('menu.logout')}</span>}
                     </button>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto pt-14 md:pt-0">
+            <main className="relative flex-1 overflow-y-auto pt-14 md:pt-0">
+                {/* Language switcher: top-right of the header area (desktop; the
+                    mobile top bar hosts its own copy). Absolutely positioned inside
+                    the scroll container so it never shifts the page layout. */}
+                <div className="hidden md:block absolute top-1 right-4 z-30">
+                    <LanguageSwitcher />
+                </div>
                 <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto">
                     <Outlet />
                 </div>

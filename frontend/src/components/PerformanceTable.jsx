@@ -1,19 +1,15 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowUpDown, Inbox, Loader2 } from 'lucide-react';
 
-const DATE_PRESETS = [
-    { value: 'last_7d', label: 'Last 7 Days' },
-    { value: 'last_30d', label: 'Last 30 Days' },
-    { value: 'this_month', label: 'This Month' },
-    { value: 'last_month', label: 'Last Month' },
-];
+const DATE_PRESETS = ['last_7d', 'last_30d', 'this_month', 'last_month'];
 
-const DEFAULT_COLUMNS = [
-    { key: 'name', label: 'Campaign', numeric: false },
-    { key: 'impressions', label: 'Impressions', numeric: true },
-    { key: 'clicks', label: 'Clicks', numeric: true },
-    { key: 'cost', label: 'Cost', numeric: true, format: (v) => `$${Number(v).toFixed(2)}` },
-    { key: 'conversions', label: 'Conversions', numeric: true },
+const buildDefaultColumns = (t) => [
+    { key: 'name', label: t('columns.campaign'), numeric: false },
+    { key: 'impressions', label: t('columns.impressions'), numeric: true },
+    { key: 'clicks', label: t('columns.clicks'), numeric: true },
+    { key: 'cost', label: t('columns.cost'), numeric: true, format: (v) => `$${Number(v).toFixed(2)}` },
+    { key: 'conversions', label: t('columns.conversions'), numeric: true },
 ];
 
 /**
@@ -27,12 +23,15 @@ const DEFAULT_COLUMNS = [
 export default function PerformanceTable({
     rows = [],
     loading = false,
-    columns = DEFAULT_COLUMNS,
+    columns: columnsProp,
     datePreset,
     onDatePresetChange,
-    emptyMessage = 'No campaigns yet. Connect an account to see performance data.',
+    emptyMessage: emptyMessageProp,
     renderActions,
 }) {
+    const { t } = useTranslation('dashboard');
+    const columns = columnsProp ?? buildDefaultColumns((key) => t(key));
+    const emptyMessage = emptyMessageProp ?? t('performance.empty');
     const [sortKey, setSortKey] = useState(columns.find((c) => c.numeric)?.key ?? columns[0].key);
     const [sortDir, setSortDir] = useState('desc');
 
@@ -70,8 +69,8 @@ export default function PerformanceTable({
                         className="border border-gray-300 rounded-lg px-3 sm:px-4 py-2 text-sm bg-white focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     >
                         {DATE_PRESETS.map((preset) => (
-                            <option key={preset.value} value={preset.value}>
-                                {preset.label}
+                            <option key={preset} value={preset}>
+                                {t(`datePresets.${preset}`)}
                             </option>
                         ))}
                     </select>
@@ -96,7 +95,7 @@ export default function PerformanceTable({
                                 </span>
                             </th>
                         ))}
-                        {renderActions && <th className="px-4 py-3 font-medium text-right">Actions</th>}
+                        {renderActions && <th className="px-4 py-3 font-medium text-right">{t('performance.actions')}</th>}
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -104,7 +103,7 @@ export default function PerformanceTable({
                         <tr>
                             <td colSpan={columns.length + (renderActions ? 1 : 0)} className="px-4 py-10 text-center text-gray-400">
                                 <Loader2 size={20} className="animate-spin inline-block mr-2" />
-                                Loading…
+                                {t('performance.loading')}
                             </td>
                         </tr>
                     )}

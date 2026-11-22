@@ -218,6 +218,10 @@ Modal design requirements:
 - Non-destructive actions use gray/neutral buttons
 - Icon to indicate action type (trash, warning, etc.)
 
+## Internationalization (MANDATORY)
+
+All UI text goes through `react-i18next` (`pt-BR` + `en-US`, namespaces in `frontend/src/i18n/locales/`). Never hardcode user-facing strings; add keys to **both** languages and run `npm run test:i18n` (see `frontend/src/i18n/README.md`).
+
 ## Database Requirements
 
 **PostgreSQL is REQUIRED.** SQLite is deprecated and will cause startup errors.

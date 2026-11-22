@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { LayoutDashboard, Target, TrendingUp, Music2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../context/AuthContext';
+import { translateBackendMessage } from '../i18n/backendErrors';
 import { useToast } from '../context/ToastContext';
 import PerformanceTable from '../components/PerformanceTable';
 import OptimizationPanel from '../components/OptimizationPanel';
@@ -21,14 +23,14 @@ const PLATFORM_LABELS = {
     tiktok: 'TikTok Ads',
 };
 
-const OVERVIEW_COLUMNS = [
-    { key: 'platform', label: 'Platform', numeric: false, format: (v) => PLATFORM_LABELS[v] || v },
-    { key: 'campaign_name', label: 'Campaign', numeric: false },
-    { key: 'impressions', label: 'Impressions', numeric: true },
-    { key: 'clicks', label: 'Clicks', numeric: true },
-    { key: 'spend', label: 'Spend', numeric: true, format: (v) => `$${Number(v).toFixed(2)}` },
-    { key: 'conversions', label: 'Conversions', numeric: true },
-    { key: 'cpa', label: 'CPA', numeric: true, format: (v) => (v == null ? '—' : `$${Number(v).toFixed(2)}`) },
+const buildOverviewColumns = (t) => [
+    { key: 'platform', label: t('columns.platform'), numeric: false, format: (v) => PLATFORM_LABELS[v] || v },
+    { key: 'campaign_name', label: t('columns.campaign'), numeric: false },
+    { key: 'impressions', label: t('columns.impressions'), numeric: true },
+    { key: 'clicks', label: t('columns.clicks'), numeric: true },
+    { key: 'spend', label: t('columns.spend'), numeric: true, format: (v) => `$${Number(v).toFixed(2)}` },
+    { key: 'conversions', label: t('columns.conversions'), numeric: true },
+    { key: 'cpa', label: t('columns.cpa'), numeric: true, format: (v) => (v == null ? '—' : `$${Number(v).toFixed(2)}`) },
 ];
 
 /**
@@ -40,6 +42,8 @@ const OVERVIEW_COLUMNS = [
 export default function Overview() {
     const { authFetch } = useAuth();
     const { showError } = useToast();
+    const { t } = useTranslation('dashboard');
+    const overviewColumns = useMemo(() => buildOverviewColumns(t), [t]);
 
     const [campaigns, setCampaigns] = useState([]);
     const [errors, setErrors] = useState({});
@@ -56,14 +60,14 @@ export default function Overview() {
                 setErrors(data.errors || {});
             } else {
                 const error = await response.json().catch(() => ({}));
-                showError(error.detail || 'Failed to load overview');
+                showError(translateBackendMessage(error.detail, 'dashboard:overview.loadFailed'));
             }
         } catch (error) {
-            showError('Failed to load overview');
+            showError(t('overview.loadFailed'));
         } finally {
             setLoading(false);
         }
-    }, [authFetch, datePreset, showError]);
+    }, [authFetch, datePreset, showError, t]);
 
     useEffect(() => {
         loadOverview();
@@ -89,9 +93,9 @@ export default function Overview() {
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2 flex items-center gap-3">
                     <LayoutDashboard size={28} className="text-amber-600 sm:hidden" />
                     <LayoutDashboard size={32} className="text-amber-600 hidden sm:block" />
-                    Overview
+                    {t('overview.title')}
                 </h1>
-                <p className="text-sm sm:text-base text-gray-600">Meta and Google Ads campaign performance, side by side</p>
+                <p className="text-sm sm:text-base text-gray-600">{t('overview.subtitle')}</p>
             </div>
 
             {errorEntries.length > 0 && (
@@ -108,15 +112,15 @@ export default function Overview() {
 
             {!loading && spendByPlatform.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                    <h2 className="text-sm font-semibold text-gray-700 mb-4">Spend by platform</h2>
+                    <h2 className="text-sm font-semibold text-gray-700 mb-4">{t('overview.spendByPlatform')}</h2>
                     <ResponsiveContainer width="100%" height={240}>
                         <BarChart data={spendByPlatform}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="platform" />
                             <YAxis tickFormatter={(v) => `$${v}`} />
-                            <Tooltip formatter={(value) => [`$${value}`, 'Spend']} />
+                            <Tooltip formatter={(value) => [`$${value}`, t('columns.spend')]} />
                             <Legend />
-                            <Bar dataKey="spend" name="Spend" radius={[4, 4, 0, 0]}>
+                            <Bar dataKey="spend" name={t('columns.spend')} radius={[4, 4, 0, 0]}>
                                 {spendByPlatform.map((entry) => (
                                     <Cell key={entry.platform} fill={entry.fill} />
                                 ))}
@@ -131,19 +135,19 @@ export default function Overview() {
                 bare "no campaigns" table. */}
             {!loading && campaigns.length === 0 && (
                 <div className="bg-white rounded-xl border border-amber-200 shadow-sm p-6 sm:p-8 text-center">
-                    <h2 className="text-lg font-bold text-gray-900">Connect your first ad account</h2>
+                    <h2 className="text-lg font-bold text-gray-900">{t('overview.connectTitle')}</h2>
                     <p className="text-sm text-gray-600 mt-2 max-w-md mx-auto">
-                        Link Meta Ads, Google Ads, or TikTok Ads to see cross-platform performance here.
+                        {t('overview.connectBody')}
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center mt-5">
                         <Link to="/facebook-campaigns" className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors">
-                            <Target size={18} /> Connect Meta Ads
+                            <Target size={18} /> {t('overview.connectMeta')}
                         </Link>
                         <Link to="/google-ads" className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-amber-300 text-amber-800 rounded-lg font-medium hover:bg-amber-50 transition-colors">
-                            <TrendingUp size={18} /> Connect Google Ads
+                            <TrendingUp size={18} /> {t('overview.connectGoogle')}
                         </Link>
                         <Link to="/tiktok-ads" className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-amber-300 text-amber-800 rounded-lg font-medium hover:bg-amber-50 transition-colors">
-                            <Music2 size={18} /> Connect TikTok Ads
+                            <Music2 size={18} /> {t('overview.connectTikTok')}
                         </Link>
                     </div>
                 </div>
@@ -151,11 +155,11 @@ export default function Overview() {
 
             <PerformanceTable
                 rows={campaigns.map((row, index) => ({ ...row, id: `${row.platform}-${index}` }))}
-                columns={OVERVIEW_COLUMNS}
+                columns={overviewColumns}
                 loading={loading}
                 datePreset={datePreset}
                 onDatePresetChange={setDatePreset}
-                emptyMessage={campaigns.length === 0 ? '' : 'No campaigns in this date range.'}
+                emptyMessage={campaigns.length === 0 ? '' : t('overview.noCampaignsInRange')}
             />
         </div>
     );

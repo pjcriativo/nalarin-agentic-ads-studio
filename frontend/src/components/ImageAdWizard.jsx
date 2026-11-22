@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, ChevronLeft, Check, Briefcase, Package, Users, Image, Hash, FileText, Sparkles } from 'lucide-react';
 import { useBrands } from '../context/BrandContext';
 import ImageTemplateSelector from './ImageTemplateSelector';
 
 export default function ImageAdWizard({ onComplete, onCancel }) {
+    const { t } = useTranslation('creatives');
     const { brands, customerProfiles } = useBrands();
     const [currentStep, setCurrentStep] = useState(1);
     const [wizardData, setWizardData] = useState({
@@ -20,13 +22,13 @@ export default function ImageAdWizard({ onComplete, onCancel }) {
     });
 
     const steps = [
-        { id: 1, name: 'Brand', icon: Briefcase },
-        { id: 2, name: 'Product', icon: Package },
-        { id: 3, name: 'Profile', icon: Users },
-        { id: 4, name: 'Template', icon: Image },
-        { id: 5, name: 'Variations', icon: Hash },
-        { id: 6, name: 'Campaign', icon: FileText },
-        { id: 7, name: 'Review', icon: Check }
+        { id: 1, name: t('imageAdWizard.brand'), icon: Briefcase },
+        { id: 2, name: t('imageAdWizard.product'), icon: Package },
+        { id: 3, name: t('imageAdWizard.profile'), icon: Users },
+        { id: 4, name: t('imageAdWizard.template'), icon: Image },
+        { id: 5, name: t('imageAdWizard.variations'), icon: Hash },
+        { id: 6, name: t('imageAdWizard.campaign'), icon: FileText },
+        { id: 7, name: t('imageAdWizard.review'), icon: Check }
     ];
 
     const updateData = (field, value) => {
@@ -77,9 +79,9 @@ export default function ImageAdWizard({ onComplete, onCancel }) {
                 <div className="px-8 py-6 border-b border-gray-200">
                     <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                         <Sparkles className="text-purple-600" size={28} />
-                        Create Template-Based Image Ads
+                        {t('imageAdWizard.createTemplateBasedImageAds')}
                     </h2>
-                    <p className="text-gray-500 mt-1">Generate AI-powered ads using winning templates</p>
+                    <p className="text-gray-500 mt-1">{t('imageAdWizard.generateAiPoweredAdsUsing')}</p>
                 </div>
 
                 {/* Progress Steps */}
@@ -141,8 +143,8 @@ export default function ImageAdWizard({ onComplete, onCancel }) {
                     {/* Step 4: Template Selection */}
                     {currentStep === 4 && (
                         <div>
-                            <h3 className="text-xl font-bold mb-4">Select a Template</h3>
-                            <p className="text-gray-600 mb-6">Choose a winning ad template to base your new ads on</p>
+                            <h3 className="text-xl font-bold mb-4">{t('imageAdWizard.selectATemplate')}</h3>
+                            <p className="text-gray-600 mb-6">{t('imageAdWizard.chooseAWinningAdTemplate')}</p>
                             <ImageTemplateSelector
                                 onSelect={(template) => {
                                     updateData('template', template);
@@ -182,7 +184,7 @@ export default function ImageAdWizard({ onComplete, onCancel }) {
                         onClick={onCancel}
                         className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
                     >
-                        Cancel
+                        {t('imageAdWizard.cancel')}
                     </button>
                     <div className="flex gap-3">
                         {currentStep > 1 && currentStep !== 4 && (
@@ -191,7 +193,7 @@ export default function ImageAdWizard({ onComplete, onCancel }) {
                                 className="flex items-center gap-2 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
                             >
                                 <ChevronLeft size={20} />
-                                Back
+                                {t('imageAdWizard.back')}
                             </button>
                         )}
                         {currentStep < steps.length && currentStep !== 4 && (
@@ -203,8 +205,8 @@ export default function ImageAdWizard({ onComplete, onCancel }) {
                                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                     }`}
                             >
-                                Next
-                                <ChevronRight size={20} />
+                                {t('imageAdWizard.next')}
+                                                     <ChevronRight size={20} />
                             </button>
                         )}
                         {currentStep === steps.length && (
@@ -213,7 +215,7 @@ export default function ImageAdWizard({ onComplete, onCancel }) {
                                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 font-medium"
                             >
                                 <Sparkles size={20} />
-                                Generate Ads
+                                {t('imageAdWizard.generateAds')}
                             </button>
                         )}
                     </div>
@@ -226,10 +228,11 @@ export default function ImageAdWizard({ onComplete, onCancel }) {
 // Step Components
 
 function BrandSelectionStep({ brands, selectedBrand, onSelect }) {
+    const { t } = useTranslation('creatives');
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">Select Your Brand</h3>
-            <p className="text-gray-600 mb-6">Choose the brand for this ad campaign</p>
+            <h3 className="text-xl font-bold mb-4">{t('imageAdWizard.selectYourBrand')}</h3>
+            <p className="text-gray-600 mb-6">{t('imageAdWizard.chooseTheBrandForThis')}</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {brands.map(brand => (
                     <div
@@ -250,7 +253,7 @@ function BrandSelectionStep({ brands, selectedBrand, onSelect }) {
                             <div className="flex-1">
                                 <div className="font-bold text-gray-900">{brand.name}</div>
                                 <div className="text-xs text-gray-500">
-                                    {brand.products.length} Products • {brand.profileIds?.length || 0} Profiles
+                                    {t('common.productsCount', { count: brand.products.length })} • {t('common.profilesCount', { count: brand.profileIds?.length || 0 })}
                                 </div>
                             </div>
                             {selectedBrand?.id === brand.id && (
@@ -259,7 +262,7 @@ function BrandSelectionStep({ brands, selectedBrand, onSelect }) {
                         </div>
                         {brand.voice && (
                             <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                                <span className="font-medium">Voice:</span> {brand.voice}
+                                <span className="font-medium">{t('imageAdWizard.voice')}</span> {brand.voice}
                             </div>
                         )}
                     </div>
@@ -270,13 +273,14 @@ function BrandSelectionStep({ brands, selectedBrand, onSelect }) {
 }
 
 function ProductSelectionStep({ products, selectedProduct, onSelect }) {
+    const { t } = useTranslation('creatives');
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">Select Your Product</h3>
-            <p className="text-gray-600 mb-6">Choose the product to feature in the ads</p>
+            <h3 className="text-xl font-bold mb-4">{t('imageAdWizard.selectYourProduct')}</h3>
+            <p className="text-gray-600 mb-6">{t('imageAdWizard.chooseTheProductToFeature')}</p>
             {products.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
-                    No products found for this brand. Please add products first.
+                    {t('imageAdWizard.noProductsFoundForThis')}
                 </div>
             ) : (
                 <div className="space-y-3">
@@ -309,13 +313,14 @@ function ProductSelectionStep({ products, selectedProduct, onSelect }) {
 }
 
 function ProfileSelectionStep({ profiles, selectedProfile, onSelect }) {
+    const { t } = useTranslation('creatives');
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">Select Target Audience</h3>
-            <p className="text-gray-600 mb-6">Choose the customer profile to target</p>
+            <h3 className="text-xl font-bold mb-4">{t('imageAdWizard.selectTargetAudience')}</h3>
+            <p className="text-gray-600 mb-6">{t('imageAdWizard.chooseTheCustomerProfileTo')}</p>
             {profiles.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
-                    No customer profiles found for this brand. Please add profiles first.
+                    {t('imageAdWizard.noCustomerProfilesFoundFor')}
                 </div>
             ) : (
                 <div className="space-y-3">
@@ -336,17 +341,17 @@ function ProfileSelectionStep({ profiles, selectedProfile, onSelect }) {
                             </div>
                             {profile.demographics && (
                                 <div className="text-sm text-gray-600 mb-1">
-                                    <span className="font-medium">Demographics:</span> {profile.demographics}
+                                    <span className="font-medium">{t('imageAdWizard.demographics')}</span> {profile.demographics}
                                 </div>
                             )}
                             {profile.pain_points && (
                                 <div className="text-sm text-gray-600 mb-1">
-                                    <span className="font-medium">Pain Points:</span> {profile.pain_points}
+                                    <span className="font-medium">{t('imageAdWizard.painPoints')}</span> {profile.pain_points}
                                 </div>
                             )}
                             {profile.goals && (
                                 <div className="text-sm text-gray-600">
-                                    <span className="font-medium">Goals:</span> {profile.goals}
+                                    <span className="font-medium">{t('imageAdWizard.goals')}</span> {profile.goals}
                                 </div>
                             )}
                         </div>
@@ -358,10 +363,11 @@ function ProfileSelectionStep({ profiles, selectedProfile, onSelect }) {
 }
 
 function VariationCountStep({ count, onChange }) {
+    const { t } = useTranslation('creatives');
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">How Many Variations?</h3>
-            <p className="text-gray-600 mb-6">Choose how many ad variations to generate (1-10)</p>
+            <h3 className="text-xl font-bold mb-4">{t('imageAdWizard.howManyVariations')}</h3>
+            <p className="text-gray-600 mb-6">{t('imageAdWizard.chooseHowManyAdVariations')}</p>
 
             <div className="max-w-md mx-auto">
                 <div className="flex items-center gap-4 mb-6">
@@ -380,7 +386,7 @@ function VariationCountStep({ count, onChange }) {
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <p className="text-sm text-blue-800">
-                        <strong>Tip:</strong> More variations give you more options to choose from, but will take longer to generate.
+                        <strong>{t('imageAdWizard.tip')}</strong> {t('imageAdWizard.moreVariationsGiveYouMore')}
                     </p>
                 </div>
             </div>
@@ -389,46 +395,47 @@ function VariationCountStep({ count, onChange }) {
 }
 
 function CampaignDetailsStep({ details, onChange }) {
+    const { t } = useTranslation('creatives');
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">Campaign Details</h3>
-            <p className="text-gray-600 mb-6">Provide details to customize your ad copy</p>
+            <h3 className="text-xl font-bold mb-4">{t('imageAdWizard.campaignDetails')}</h3>
+            <p className="text-gray-600 mb-6">{t('imageAdWizard.provideDetailsToCustomizeYour')}</p>
 
             <div className="max-w-2xl space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Offer / Promotion *
+                        {t('imageAdWizard.offerPromotion')}
                     </label>
                     <input
                         type="text"
                         value={details.offer}
                         onChange={(e) => onChange('offer', e.target.value)}
-                        placeholder="e.g., 50% off Black Friday, Buy 2 Get 1 Free"
+                        placeholder={t('imageAdWizard.eG50OffBlack')}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
                     />
                 </div>
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Urgency / Timing
+                        {t('imageAdWizard.urgencyTiming')}
                     </label>
                     <input
                         type="text"
                         value={details.urgency}
                         onChange={(e) => onChange('urgency', e.target.value)}
-                        placeholder="e.g., Limited time, Ends tonight, While supplies last"
+                        placeholder={t('imageAdWizard.eGLimitedTimeEnds')}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
                     />
                 </div>
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Key Messaging *
+                        {t('imageAdWizard.keyMessaging')}
                     </label>
                     <textarea
                         value={details.messaging}
                         onChange={(e) => onChange('messaging', e.target.value)}
-                        placeholder="e.g., Science-backed results, Trusted by 10,000+ customers, Clinically proven"
+                        placeholder={t('imageAdWizard.eGScienceBackedResults')}
                         rows={3}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
                     />
@@ -439,51 +446,52 @@ function CampaignDetailsStep({ details, onChange }) {
 }
 
 function ReviewStep({ wizardData }) {
+    const { t } = useTranslation('creatives');
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">Review Your Selections</h3>
-            <p className="text-gray-600 mb-6">Verify everything looks correct before generating</p>
+            <h3 className="text-xl font-bold mb-4">{t('imageAdWizard.reviewYourSelections')}</h3>
+            <p className="text-gray-600 mb-6">{t('imageAdWizard.verifyEverythingLooksCorrectBefore')}</p>
 
             <div className="space-y-4">
                 <ReviewItem
-                    label="Brand"
+                    label={t('imageAdWizard.brand')}
                     value={wizardData.brand?.name}
                     icon={Briefcase}
                 />
                 <ReviewItem
-                    label="Product"
+                    label={t('imageAdWizard.product')}
                     value={wizardData.product?.name}
                     icon={Package}
                 />
                 <ReviewItem
-                    label="Target Audience"
+                    label={t('imageAdWizard.targetAudience')}
                     value={wizardData.profile?.name}
                     icon={Users}
                 />
                 <ReviewItem
-                    label="Template"
+                    label={t('imageAdWizard.template')}
                     value={wizardData.template?.name || wizardData.template?.template_category}
                     icon={Image}
                 />
                 <ReviewItem
-                    label="Variations"
-                    value={`${wizardData.variationCount} ads`}
+                    label={t('imageAdWizard.variations')}
+                    value={t('common.adsCount', { count: wizardData.variationCount })}
                     icon={Hash}
                 />
                 <ReviewItem
-                    label="Offer"
+                    label={t('imageAdWizard.offer')}
                     value={wizardData.campaignDetails.offer}
                     icon={FileText}
                 />
                 {wizardData.campaignDetails.urgency && (
                     <ReviewItem
-                        label="Urgency"
+                        label={t('imageAdWizard.urgency')}
                         value={wizardData.campaignDetails.urgency}
                         icon={FileText}
                     />
                 )}
                 <ReviewItem
-                    label="Messaging"
+                    label={t('imageAdWizard.messaging')}
                     value={wizardData.campaignDetails.messaging}
                     icon={FileText}
                 />
@@ -491,7 +499,7 @@ function ReviewStep({ wizardData }) {
 
             <div className="mt-6 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
                 <p className="text-sm text-purple-900">
-                    <strong>Ready to generate!</strong> Click "Generate Ads" to create {wizardData.variationCount} AI-powered ad{wizardData.variationCount > 1 ? 's' : ''} based on your selections.
+                    <strong>{t('imageAdWizard.readyToGenerate')}</strong> {t('common.readyToGenerateAdsBody', { count: wizardData.variationCount })}
                 </p>
             </div>
         </div>

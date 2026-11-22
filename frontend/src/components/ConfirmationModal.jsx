@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Trash2, AlertTriangle, X } from 'lucide-react';
 
 const ConfirmationModal = ({
@@ -7,11 +8,12 @@ const ConfirmationModal = ({
     onConfirm,
     title,
     message,
-    confirmText = 'Delete',
-    cancelText = 'Cancel',
+    confirmText,
+    cancelText,
     isDestructive = true,
     icon: Icon = Trash2
 }) => {
+    const { t } = useTranslation('common');
     if (!isOpen) return null;
 
     return (
@@ -34,7 +36,7 @@ const ConfirmationModal = ({
                         onClick={onClose}
                         className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium"
                     >
-                        {cancelText}
+                        {cancelText ?? t('actions.cancel')}
                     </button>
                     <button
                         onClick={() => {
@@ -46,7 +48,7 @@ const ConfirmationModal = ({
                             : 'bg-blue-600 hover:bg-blue-700'
                             }`}
                     >
-                        {confirmText}
+                        {confirmText ?? t('actions.delete')}
                     </button>
                 </div>
             </div>

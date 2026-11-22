@@ -1,10 +1,12 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 
 const PrivateRoute = ({ children, requiredRole, requiredPermission }) => {
     const { isAuthenticated, loading, hasRole, hasPermission } = useAuth();
     const location = useLocation();
+    const { t } = useTranslation('auth');
 
     // Show loading state while checking auth
     if (loading) {
@@ -15,7 +17,7 @@ const PrivateRoute = ({ children, requiredRole, requiredPermission }) => {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    <p className="text-gray-400">Loading...</p>
+                    <p className="text-gray-400">{t('guard.loading')}</p>
                 </div>
             </div>
         );
@@ -32,15 +34,15 @@ const PrivateRoute = ({ children, requiredRole, requiredPermission }) => {
             <div className="min-h-screen bg-gray-900 flex items-center justify-center">
                 <div className="bg-gray-800 rounded-lg p-8 max-w-md text-center">
                     <div className="text-red-500 text-5xl mb-4">403</div>
-                    <h2 className="text-xl font-bold text-white mb-2">Access Denied</h2>
+                    <h2 className="text-xl font-bold text-white mb-2">{t('guard.accessDenied')}</h2>
                     <p className="text-gray-400 mb-4">
-                        You don't have the required role to access this page.
+                        {t('guard.noRole')}
                     </p>
                     <button
                         onClick={() => window.history.back()}
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                     >
-                        Go Back
+                        {t('guard.goBack')}
                     </button>
                 </div>
             </div>
@@ -53,15 +55,15 @@ const PrivateRoute = ({ children, requiredRole, requiredPermission }) => {
             <div className="min-h-screen bg-gray-900 flex items-center justify-center">
                 <div className="bg-gray-800 rounded-lg p-8 max-w-md text-center">
                     <div className="text-red-500 text-5xl mb-4">403</div>
-                    <h2 className="text-xl font-bold text-white mb-2">Access Denied</h2>
+                    <h2 className="text-xl font-bold text-white mb-2">{t('guard.accessDenied')}</h2>
                     <p className="text-gray-400 mb-4">
-                        You don't have the required permission to access this page.
+                        {t('guard.noPermission')}
                     </p>
                     <button
                         onClick={() => window.history.back()}
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                     >
-                        Go Back
+                        {t('guard.goBack')}
                     </button>
                 </div>
             </div>

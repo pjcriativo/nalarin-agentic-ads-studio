@@ -1,0 +1,188 @@
+{
+  "categories": {
+    "trust_authority": "Confiança e autoridade",
+    "problem_solution": "Problema / Solução",
+    "social_proof_native": "Prova social e nativo",
+    "demonstration_logic": "Demonstração e lógica",
+    "disruption": "Ruptura"
+  },
+  "promptCategories": {
+    "ad_copy_generation": "Geração de texto de anúncios",
+    "ad_remix_engine": "Motor de remix de anúncios",
+    "image_generation": "Geração de imagens",
+    "research_analysis": "Pesquisa e análise"
+  },
+  "bestFor": {
+    "medical": "Médico",
+    "legal": "Jurídico",
+    "financial": "Financeiro",
+    "high_ticket_services": "Serviços de alto valor",
+    "saas": "SaaS",
+    "supplements": "Suplementos",
+    "professional_services": "Serviços profissionais",
+    "tech": "Tecnologia",
+    "startups": "Startups",
+    "personal_brands": "Marcas pessoais",
+    "coaching": "Coaching",
+    "consulting": "Consultoria",
+    "fitness": "Fitness",
+    "productivity_tools": "Ferramentas de produtividade",
+    "self_help": "Autoajuda",
+    "services": "Serviços",
+    "subscriptions": "Assinaturas",
+    "innovation": "Inovação",
+    "disruptive_products": "Produtos disruptivos",
+    "modern_services": "Serviços modernos",
+    "e_commerce": "E-commerce",
+    "apps": "Aplicativos",
+    "beauty": "Beleza",
+    "lifestyle_products": "Produtos de estilo de vida",
+    "consumer_goods": "Bens de consumo",
+    "fashion": "Moda",
+    "lifestyle": "Estilo de vida",
+    "food_beverage": "Alimentos e bebidas",
+    "natural_products": "Produtos naturais",
+    "skincare": "Skincare",
+    "luxury_goods": "Artigos de luxo",
+    "sensory_products": "Produtos sensoriais",
+    "saturated_markets": "Mercados saturados",
+    "contrarian_brands": "Marcas contrárias",
+    "contrarian_messaging": "Mensagens contrárias",
+    "educational_products": "Produtos educacionais",
+    "high_stakes_decisions": "Decisões de alto risco",
+    "time_sensitive_offers": "Ofertas por tempo limitado",
+    "engagement": "Engajamento"
+  },
+  "styles": {
+    "local-hero-split": {
+      "name": "O \"Herói Local\" em Duas Partes",
+      "description": "Divisão horizontal 50/50 mostrando o local e o profissional",
+      "visualLayout": "Divisão horizontal 50/50",
+      "psychology": "Isto é real, fica perto de mim e está aberto",
+      "mood": "Profissional e confiável",
+      "design_style": "Estética corporativa limpa"
+    },
+    "pr-feature": {
+      "name": "A Matéria na Mídia (o \"Visto em\")",
+      "description": "Uma única imagem de destaque profissional com barra de credibilidade da mídia",
+      "visualLayout": "Imagem única de destaque com barra de mídia sobreposta",
+      "psychology": "Autoridade transferida - se escreveram sobre isso, deve ser legítimo",
+      "mood": "Crível e autoritário",
+      "design_style": "Sofisticado e premium"
+    },
+    "founders-promise": {
+      "name": "A \"Promessa do Fundador\"",
+      "description": "Retrato com contato visual direto e toque pessoal",
+      "visualLayout": "Retrato com contato visual direto",
+      "psychology": "Responsabilidade - um rosto por trás da marca reduz o medo de golpes",
+      "mood": "Autêntico e confiável",
+      "design_style": "Acessível e profissional"
+    },
+    "comic-strip-agitator": {
+      "name": "O Agitador em Quadrinhos",
+      "description": "Narrativa sequencial mostrando a jornada de transformação",
+      "visualLayout": "Grade de 4 quadros (2x2) ou 3 quadros na horizontal",
+      "psychology": "Transporte narrativo - o usuário se vê no quadro do \"Antes\"",
+      "mood": "Enérgico e transformador",
+      "design_style": "Ousado e gráfico"
+    },
+    "us-vs-them-chart": {
+      "name": "O Gráfico \"Nós vs. Eles\"",
+      "description": "Tabela comparativa que apresenta a escolha racional",
+      "visualLayout": "Tela dividida ou tabela comparativa",
+      "psychology": "Viés da lógica - enquadra a compra como a única escolha racional",
+      "mood": "Lógico e comparativo",
+      "design_style": "Estilo de infográfico limpo"
+    },
+    "old-way-new-way": {
+      "name": "O \"Jeito Antigo vs. Jeito Novo\"",
+      "description": "Divisão diagonal mostrando evolução e progresso",
+      "visualLayout": "Divisão diagonal",
+      "psychology": "Evolução - sugere que não mudar o torna ultrapassado",
+      "mood": "Progressista e inovador",
+      "design_style": "Contraste moderno vs. vintage"
+    },
+    "iphone-note": {
+      "name": "A Captura de Tela \"Nota do iPhone\"",
+      "description": "Nota pessoal de aparência nativa que se mistura ao feed",
+      "visualLayout": "Réplica exata do app Notas da Apple",
+      "psychology": "Camuflagem nativa - parece pessoal e sem polimento, contorna a cegueira de anúncios",
+      "mood": "Casual e pessoal",
+      "design_style": "Interface nativa do iOS"
+    },
+    "testimonial-sandwich": {
+      "name": "O Sanduíche de Depoimentos",
+      "description": "Produto centralizado com prova social acima e abaixo",
+      "visualLayout": "Imagem do produto centralizada com sobreposições",
+      "psychology": "Redução de risco - os usuários confiam mais em outros usuários do que na marca",
+      "mood": "Confiável e validado",
+      "design_style": "Limpo e organizado"
+    },
+    "ugc-still": {
+      "name": "O Still \"UGC\" (Conteúdo Gerado pelo Usuário)",
+      "description": "Conteúdo autêntico em estilo selfie mostrando o uso real",
+      "visualLayout": "Foto estilo selfie (espelho ou câmera frontal)",
+      "psychology": "Autenticidade - o muito polido parece mentira, o pouco polido parece verdade",
+      "mood": "Autêntico e identificável",
+      "design_style": "Sem polimento e genuíno"
+    },
+    "exploded-view": {
+      "name": "A \"Vista Explodida\" (Ingredientes)",
+      "description": "Detalhamento do produto mostrando os ingredientes internos",
+      "visualLayout": "Produto centralizado com legendas de ingredientes",
+      "psychology": "Transparência - mostra exatamente o que há dentro, sugere pureza e potência",
+      "mood": "Educativo e transparente",
+      "design_style": "Científico e limpo"
+    },
+    "texture-shot": {
+      "name": "A Foto de Textura (Sensorial)",
+      "description": "Macro extremo que desperta o desejo sensorial",
+      "visualLayout": "Close-up macro extremo",
+      "psychology": "Gatilho sensorial - cria um desejo visceral de tocar ou provar",
+      "mood": "Luxuoso e apetitoso",
+      "design_style": "Fotografia de produto de alto padrão"
+    },
+    "ugly-ad-doodle": {
+      "name": "O \"Anúncio Feio\" (Rabisco)",
+      "description": "Gráficos propositalmente toscos que se destacam",
+      "visualLayout": "Bonecos de palito ou gráficos estilo MS Paint",
+      "psychology": "Novidade - parece tão ruim que se destaca em um feed de fotos perfeitas",
+      "mood": "Divertido e disruptivo",
+      "design_style": "Propositalmente tosco e simples"
+    },
+    "warning-label": {
+      "name": "O \"Rótulo de Aviso\"",
+      "description": "Design em estilo de alerta que chama a atenção",
+      "visualLayout": "Fundo amarelo/vermelho vivo com fita de alerta",
+      "psychology": "Lacuna de curiosidade - o cérebro é programado para prestar atenção a avisos",
+      "mood": "Urgente e chamativo",
+      "design_style": "Sinalização de segurança industrial"
+    },
+    "notification-fakeout": {
+      "name": "A Falsa \"Notificação\"",
+      "description": "Notificação realista que prende a atenção",
+      "visualLayout": "Fundo desfocado com balão de notificação",
+      "psychology": "Reflexo - condicionados a verificar notificações imediatamente",
+      "mood": "Urgente e chamativo",
+      "design_style": "Interface mobile realista"
+    }
+  },
+  "prompts": {
+    "copy-generation-main": {
+      "name": "Geração de texto de anúncios",
+      "description": "Prompt principal para gerar variações de texto de anúncio com voz da marca, detalhes do produto e especificidades da campanha"
+    },
+    "copy-field-regeneration": {
+      "name": "Regeneração de campo",
+      "description": "Regenera um campo específico (título, corpo ou CTA) mantendo a consistência da marca"
+    },
+    "ad-remix-deconstruction": {
+      "name": "Desconstrução de modelo de anúncio",
+      "description": "Analisa um anúncio vencedor para extrair seu esquema estrutural para reutilização"
+    },
+    "ad-remix-reconstruction": {
+      "name": "Reconstrução de modelo de anúncio",
+      "description": "Aplica um esquema de anúncio comprovado aos novos dados de marca/produto"
+    }
+  }
+}

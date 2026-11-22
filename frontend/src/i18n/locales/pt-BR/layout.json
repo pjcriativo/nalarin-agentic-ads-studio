@@ -1,0 +1,31 @@
+{
+  "menu": {
+    "overview": "Visão geral",
+    "dashboard": "Painel",
+    "research": "Pesquisa",
+    "scrapeBrandAds": "Extrair anúncios de marcas",
+    "settings": "Configurações",
+    "buildCreatives": "Criar criativos",
+    "brands": "Marcas",
+    "products": "Produtos",
+    "customerProfiles": "Perfis de clientes",
+    "winningAds": "Anúncios vencedores",
+    "generatedAds": "Anúncios gerados",
+    "facebookCampaigns": "Campanhas do Facebook",
+    "googleAds": "Google Ads",
+    "tiktokAds": "TikTok Ads",
+    "userManagement": "Gestão de usuários",
+    "logout": "Sair"
+  },
+  "nav": {
+    "open": "Abrir menu de navegação",
+    "close": "Fechar menu de navegação"
+  },
+  "sidebar": {
+    "expand": "Expandir barra lateral",
+    "collapse": "Recolher barra lateral"
+  },
+  "toast": {
+    "loggedOut": "Logout realizado com sucesso"
+  }
+}

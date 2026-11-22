@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Filter, Grid, List, Sparkles, Trash2, AlertTriangle } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -6,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 export default function ImageTemplateSelector({ onSelect, onClose, embedded = false }) {
+    const { t } = useTranslation('creatives');
     const { showError } = useToast();
     const { authFetch } = useAuth();
     const [templates, setTemplates] = useState([]);
@@ -150,11 +152,11 @@ export default function ImageTemplateSelector({ onSelect, onClose, embedded = fa
                 fetchFilters(); // Refresh filters
                 setShowDeleteConfirm(false);
             } else {
-                showError('Failed to delete templates');
+                showError(t('imageTemplateSelector.failedToDeleteTemplates'));
             }
         } catch (error) {
             console.error('Delete error:', error);
-            showError('Error deleting templates');
+            showError(t('imageTemplateSelector.errorDeletingTemplates'));
         }
     };
 
@@ -166,7 +168,7 @@ export default function ImageTemplateSelector({ onSelect, onClose, embedded = fa
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                             <Sparkles className="text-purple-600" size={24} />
-                            Select Template
+                            {t('imageTemplateSelector.selectTemplate')}
                         </h2>
                         <button
                             onClick={onClose}
@@ -189,7 +191,7 @@ export default function ImageTemplateSelector({ onSelect, onClose, embedded = fa
                                 className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                             />
                             <span className="text-sm text-gray-600">
-                                {selectedIds.size > 0 ? `${selectedIds.size} Selected` : 'Select All'}
+                                {selectedIds.size > 0 ? t('common.selectedCount', { count: selectedIds.size }) : t('common.selectAll')}
                             </span>
                             {selectedIds.size > 0 && (
                                 <button
@@ -197,7 +199,7 @@ export default function ImageTemplateSelector({ onSelect, onClose, embedded = fa
                                     className="ml-2 flex items-center gap-1 text-red-600 hover:text-red-700 text-sm font-medium bg-red-50 px-2 py-1 rounded"
                                 >
                                     <Trash2 size={14} />
-                                    Delete
+                                    {t('imageTemplateSelector.delete')}
                                 </button>
                             )}
                         </div>
@@ -205,7 +207,7 @@ export default function ImageTemplateSelector({ onSelect, onClose, embedded = fa
 
                     <div className="flex items-center gap-2">
                         <Filter size={16} className="text-gray-500" />
-                        <span className="text-sm font-medium text-gray-700">Filters:</span>
+                        <span className="text-sm font-medium text-gray-700">{t('imageTemplateSelector.filters')}</span>
                     </div>
 
                     {/* Category Filter */}
@@ -214,7 +216,7 @@ export default function ImageTemplateSelector({ onSelect, onClose, embedded = fa
                         onChange={(e) => setSelectedCategory(e.target.value)}
                         className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent capitalize"
                     >
-                        <option value="">All Categories</option>
+                        <option value="">{t('imageTemplateSelector.allCategories')}</option>
                         {filters.categories && filters.categories.map(cat => (
                             <option key={cat} value={cat} className="capitalize">{cat}</option>
                         ))}
@@ -226,7 +228,7 @@ export default function ImageTemplateSelector({ onSelect, onClose, embedded = fa
                         onChange={(e) => setSelectedStyle(e.target.value)}
                         className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     >
-                        <option value="">All Styles</option>
+                        <option value="">{t('imageTemplateSelector.allStyles')}</option>
                         {filters.styles && filters.styles.map(style => (
                             <option key={style} value={style}>{style}</option>
                         ))}
@@ -238,9 +240,9 @@ export default function ImageTemplateSelector({ onSelect, onClose, embedded = fa
                         onChange={(e) => setSortBy(e.target.value)}
                         className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     >
-                        <option value="newest">Newest First</option>
-                        <option value="oldest">Oldest First</option>
-                        <option value="name">Name (A-Z)</option>
+                        <option value="newest">{t('imageTemplateSelector.newestFirst')}</option>
+                        <option value="oldest">{t('imageTemplateSelector.oldestFirst')}</option>
+                        <option value="name">{t('imageTemplateSelector.nameAZ')}</option>
                     </select>
 
                     {(selectedCategory || selectedStyle) && (
@@ -248,7 +250,7 @@ export default function ImageTemplateSelector({ onSelect, onClose, embedded = fa
                             onClick={clearFilters}
                             className="text-sm text-purple-600 hover:text-purple-700 font-medium"
                         >
-                            Clear Filters
+                            {t('imageTemplateSelector.clearFilters')}
                         </button>
                     )}
 
@@ -277,8 +279,8 @@ export default function ImageTemplateSelector({ onSelect, onClose, embedded = fa
                     </div>
                 ) : templates.length === 0 ? (
                     <div className="text-center py-12">
-                        <p className="text-gray-500 text-lg">No templates found</p>
-                        <p className="text-gray-400 text-sm mt-2">Try adjusting your filters</p>
+                        <p className="text-gray-500 text-lg">{t('imageTemplateSelector.noTemplatesFound')}</p>
+                        <p className="text-gray-400 text-sm mt-2">{t('imageTemplateSelector.tryAdjustingYourFilters')}</p>
                     </div>
                 ) : viewMode === 'grid' ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -313,23 +315,23 @@ export default function ImageTemplateSelector({ onSelect, onClose, embedded = fa
                     <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
                         <div className="flex items-center gap-3 text-red-600 mb-4">
                             <AlertTriangle size={24} />
-                            <h3 className="text-lg font-bold">Delete Templates?</h3>
+                            <h3 className="text-lg font-bold">{t('imageTemplateSelector.deleteTemplates')}</h3>
                         </div>
                         <p className="text-gray-600 mb-6">
-                            Are you sure you want to delete {selectedIds.size} selected template{selectedIds.size !== 1 ? 's' : ''}? This action cannot be undone.
+                            {t('common.deleteTemplatesConfirm', { count: selectedIds.size })}
                         </p>
                         <div className="flex justify-end gap-3">
                             <button
                                 onClick={() => setShowDeleteConfirm(false)}
                                 className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium"
                             >
-                                Cancel
+                                {t('imageTemplateSelector.cancel')}
                             </button>
                             <button
                                 onClick={handleDelete}
                                 className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700"
                             >
-                                Delete
+                                {t('imageTemplateSelector.delete')}
                             </button>
                         </div>
                     </div>
@@ -422,6 +424,7 @@ function TemplateCard({ template, onSelect, isSelected, onToggleSelect }) {
 
 // Template List Item Component (List View)
 function TemplateListItem({ template, onSelect, isSelected, onToggleSelect }) {
+    const { t } = useTranslation('creatives');
     let colorPalette = null;
     try {
         colorPalette = template.color_palette ? JSON.parse(template.color_palette) : null;
@@ -469,17 +472,17 @@ function TemplateListItem({ template, onSelect, isSelected, onToggleSelect }) {
 
                     <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-3">
                         {template.design_style && (
-                            <span>Style: <span className="font-medium">{template.design_style}</span></span>
+                            <span>{t('imageTemplateSelector.style')} <span className="font-medium">{template.design_style}</span></span>
                         )}
                         {template.category && (
-                            <span>Category: <span className="font-medium">{template.category}</span></span>
+                            <span>{t('imageTemplateSelector.category')} <span className="font-medium">{template.category}</span></span>
                         )}
                     </div>
 
                     {/* Color Palette */}
                     {colorPalette && (
                         <div className="flex gap-2 items-center">
-                            <span className="text-xs text-gray-500">Colors:</span>
+                            <span className="text-xs text-gray-500">{t('imageTemplateSelector.colors')}</span>
                             <div className="flex gap-1">
                                 {colorPalette.primary && (
                                     <div className="w-6 h-6 rounded border border-gray-300" style={{ backgroundColor: colorPalette.primary }}></div>

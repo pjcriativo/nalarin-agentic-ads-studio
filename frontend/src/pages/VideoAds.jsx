@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Video, Briefcase, Package, Users, Check, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { useBrands } from '../context/BrandContext';
 import BrandSelectionStep from '../components/steps/BrandSelectionStep';
@@ -6,6 +7,7 @@ import ProductSelectionStep from '../components/steps/ProductSelectionStep';
 import ProfileSelectionStep from '../components/steps/ProfileSelectionStep';
 
 export default function VideoAds() {
+    const { t } = useTranslation('creatives');
     const { brands, customerProfiles } = useBrands();
     const [currentStep, setCurrentStep] = useState(1);
     const [wizardData, setWizardData] = useState({
@@ -16,11 +18,11 @@ export default function VideoAds() {
     });
 
     const steps = [
-        { id: 1, name: 'Brand', icon: Briefcase },
-        { id: 2, name: 'Product', icon: Package },
-        { id: 3, name: 'Profile', icon: Users },
-        { id: 4, name: 'Video Style', icon: Video },
-        { id: 5, name: 'Generate', icon: Sparkles }
+        { id: 1, name: t('videoAds.brand'), icon: Briefcase },
+        { id: 2, name: t('videoAds.product'), icon: Package },
+        { id: 3, name: t('videoAds.profile'), icon: Users },
+        { id: 4, name: t('videoAds.videoStyle'), icon: Video },
+        { id: 5, name: t('videoAds.generate'), icon: Sparkles }
     ];
 
     const updateData = (field, value) => {
@@ -73,9 +75,9 @@ export default function VideoAds() {
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                     <Video size={32} className="text-amber-600" />
-                    Create Video Ads
+                    {t('videoAds.createVideoAds')}
                 </h1>
-                <p className="text-gray-600 mt-1">Generate engaging video ads from your product assets</p>
+                <p className="text-gray-600 mt-1">{t('videoAds.generateEngagingVideoAdsFrom')}</p>
             </div>
 
             {/* Progress Steps */}
@@ -167,8 +169,8 @@ export default function VideoAds() {
                         <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
                             <Video className="text-amber-600" size={32} />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">Select Video Style</h3>
-                        <p className="text-gray-600 mb-6">Video templates coming soon!</p>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">{t('videoAds.selectVideoStyle')}</h3>
+                        <p className="text-gray-600 mb-6">{t('videoAds.videoTemplatesComingSoon')}</p>
                     </div>
                 )}
 
@@ -178,8 +180,8 @@ export default function VideoAds() {
                         <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
                             <Sparkles className="text-amber-600" size={32} />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">Generate Video</h3>
-                        <p className="text-gray-600 mb-6">Video generation capabilities coming soon!</p>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">{t('videoAds.generateVideo')}</h3>
+                        <p className="text-gray-600 mb-6">{t('videoAds.videoGenerationCapabilitiesComingSoon')}</p>
                     </div>
                 )}
             </div>
@@ -195,7 +197,7 @@ export default function VideoAds() {
                         }`}
                 >
                     <ChevronLeft size={20} />
-                    Back
+                    {t('videoAds.back')}
                 </button>
 
                 <button
@@ -203,8 +205,8 @@ export default function VideoAds() {
                     disabled={!canProceed() || currentStep >= steps.length}
                     className="flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                    Continue
-                    <ChevronRight size={20} />
+                    {t('videoAds.continue')}
+                                    <ChevronRight size={20} />
                 </button>
             </div>
         </div>

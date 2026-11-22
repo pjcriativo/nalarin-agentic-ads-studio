@@ -1,0 +1,86 @@
+{
+  "datePresets": {
+    "last_7d": "Last 7 Days",
+    "last_30d": "Last 30 Days",
+    "this_month": "This Month",
+    "last_month": "Last Month"
+  },
+  "columns": {
+    "platform": "Platform",
+    "campaign": "Campaign",
+    "impressions": "Impressions",
+    "clicks": "Clicks",
+    "spend": "Spend",
+    "conversions": "Conversions",
+    "cpa": "CPA",
+    "cost": "Cost"
+  },
+  "performance": {
+    "empty": "No campaigns yet. Connect an account to see performance data.",
+    "actions": "Actions",
+    "loading": "Loading…"
+  },
+  "overview": {
+    "title": "Overview",
+    "subtitle": "Meta and Google Ads campaign performance, side by side",
+    "loadFailed": "Failed to load overview",
+    "spendByPlatform": "Spend by platform",
+    "connectTitle": "Connect your first ad account",
+    "connectBody": "Link Meta Ads, Google Ads, or TikTok Ads to see cross-platform performance here.",
+    "connectMeta": "Connect Meta Ads",
+    "connectGoogle": "Connect Google Ads",
+    "connectTikTok": "Connect TikTok Ads",
+    "noCampaignsInRange": "No campaigns in this date range."
+  },
+  "home": {
+    "title": "Dashboard",
+    "subtitle": "Welcome to your Ad Builder workspace",
+    "totalCampaigns": "Total Campaigns",
+    "generatedAds": "Generated Ads",
+    "activeBrands": "Active Brands",
+    "templates": "Templates",
+    "buildCreatives": "Build Creatives",
+    "buildCreativesDesc": "Create new image or video ads",
+    "manageBrands": "Manage Brands",
+    "manageBrandsDesc": "Update brand assets and profiles",
+    "browseTemplates": "Browse Templates",
+    "browseTemplatesDesc": "Explore winning ad templates",
+    "quickActions": "Quick Actions",
+    "recentActivity": "Recent Activity",
+    "noActivity": "No recent activity yet",
+    "noActivityHint": "Start creating ads to see your activity here"
+  },
+  "reporting": {
+    "title": "Campaign Reporting",
+    "subtitle": "Track performance across all your campaigns",
+    "totalImpressions": "Total Impressions",
+    "totalClicks": "Total Clicks",
+    "avgCtr": "Avg. CTR",
+    "conversionRate": "Conversion Rate",
+    "download": "Download report",
+    "performanceOverTime": "Performance Over Time",
+    "platformDistribution": "Platform Distribution"
+  },
+  "optimization": {
+    "loadFailed": "Failed to load optimization status",
+    "networkError": "Network error loading optimization status",
+    "testPassed": "Auto-mode policy test passed (Mode: AUTO)",
+    "testManual": "Policy evaluated (Mode: MANUAL, Reason: {{reason}})",
+    "simulationFailed": "Failed to evaluate policy simulation",
+    "loading": "Loading optimization policy...",
+    "title": "Agentic Optimization & Auto-Mode",
+    "subtitle": "Guardrail-protected autonomous campaign management",
+    "killSwitch": "Kill-Switch Active",
+    "autoOn": "Auto-Mode ON",
+    "manualOnly": "Manual Guardrail Only",
+    "allowedActions": "Allowed Auto Actions",
+    "safetyCeilings": "Safety Ceilings",
+    "maxBudget": "Max Budget",
+    "maxDailySpend": "Max Daily Spend",
+    "unlimited": "Unlimited",
+    "operatingWindow": "Operating Window",
+    "monitored": "24/7 Monitored",
+    "simulate": "Simulate Rule Evaluation",
+    "verdict": "Verdict"
+  }
+}

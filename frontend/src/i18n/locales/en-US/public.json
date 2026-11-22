@@ -1,0 +1,95 @@
+{
+  "operatedBy": "Operated by {{operator}}",
+  "operatorSignIn": "Operator sign in",
+  "updated": "Effective and last updated: {{date}}",
+  "updatedAt": "July 22, 2026",
+  "nav": {
+    "about": "About",
+    "privacy": "Privacy",
+    "terms": "Terms"
+  },
+  "about": {
+    "eyebrow": "Paid media operations",
+    "summary": "A private advertising operations platform used by {{operator}} to connect authorized ad accounts, review performance, and manage campaigns with human approval.",
+    "content": [
+      {
+        "heading": "What the platform does",
+        "body": "{{appName}} brings Google Ads, Meta Ads, and TikTok Ads reporting into one authenticated workspace. Google Ads users explicitly choose an authorized customer account before any campaign data is loaded."
+      },
+      {
+        "heading": "Human-controlled changes",
+        "body": "Campaign changes are never executed silently. New Google Search campaigns are created paused, and every create, pause, enable, or negative-keyword action requires an explicit operator confirmation after a preview."
+      },
+      {
+        "heading": "Who operates it",
+        "body": "The platform is operated by {{operator}}, an Indonesian digital marketing agency. Access is limited to authorized operators who manage advertising accounts on behalf of {{operator}} and its clients."
+      }
+    ]
+  },
+  "privacy": {
+    "eyebrow": "Privacy",
+    "title": "Privacy Policy",
+    "summary": "How {{operator}} and {{appName}} collect, use, protect, and delete information connected through advertising providers.",
+    "content": [
+      {
+        "heading": "Information we collect",
+        "body": "We process account identifiers, campaign configuration, and performance metrics that an authorized user permits through Google Ads or another advertising provider. We also process the name and email used to authenticate to {{appName}}. We do not request or store Google account passwords."
+      },
+      {
+        "heading": "How information is used",
+        "body": "Provider data is used only to display advertising performance, prepare reports, and carry out campaign actions explicitly requested and confirmed by an authorized operator. We do not sell Google user data, use it for advertising profiles, or transfer it to data brokers."
+      },
+      {
+        "heading": "Google API Services user data",
+        "body": "Our use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements. Google Ads OAuth credentials are used only to provide the user-facing advertising management features described on this page."
+      },
+      {
+        "heading": "Security",
+        "body": "OAuth access and refresh tokens are encrypted at rest. Application passwords and machine API keys are hashed. Production traffic uses HTTPS, provider credentials are not exposed to the browser after OAuth, and reporting bots have read-only access with no campaign write routes."
+      },
+      {
+        "heading": "Retention and deletion",
+        "body": "Advertising connection data is retained while the connection is active and needed to provide the service. An operator can disconnect an account in {{appName}}. Users may also revoke access in their Google Account permissions. To request deletion of account data or OAuth credentials, contact the address below; verified requests are processed within 30 days."
+      },
+      {
+        "heading": "Sharing and processors",
+        "body": "We share data only with infrastructure providers needed to operate the service or when required by law. We do not allow those providers to use Google user data for independent advertising purposes."
+      },
+      {
+        "heading": "Contact",
+        "body": "Privacy and data deletion requests: privacy@your-domain.example. Operator: {{operator}}."
+      }
+    ]
+  },
+  "terms": {
+    "eyebrow": "Terms",
+    "title": "Terms of Service",
+    "summary": "Rules for authorized use of {{appName}} and its advertising-provider integrations.",
+    "content": [
+      {
+        "heading": "Authorized use",
+        "body": "{{appName}} is for authorized {{operator}} operators and approved client advertising accounts. Users must have permission to access every connected account and must comply with Google Ads policies, applicable laws, and client instructions."
+      },
+      {
+        "heading": "Operator responsibility",
+        "body": "Users are responsible for reviewing campaign details, budgets, targeting, and previews before confirmation. Enabling a campaign may cause advertising spend. The platform does not guarantee campaign performance, leads, revenue, or return on ad spend."
+      },
+      {
+        "heading": "Prohibited use",
+        "body": "Users may not bypass access controls, connect accounts without authorization, extract credentials, resell provider data, automate abusive activity, or use the platform to violate advertising-provider policies."
+      },
+      {
+        "heading": "Availability and changes",
+        "body": "The service depends on third-party advertising APIs and may be interrupted by provider outages, account restrictions, policy changes, or access-level reviews. Features may be changed to preserve security, compliance, or provider compatibility."
+      },
+      {
+        "heading": "Suspension and termination",
+        "body": "Access may be suspended when an account is compromised, authorization is withdrawn, policies are violated, or continued operation could harm a client, provider, or the platform."
+      },
+      {
+        "heading": "Contact",
+        "body": "Questions about these terms: privacy@your-domain.example. Operator: {{operator}}."
+      }
+    ]
+  }
+}

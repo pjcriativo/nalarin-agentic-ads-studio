@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { categoryLabel, industryLabel, styleText } from '../i18n/catalog';
 import { Search, Sparkles, TrendingUp, Users, Lightbulb, Zap, CheckCircle2 } from 'lucide-react';
 import { adStyles, AD_CATEGORIES, getAllCategories, getStylesByCategory, searchStyles } from '../data/adStyles';
 
@@ -19,6 +21,7 @@ const categoryColors = {
 };
 
 export default function StyleSelector({ onSelect }) {
+    const { t } = useTranslation('creatives');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [hoveredStyle, setHoveredStyle] = useState(null);
@@ -39,7 +42,7 @@ export default function StyleSelector({ onSelect }) {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                     type="text"
-                    placeholder="Search styles by name, industry, or use case..."
+                    placeholder={t('styleSelector.searchStylesByNameIndustry')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-600 focus:border-transparent"
@@ -80,7 +83,7 @@ export default function StyleSelector({ onSelect }) {
                             }}
                         >
                             <Icon size={16} />
-                            {category} ({count})
+                            {categoryLabel(category)} ({count})
                         </button>
                     );
                 })}
@@ -89,7 +92,7 @@ export default function StyleSelector({ onSelect }) {
             {/* Results Count */}
             {searchQuery && (
                 <p className="text-sm text-gray-600">
-                    Found {filteredStyles.length} style{filteredStyles.length !== 1 ? 's' : ''}
+                    {t('common.stylesFound', { count: filteredStyles.length })}
                 </p>
             )}
 
@@ -122,31 +125,31 @@ export default function StyleSelector({ onSelect }) {
                                     color: `var(--${color}-700)`
                                 }}>
                                 <Icon size={12} />
-                                {style.category}
+                                {categoryLabel(style.category)}
                             </div>
 
                             {/* Style Name */}
-                            <h4 className="font-bold text-gray-900 mb-2 text-lg">{style.name}</h4>
+                            <h4 className="font-bold text-gray-900 mb-2 text-lg">{styleText(style, 'name')}</h4>
 
                             {/* Description */}
-                            <p className="text-sm text-gray-600 mb-3">{style.description}</p>
+                            <p className="text-sm text-gray-600 mb-3">{styleText(style, 'description')}</p>
 
                             {/* Visual Layout */}
                             <div className="mb-3">
-                                <span className="text-xs font-medium text-gray-500">Layout:</span>
-                                <p className="text-sm text-gray-700">{style.visualLayout}</p>
+                                <span className="text-xs font-medium text-gray-500">{t('styleSelector.layout')}</span>
+                                <p className="text-sm text-gray-700">{styleText(style, 'visualLayout')}</p>
                             </div>
 
                             {/* Best For Tags */}
                             <div className="mb-3">
-                                <span className="text-xs font-medium text-gray-500 block mb-1">Best For:</span>
+                                <span className="text-xs font-medium text-gray-500 block mb-1">{t('styleSelector.bestFor')}</span>
                                 <div className="flex flex-wrap gap-1">
                                     {style.bestFor.map((industry) => (
                                         <span
                                             key={industry}
                                             className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded"
                                         >
-                                            {industry}
+                                            {industryLabel(industry)}
                                         </span>
                                     ))}
                                 </div>
@@ -158,7 +161,7 @@ export default function StyleSelector({ onSelect }) {
                                     <div className="flex items-start gap-2">
                                         <Sparkles className={`text-${color}-600 flex-shrink-0 mt-0.5`} size={16} />
                                         <div>
-                                            <span className="text-xs font-medium text-gray-500 block mb-1">Psychology:</span>
+                                            <span className="text-xs font-medium text-gray-500 block mb-1">{t('styleSelector.psychology')}</span>
                                             <p className="text-sm text-gray-700 italic">{style.psychology}</p>
                                         </div>
                                     </div>
@@ -180,8 +183,8 @@ export default function StyleSelector({ onSelect }) {
             {filteredStyles.length === 0 && (
                 <div className="text-center py-12">
                     <Search className="mx-auto text-gray-400 mb-4" size={48} />
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">No styles found</h3>
-                    <p className="text-gray-600">Try adjusting your search or browse all categories</p>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">{t('styleSelector.noStylesFound')}</h3>
+                    <p className="text-gray-600">{t('styleSelector.tryAdjustingYourSearchOr')}</p>
                 </div>
             )}
         </div>

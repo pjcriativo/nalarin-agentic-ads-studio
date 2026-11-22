@@ -1,4 +1,6 @@
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
+import { formatDate } from '../i18n/format';
 import { useAuth } from '../context/AuthContext';
 import React, { useState, useRef } from 'react';
 import { Plus, X, Copy, Check, Upload, Loader, Star } from 'lucide-react';
@@ -8,6 +10,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 // Helper Components
 const CopyButton = ({ text, label }) => {
+    const { t } = useTranslation('library');
     const { showError } = useToast();
     const [copied, setCopied] = useState(false);
 
@@ -21,7 +24,7 @@ const CopyButton = ({ text, label }) => {
         <button
             onClick={handleCopy}
             className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
-            title={`Copy ${label}`}
+            title={t('winningAds.copyLabel', { label })}
         >
             {copied ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
         </button>
@@ -29,6 +32,7 @@ const CopyButton = ({ text, label }) => {
 };
 
 const AnalysisField = ({ label, value, fullWidth = false }) => {
+    const { t } = useTranslation('library');
     const displayValue = typeof value === 'object' && value !== null
         ? JSON.stringify(value, null, 2)
         : value;
@@ -40,13 +44,14 @@ const AnalysisField = ({ label, value, fullWidth = false }) => {
                 {displayValue && <CopyButton text={displayValue} label={label} />}
             </div>
             <p className={`text-gray-700 text-sm leading-relaxed whitespace-pre-wrap ${typeof value === 'object' ? 'font-mono text-xs' : ''}`}>
-                {displayValue || <span className="text-gray-400 italic">Not available</span>}
+                {displayValue || <span className="text-gray-400 italic">{t('winningAds.notAvailable')}</span>}
             </p>
         </div>
     );
 };
 
 const WinningAds = () => {
+    const { t } = useTranslation('library');
     const { showError } = useToast();
     const { authFetch } = useAuth();
     const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -72,7 +77,7 @@ const WinningAds = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Upload failed');
+                throw new Error(t('winningAds.uploadFailed'));
             }
 
             const result = await response.json();
@@ -87,7 +92,7 @@ const WinningAds = () => {
             }
         } catch (error) {
             console.error('Upload error:', error);
-            showError('Failed to upload templates. Please try again.');
+            showError(t('winningAds.failedToUploadTemplatesPlease'));
         } finally {
             setUploading(false);
         }
@@ -112,9 +117,9 @@ const WinningAds = () => {
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                         <Star size={32} className="text-amber-600" />
-                        Image Templates
+                        {t('winningAds.imageTemplates')}
                     </h1>
-                    <p className="text-gray-600 mt-1">Browse and manage your winning ad templates</p>
+                    <p className="text-gray-600 mt-1">{t('winningAds.browseAndManageYourWinning')}</p>
                 </div>
                 <button
                     onClick={() => fileInputRef.current?.click()}
@@ -122,7 +127,7 @@ const WinningAds = () => {
                     className="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white px-4 py-2 rounded-lg hover:from-amber-700 hover:to-orange-700 transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {uploading ? <Loader size={20} className="animate-spin" /> : <Plus size={20} />}
-                    {uploading ? 'Uploading...' : 'Upload Templates'}
+                    {uploading ? t('winningAds.uploading') : t('winningAds.uploadTemplates')}
                 </button>
             </div>
 
@@ -160,7 +165,7 @@ const WinningAds = () => {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
-                            <h2 className="text-2xl font-bold text-gray-900">Template Details</h2>
+                            <h2 className="text-2xl font-bold text-gray-900">{t('winningAds.templateDetails')}</h2>
                             <button
                                 onClick={() => setSelectedTemplate(null)}
                                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -180,24 +185,24 @@ const WinningAds = () => {
 
                                     {/* Quick Info */}
                                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                        <h3 className="font-semibold text-gray-900 mb-3">Quick Info</h3>
+                                        <h3 className="font-semibold text-gray-900 mb-3">{t('winningAds.quickInfo')}</h3>
                                         <div className="space-y-2 text-sm">
                                             {selectedTemplate.template_category && (
                                                 <div className="flex justify-between">
-                                                    <span className="text-gray-500">Category</span>
+                                                    <span className="text-gray-500">{t('winningAds.category')}</span>
                                                     <span className="text-gray-900 font-medium capitalize">{selectedTemplate.template_category}</span>
                                                 </div>
                                             )}
                                             {selectedTemplate.design_style && (
                                                 <div className="flex justify-between">
-                                                    <span className="text-gray-500">Style</span>
+                                                    <span className="text-gray-500">{t('winningAds.style')}</span>
                                                     <span className="text-gray-900 font-medium">{selectedTemplate.design_style}</span>
                                                 </div>
                                             )}
                                             {selectedTemplate.created_at && (
                                                 <div className="flex justify-between">
-                                                    <span className="text-gray-500">Created</span>
-                                                    <span className="text-gray-900">{new Date(selectedTemplate.created_at).toLocaleDateString()}</span>
+                                                    <span className="text-gray-500">{t('winningAds.created')}</span>
+                                                    <span className="text-gray-900">{formatDate(selectedTemplate.created_at)}</span>
                                                 </div>
                                             )}
                                         </div>
@@ -225,27 +230,27 @@ const WinningAds = () => {
                                     {/* Analysis Fields Grid */}
                                     <div className="grid grid-cols-1 gap-4">
                                         {selectedTemplate.subject_matter && (
-                                            <AnalysisField label="Subject Matter" value={selectedTemplate.subject_matter} fullWidth />
+                                            <AnalysisField label={t('winningAds.subjectMatter')} value={selectedTemplate.subject_matter} fullWidth />
                                         )}
 
                                         {selectedTemplate.analysis && (
-                                            <AnalysisField label="Visual Analysis" value={selectedTemplate.analysis} fullWidth />
+                                            <AnalysisField label={t('winningAds.visualAnalysis')} value={selectedTemplate.analysis} fullWidth />
                                         )}
 
                                         {selectedTemplate.copy_analysis && (
-                                            <AnalysisField label="Copy Analysis" value={selectedTemplate.copy_analysis} fullWidth />
+                                            <AnalysisField label={t('winningAds.copyAnalysis')} value={selectedTemplate.copy_analysis} fullWidth />
                                         )}
 
                                         {selectedTemplate.structural_analysis && (
-                                            <AnalysisField label="Structural Analysis" value={selectedTemplate.structural_analysis} fullWidth />
+                                            <AnalysisField label={t('winningAds.structuralAnalysis')} value={selectedTemplate.structural_analysis} fullWidth />
                                         )}
 
                                         {selectedTemplate.layering && (
-                                            <AnalysisField label="Layering" value={selectedTemplate.layering} fullWidth />
+                                            <AnalysisField label={t('winningAds.layering')} value={selectedTemplate.layering} fullWidth />
                                         )}
 
                                         {selectedTemplate.recreation_prompt && (
-                                            <AnalysisField label="Recreation Prompt" value={selectedTemplate.recreation_prompt} fullWidth />
+                                            <AnalysisField label={t('winningAds.recreationPrompt')} value={selectedTemplate.recreation_prompt} fullWidth />
                                         )}
                                     </div>
 
@@ -255,16 +260,16 @@ const WinningAds = () => {
                                         if (!structure) return null;
                                         return (
                                             <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-                                                <h3 className="font-semibold text-amber-900 mb-3">Template Structure</h3>
+                                                <h3 className="font-semibold text-amber-900 mb-3">{t('winningAds.templateStructure')}</h3>
                                                 <div className="space-y-2 text-sm">
                                                     {structure.template_name && (
-                                                        <div><span className="text-amber-700 font-medium">Name:</span> {structure.template_name}</div>
+                                                        <div><span className="text-amber-700 font-medium">{t('winningAds.name')}</span> {structure.template_name}</div>
                                                     )}
                                                     {structure.layout_type && (
-                                                        <div><span className="text-amber-700 font-medium">Layout:</span> {structure.layout_type}</div>
+                                                        <div><span className="text-amber-700 font-medium">{t('winningAds.layout')}</span> {structure.layout_type}</div>
                                                     )}
                                                     {structure.aspect_ratio && (
-                                                        <div><span className="text-amber-700 font-medium">Aspect Ratio:</span> {structure.aspect_ratio}</div>
+                                                        <div><span className="text-amber-700 font-medium">{t('winningAds.aspectRatio')}</span> {structure.aspect_ratio}</div>
                                                     )}
                                                 </div>
                                             </div>
@@ -277,7 +282,7 @@ const WinningAds = () => {
                                         if (!palette) return null;
                                         return (
                                             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                                <h3 className="font-semibold text-gray-900 mb-3">Color Palette</h3>
+                                                <h3 className="font-semibold text-gray-900 mb-3">{t('winningAds.colorPalette')}</h3>
                                                 <div className="flex gap-3 flex-wrap">
                                                     {Object.entries(palette).map(([key, color]) => {
                                                         if (key === 'theme' || key === 'color_count') return null;
@@ -295,7 +300,7 @@ const WinningAds = () => {
                                                 </div>
                                                 {palette.theme && (
                                                     <div className="mt-3 text-sm text-gray-600">
-                                                        <span className="font-medium">Theme:</span> {palette.theme}
+                                                        <span className="font-medium">{t('winningAds.theme')}</span> {palette.theme}
                                                     </div>
                                                 )}
                                             </div>
@@ -304,17 +309,17 @@ const WinningAds = () => {
 
                                     {/* Typography System */}
                                     {selectedTemplate.typography_system && (
-                                        <AnalysisField label="Typography System" value={selectedTemplate.typography_system} fullWidth />
+                                        <AnalysisField label={t('winningAds.typographySystem')} value={selectedTemplate.typography_system} fullWidth />
                                     )}
 
                                     {/* Copy Patterns */}
                                     {selectedTemplate.copy_patterns && (
-                                        <AnalysisField label="Copy Patterns" value={selectedTemplate.copy_patterns} fullWidth />
+                                        <AnalysisField label={t('winningAds.copyPatterns')} value={selectedTemplate.copy_patterns} fullWidth />
                                     )}
 
                                     {/* Visual Elements */}
                                     {selectedTemplate.visual_elements && (
-                                        <AnalysisField label="Visual Elements" value={selectedTemplate.visual_elements} fullWidth />
+                                        <AnalysisField label={t('winningAds.visualElements')} value={selectedTemplate.visual_elements} fullWidth />
                                     )}
                                 </div>
                             </div>

@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const AdCard = ({ ad, onSave }) => {
+    const { t } = useTranslation('creatives');
     const analysis = ad.analysis || {};
     const videoRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -74,7 +76,7 @@ const AdCard = ({ ad, onSave }) => {
                         <svg className="w-10 h-10 text-gray-300 mx-auto mb-2" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/>
                         </svg>
-                        <span className="text-gray-400 text-xs">View on Facebook</span>
+                        <span className="text-gray-400 text-xs">{t('adCard.viewOnFacebook')}</span>
                     </div>
                 </div>
             );
@@ -115,7 +117,7 @@ const AdCard = ({ ad, onSave }) => {
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M8 5v14l11-7z"/>
                             </svg>
-                            Video
+                            {t('adCard.video')}
                         </div>
                     )}
                 </div>
@@ -129,7 +131,7 @@ const AdCard = ({ ad, onSave }) => {
                     <svg className="w-10 h-10 text-gray-300 mx-auto mb-2" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/>
                     </svg>
-                    <span className="text-gray-400 text-xs">View on Facebook</span>
+                    <span className="text-gray-400 text-xs">{t('adCard.viewOnFacebook')}</span>
                 </div>
             </div>
         );
@@ -145,7 +147,7 @@ const AdCard = ({ ad, onSave }) => {
                     </div>
                     <div className="min-w-0">
                         <h3 className="font-semibold text-gray-900 text-[15px] truncate leading-tight">{ad.brand_name}</h3>
-                        <p className="text-xs text-gray-500">Sponsored</p>
+                        <p className="text-xs text-gray-500">{t('adCard.sponsored')}</p>
                     </div>
                 </div>
             </div>
@@ -153,7 +155,7 @@ const AdCard = ({ ad, onSave }) => {
             {/* Body Copy */}
             <div className="px-3 pb-2">
                 <p className="text-[15px] text-gray-900 leading-snug whitespace-pre-line line-clamp-4">
-                    {cleanCopy || 'No copy available'}
+                    {cleanCopy || t('common.noCopy')}
                 </p>
             </div>
 
@@ -194,7 +196,7 @@ const AdCard = ({ ad, onSave }) => {
             <div className="px-3 py-2 border-t border-gray-100 flex items-center justify-between">
                 {analysis.start_date && (
                     <span className="text-xs text-gray-500">
-                        Started {analysis.start_date}
+                        {t('common.started', { date: analysis.start_date })}
                     </span>
                 )}
                 {!analysis.start_date && <span />}
@@ -206,14 +208,14 @@ const AdCard = ({ ad, onSave }) => {
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                     >
-                        View Original
+                        {t('adCard.viewOriginal')}
                     </a>
                     {onSave && (
                         <button
                             onClick={() => onSave(ad)}
                             className="px-3 py-1 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors"
                         >
-                            Save
+                            {t('adCard.save')}
                         </button>
                     )}
                 </div>

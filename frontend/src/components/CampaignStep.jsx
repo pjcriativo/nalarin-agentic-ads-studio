@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { translateBackendMessage } from '../i18n/backendErrors';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, ChevronLeft, Check, Loader, Plus } from 'lucide-react';
 import { useCampaign } from '../context/CampaignContext';
 import { useToast } from '../context/ToastContext';
@@ -20,6 +22,7 @@ const BID_STRATEGIES = [
 ];
 
 const CampaignStep = ({ onNext, onBack }) => {
+    const { t } = useTranslation('campaigns');
     const { campaignData, setCampaignData, selectedAdAccount, setSelectedAdAccount } = useCampaign();
     const { showError, showWarning } = useToast();
     const [mode, setMode] = useState('new'); // 'new' or 'existing'
@@ -44,7 +47,7 @@ const CampaignStep = ({ onNext, onBack }) => {
             setExistingCampaigns(campaigns);
         } catch (error) {
             console.error('Error fetching campaigns:', error);
-            showError(`Error fetching campaigns: ${error.message}`);
+            showError(t('campaignStep.errorFetchingCampaignsMessage', { message: translateBackendMessage(error.message) }));
         } finally {
             setLoadingCampaigns(false);
         }
@@ -80,7 +83,7 @@ const CampaignStep = ({ onNext, onBack }) => {
 
     const handleNext = async () => {
         if (mode === 'existing' && !selectedCampaign) {
-            showWarning('Please select a campaign');
+            showWarning(t('campaignStep.pleaseSelectACampaign'));
             return;
         }
 
@@ -92,12 +95,12 @@ const CampaignStep = ({ onNext, onBack }) => {
 
         if (mode === 'new') {
             if (!campaignData.name || !campaignData.objective) {
-                showWarning('Please fill in all required fields');
+                showWarning(t('campaignStep.pleaseFillInAllRequired'));
                 return;
             }
 
             if (campaignData.budgetType === 'CBO' && (!campaignData.dailyBudget || campaignData.dailyBudget <= 0)) {
-                showWarning('Please enter a valid Daily Budget for CBO campaign');
+                showWarning(t('campaignStep.pleaseEnterAValidDaily'));
                 return;
             }
 
@@ -105,7 +108,7 @@ const CampaignStep = ({ onNext, onBack }) => {
             if (campaignData.budgetType === 'CBO' &&
                 (campaignData.bidStrategy === 'LOWEST_COST_WITH_BID_CAP' || campaignData.bidStrategy === 'COST_CAP') &&
                 (!campaignData.bidAmount || campaignData.bidAmount <= 0)) {
-                showWarning('Please enter a valid Bid Amount for the selected bid strategy');
+                showWarning(t('campaignStep.pleaseEnterAValidBid'));
                 return;
             }
 
@@ -120,7 +123,7 @@ const CampaignStep = ({ onNext, onBack }) => {
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-6">Campaign Setup</h2>
+            <h2 className="text-2xl font-bold mb-6">{t('campaignStep.campaignSetup')}</h2>
 
             {/* Mode Toggle */}
             <div className="flex gap-4 mb-6">
@@ -139,7 +142,7 @@ const CampaignStep = ({ onNext, onBack }) => {
                         }`}
                 >
                     <Plus className="mx-auto mb-2" size={24} />
-                    <div className="font-semibold">Create New Campaign</div>
+                    <div className="font-semibold">{t('campaignStep.createNewCampaign')}</div>
                 </button>
                 <button
                     onClick={() => setMode('existing')}
@@ -149,7 +152,7 @@ const CampaignStep = ({ onNext, onBack }) => {
                         }`}
                 >
                     <Check className="mx-auto mb-2" size={24} />
-                    <div className="font-semibold">Use Existing Campaign</div>
+                    <div className="font-semibold">{t('campaignStep.useExistingCampaign')}</div>
                 </button>
             </div>
 
@@ -158,14 +161,14 @@ const CampaignStep = ({ onNext, onBack }) => {
                 <div className="space-y-4 mb-6">
                     {/* Existing Campaigns */}
                     <div>
-                        <h3 className="font-semibold text-gray-700 mb-3">Select a Campaign</h3>
+                        <h3 className="font-semibold text-gray-700 mb-3">{t('campaignStep.selectACampaign')}</h3>
                         {loadingCampaigns ? (
                             <div className="flex items-center justify-center gap-2 text-gray-500 py-8">
                                 <Loader className="animate-spin" size={20} />
-                                <span>Loading campaigns from Facebook...</span>
+                                <span>{t('campaignStep.loadingCampaignsFromFacebook')}</span>
                             </div>
                         ) : existingCampaigns.length === 0 ? (
-                            <p className="text-gray-500 text-center py-8">No campaigns found in this ad account.</p>
+                            <p className="text-gray-500 text-center py-8">{t('campaignStep.noCampaignsFoundInThis')}</p>
                         ) : (
                             existingCampaigns.map(campaign => (
                                 <div
@@ -212,36 +215,36 @@ const CampaignStep = ({ onNext, onBack }) => {
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Campaign Name *
+                            {t('campaignStep.campaignName')}
                         </label>
                         <input
                             type="text"
                             value={campaignData.name}
                             onChange={(e) => handleInputChange('name', e.target.value)}
-                            placeholder="Summer Sale Campaign"
+                            placeholder={t('campaignStep.summerSaleCampaign')}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         />
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Campaign Objective *
+                            {t('campaignStep.campaignObjective')}
                         </label>
                         <select
                             value={campaignData.objective}
                             onChange={(e) => handleInputChange('objective', e.target.value)}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         >
-                            <option value="">Select objective...</option>
+                            <option value="">{t('campaignStep.selectObjective')}</option>
                             {CAMPAIGN_OBJECTIVES.map(obj => (
-                                <option key={obj.value} value={obj.value}>{obj.label}</option>
+                                <option key={obj.value} value={obj.value}>{t(`options.objective.${obj.value}`, { defaultValue: obj.label })}</option>
                             ))}
                         </select>
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Budget Type *
+                            {t('campaignStep.budgetType')}
                         </label>
                         <div className="grid grid-cols-2 gap-4">
                             <button
@@ -252,8 +255,8 @@ const CampaignStep = ({ onNext, onBack }) => {
                                     : 'border-gray-200 hover:border-amber-300'
                                     }`}
                             >
-                                <div className="font-semibold">ABO</div>
-                                <div className="text-xs text-gray-500">Ad Set Budget</div>
+                                <div className="font-semibold">{t('campaignStep.abo')}</div>
+                                <div className="text-xs text-gray-500">{t('campaignStep.adSetBudget')}</div>
                             </button>
                             <button
                                 type="button"
@@ -263,8 +266,8 @@ const CampaignStep = ({ onNext, onBack }) => {
                                     : 'border-gray-200 hover:border-amber-300'
                                     }`}
                             >
-                                <div className="font-semibold">CBO</div>
-                                <div className="text-xs text-gray-500">Campaign Budget</div>
+                                <div className="font-semibold">{t('campaignStep.cbo')}</div>
+                                <div className="text-xs text-gray-500">{t('campaignStep.campaignBudget')}</div>
                             </button>
                         </div>
                     </div>
@@ -273,7 +276,7 @@ const CampaignStep = ({ onNext, onBack }) => {
                         <>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Daily Budget (USD)
+                                    {t('campaignStep.dailyBudgetUsd')}
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -293,16 +296,16 @@ const CampaignStep = ({ onNext, onBack }) => {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Bid Strategy
+                                    {t('campaignStep.bidStrategy')}
                                 </label>
                                 <select
                                     value={campaignData.bidStrategy}
                                     onChange={(e) => handleInputChange('bidStrategy', e.target.value)}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                 >
-                                    <option value="">Select bid strategy...</option>
+                                    <option value="">{t('campaignStep.selectBidStrategy')}</option>
                                     {BID_STRATEGIES.map(strategy => (
-                                        <option key={strategy.value} value={strategy.value}>{strategy.label}</option>
+                                        <option key={strategy.value} value={strategy.value}>{t(`options.campaignBid.${strategy.value}`, { defaultValue: strategy.label })}</option>
                                     ))}
                                 </select>
                             </div>
@@ -311,7 +314,7 @@ const CampaignStep = ({ onNext, onBack }) => {
                             {(campaignData.bidStrategy === 'COST_CAP' || campaignData.bidStrategy === 'LOWEST_COST_WITH_BID_CAP') && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        {campaignData.bidStrategy === 'COST_CAP' ? 'Cost Cap Amount (USD)' : 'Bid Cap Amount (USD)'} *
+                                        {campaignData.bidStrategy === 'COST_CAP' ? t('campaignStep.costCapAmountUsd') : t('campaignStep.bidCapAmountUsd')} *
                                     </label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -329,8 +332,7 @@ const CampaignStep = ({ onNext, onBack }) => {
                                     </div>
                                     <p className="text-xs text-gray-500 mt-1">
                                         {campaignData.bidStrategy === 'COST_CAP'
-                                            ? 'Maximum average cost per result you want to maintain'
-                                            : 'Maximum bid amount for each auction'}
+                                            ? t('campaignStep.maximumAverageCostPerResult') : t('campaignStep.maximumBidAmountForEach')}
                                     </p>
                                 </div>
                             )}
@@ -346,7 +348,7 @@ const CampaignStep = ({ onNext, onBack }) => {
                         onClick={onBack}
                         className="px-6 py-3 text-gray-600 hover:text-gray-800 font-medium"
                     >
-                        Back
+                        {t('campaignStep.back')}
                     </button>
                 )}
                 <button
@@ -354,7 +356,7 @@ const CampaignStep = ({ onNext, onBack }) => {
                     disabled={loading}
                     className="ml-auto flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                    {loading ? 'Saving...' : 'Next Step'} <ChevronRight size={20} />
+                    {loading ? t('campaignStep.saving') : t('campaignStep.nextStep')} <ChevronRight size={20} />
                 </button>
             </div>
         </div>

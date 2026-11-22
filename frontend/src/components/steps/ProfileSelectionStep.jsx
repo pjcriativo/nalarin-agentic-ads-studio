@@ -1,14 +1,16 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check } from 'lucide-react';
 
 export default function ProfileSelectionStep({ profiles, selectedProfile, onSelect }) {
+    const { t } = useTranslation('creatives');
     return (
         <div>
-            <h3 className="text-xl font-bold mb-4">Select Target Audience</h3>
-            <p className="text-gray-600 mb-6">Choose the customer profile to target</p>
+            <h3 className="text-xl font-bold mb-4">{t('profileSelectionStep.selectTargetAudience')}</h3>
+            <p className="text-gray-600 mb-6">{t('profileSelectionStep.chooseTheCustomerProfileTo')}</p>
             {profiles.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
-                    No customer profiles found for this brand. Please add profiles first.
+                    {t('profileSelectionStep.noCustomerProfilesFoundFor')}
                 </div>
             ) : (
                 <div className="space-y-3">
@@ -29,17 +31,17 @@ export default function ProfileSelectionStep({ profiles, selectedProfile, onSele
                             </div>
                             {profile.demographics && (
                                 <div className="text-sm text-gray-600 mb-1">
-                                    <span className="font-medium">Demographics:</span> {profile.demographics}
+                                    <span className="font-medium">{t('profileSelectionStep.demographics')}</span> {profile.demographics}
                                 </div>
                             )}
                             {profile.pain_points && (
                                 <div className="text-sm text-gray-600 mb-1">
-                                    <span className="font-medium">Pain Points:</span> {profile.pain_points}
+                                    <span className="font-medium">{t('profileSelectionStep.painPoints')}</span> {profile.pain_points}
                                 </div>
                             )}
                             {profile.goals && (
                                 <div className="text-sm text-gray-600">
-                                    <span className="font-medium">Goals:</span> {profile.goals}
+                                    <span className="font-medium">{t('profileSelectionStep.goals')}</span> {profile.goals}
                                 </div>
                             )}
                         </div>

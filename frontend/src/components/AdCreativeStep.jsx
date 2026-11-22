@@ -1,4 +1,5 @@
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, Upload, X, Loader, Trash2, Film, Image } from 'lucide-react';
 import { useCampaign } from '../context/CampaignContext';
@@ -21,6 +22,7 @@ const CTA_OPTIONS = [
 ];
 
 const AdCreativeStep = ({ onNext, onBack }) => {
+    const { t } = useTranslation('campaigns');
     const { showWarning, showError } = useToast();
     const { creativeData, setCreativeData, selectedAdAccount, selectedProduct, adsetData } = useCampaign();
     const [pages, setPages] = useState([]);
@@ -63,7 +65,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
         );
 
         if (mediaFiles.length === 0) {
-            showWarning('Please drop image or video files only');
+            showWarning(t('adCreativeStep.pleaseDropImageOrVideo'));
             return;
         }
 
@@ -133,7 +135,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
             }
         } catch (error) {
             console.error('Error fetching pages:', error);
-            showError('Failed to load Facebook Pages. You can enter Page ID manually.');
+            showError(t('adCreativeStep.failedToLoadFacebookPages'));
             setManualPageEntry(true); // Auto-switch to manual entry
         } finally {
             setLoadingPages(false);
@@ -305,28 +307,28 @@ const AdCreativeStep = ({ onNext, onBack }) => {
     const handleNext = () => {
         // Validate required fields
         if (!creativeData.creativeName) {
-            showWarning('Please enter a creative name');
+            showWarning(t('adCreativeStep.pleaseEnterACreativeName'));
             return;
         }
         if (!creativeData.creatives || creativeData.creatives.length === 0) {
-            showWarning('Please upload at least one image or video');
+            showWarning(t('adCreativeStep.pleaseUploadAtLeastOne'));
             return;
         }
 
         // Validate primary text
         if (!creativeData.bodies[0] || !creativeData.bodies[0].trim()) {
-            showWarning('Please provide primary text');
+            showWarning(t('adCreativeStep.pleaseProvidePrimaryText'));
             return;
         }
 
         // Validate headline
         if (!creativeData.headlines[0] || !creativeData.headlines[0].trim()) {
-            showWarning('Please provide a headline');
+            showWarning(t('adCreativeStep.pleaseProvideAHeadline'));
             return;
         }
 
         if (!creativeData.websiteUrl) {
-            showWarning('Please enter a website URL');
+            showWarning(t('adCreativeStep.pleaseEnterAWebsiteUrl'));
             return;
         }
 
@@ -334,16 +336,16 @@ const AdCreativeStep = ({ onNext, onBack }) => {
         try {
             const url = new URL(creativeData.websiteUrl);
             if (!url.protocol.startsWith('http')) {
-                showWarning('Please enter a valid URL starting with http:// or https://');
+                showWarning(t('adCreativeStep.pleaseEnterAValidUrl'));
                 return;
             }
         } catch (e) {
-            showWarning('Please enter a valid URL (e.g., https://example.com)');
+            showWarning(t('adCreativeStep.pleaseEnterAValidUrl2'));
             return;
         }
 
         if (!creativeData.pageId) {
-            showWarning('Please enter a Facebook Page ID');
+            showWarning(t('adCreativeStep.pleaseEnterAFacebookPage'));
             return;
         }
 
@@ -357,22 +359,22 @@ const AdCreativeStep = ({ onNext, onBack }) => {
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-6">Ad Creative - Standard Ads</h2>
+            <h2 className="text-2xl font-bold mb-6">{t('adCreativeStep.adCreativeStandardAds')}</h2>
             <p className="text-gray-600 mb-6">
-                Create standard ads with a single primary text and headline. We will create one ad for each image you upload.
+                {t('adCreativeStep.createStandardAdsWithA')}
             </p>
 
             <div className="space-y-6">
                 {/* Creative Name */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Creative Name *
+                        {t('adCreativeStep.creativeName')}
                     </label>
                     <input
                         type="text"
                         value={creativeData.creativeName}
                         onChange={(e) => handleInputChange('creativeName', e.target.value)}
-                        placeholder="Summer Sale Dynamic Creative"
+                        placeholder={t('adCreativeStep.summerSaleDynamicCreative')}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     />
                 </div>
@@ -381,13 +383,13 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <label className="block text-sm font-medium text-gray-700">
-                            Facebook Page *
+                            {t('adCreativeStep.facebookPage')}
                         </label>
                         <button
                             onClick={() => setManualPageEntry(!manualPageEntry)}
                             className="text-xs text-amber-600 hover:text-amber-800 underline"
                         >
-                            {manualPageEntry ? 'Select from list' : 'Enter Page ID manually'}
+                            {manualPageEntry ? t('adCreativeStep.selectFromList') : t('adCreativeStep.enterPageIdManually')}
                         </button>
                     </div>
 
@@ -396,13 +398,13 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                             type="text"
                             value={creativeData.pageId}
                             onChange={(e) => handleInputChange('pageId', e.target.value)}
-                            placeholder="Enter Facebook Page ID (e.g., 933995649786806)"
+                            placeholder={t('adCreativeStep.enterFacebookPageIdE')}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         />
                     ) : loadingPages ? (
                         <div className="flex items-center gap-2 text-gray-500 py-2">
                             <Loader className="animate-spin" size={20} />
-                            <span>Loading pages...</span>
+                            <span>{t('adCreativeStep.loadingPages')}</span>
                         </div>
                     ) : (
                         <select
@@ -410,7 +412,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                             onChange={(e) => handlePageSelection(e.target.value)}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         >
-                            <option value="">Select a Facebook Page...</option>
+                            <option value="">{t('adCreativeStep.selectAFacebookPage')}</option>
                             {pages.map(page => (
                                 <option key={page.id} value={page.id}>
                                     {page.name}
@@ -422,13 +424,13 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                     {!manualPageEntry && pages.length === 0 && !loadingPages && (
                         <div className="mt-2">
                             <p className="text-xs text-red-500 mb-1">
-                                No pages found. Please make sure your ad account has access to at least one Facebook Page.
+                                {t('adCreativeStep.noPagesFoundPleaseMake')}
                             </p>
                             <button
                                 onClick={() => setManualPageEntry(true)}
                                 className="text-xs text-amber-600 font-medium hover:underline"
                             >
-                                Enter Page ID manually instead
+                                {t('adCreativeStep.enterPageIdManuallyInstead')}
                             </button>
                         </div>
                     )}
@@ -437,7 +439,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                 {/* Media Upload (Images + Videos) */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Ad Media (Images or Videos) *
+                        {t('adCreativeStep.adMediaImagesOrVideos')}
                     </label>
 
                     {/* Upload Area */}
@@ -463,10 +465,10 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                                 <Film className={`${isDragging ? 'text-amber-500' : 'text-gray-400'}`} size={28} />
                             </div>
                             <span className={`font-medium ${isDragging ? 'text-amber-700' : 'text-gray-600'}`}>
-                                {isDragging ? 'Drop files here' : 'Click to upload images or videos'}
+                                {isDragging ? t('adCreativeStep.dropFilesHere') : t('adCreativeStep.clickToUploadImagesOr')}
                             </span>
-                            <span className="text-sm text-gray-400 mt-1">or drag and drop</span>
-                            <span className="text-xs text-amber-500 mt-2 bg-amber-50 px-2 py-1 rounded">Supports multiple files • Videos up to 500MB</span>
+                            <span className="text-sm text-gray-400 mt-1">{t('adCreativeStep.orDragAndDrop')}</span>
+                            <span className="text-xs text-amber-500 mt-2 bg-amber-50 px-2 py-1 rounded">{t('adCreativeStep.supportsMultipleFilesVideosUp')}</span>
                         </label>
                     </div>
 
@@ -495,11 +497,11 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                                     <div className="absolute top-2 left-2">
                                         {creative.mediaType === 'video' ? (
                                             <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                                                <Film size={12} /> Video
+                                                <Film size={12} /> {t('adCreativeStep.video')}
                                             </span>
                                         ) : (
                                             <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                                                <Image size={12} /> Image
+                                                <Image size={12} /> {t('adCreativeStep.image')}
                                             </span>
                                         )}
                                     </div>
@@ -507,7 +509,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                                         <button
                                             onClick={() => removeCreative(creative.id)}
                                             className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transform scale-90 hover:scale-100 transition-all"
-                                            title="Remove media"
+                                            title={t('adCreativeStep.removeMedia')}
                                         >
                                             <Trash2 size={16} />
                                         </button>
@@ -522,10 +524,10 @@ const AdCreativeStep = ({ onNext, onBack }) => {
 
                     {/* URL Input (Optional fallback) */}
                     <div className="mt-2">
-                        <p className="text-sm text-gray-500 mb-1">Or paste a media URL (image or video):</p>
+                        <p className="text-sm text-gray-500 mb-1">{t('adCreativeStep.orPasteAMediaUrl')}</p>
                         <input
                             type="text"
-                            placeholder="https://example.com/image.jpg or https://example.com/video.mp4"
+                            placeholder={t('adCreativeStep.httpsExampleComImageJpg')}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
                             onBlur={(e) => {
                                 if (e.target.value) {
@@ -536,7 +538,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                                         previewUrl: e.target.value,
                                         imageUrl: isVideo ? undefined : e.target.value,
                                         videoUrl: isVideo ? e.target.value : undefined,
-                                        name: isVideo ? 'Video from URL' : 'Image from URL',
+                                        name: isVideo ? 'Video from URL' : 'Image from URL', // stored name (also used when naming ads on Facebook)
                                         mediaType: isVideo ? 'video' : 'image'
                                     };
                                     setCreativeData(prev => ({
@@ -554,7 +556,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                 <div>
                     <div className="flex items-center justify-between mb-2">
                         <label className="block text-sm font-medium text-gray-700">
-                            Primary Text *
+                            {t('adCreativeStep.primaryText')}
                         </label>
                         {creativeData.bodies.length < 3 && (
                             <button
@@ -565,7 +567,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                 </svg>
-                                Add Body Copy
+                                {t('adCreativeStep.addBodyCopy')}
                             </button>
                         )}
                     </div>
@@ -575,7 +577,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                                 <textarea
                                     value={body}
                                     onChange={(e) => handleBodyChange(index, e.target.value)}
-                                    placeholder={`Body copy ${index + 1}...`}
+                                    placeholder={t('adCreativeStep.bodyCopyN', { index: index + 1 })}
                                     rows="3"
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                 />
@@ -584,7 +586,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                                         type="button"
                                         onClick={() => removeBodyField(index)}
                                         className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                                        title="Remove this body copy"
+                                        title={t('adCreativeStep.removeThisBodyCopy')}
                                     >
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -600,7 +602,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                 <div>
                     <div className="flex items-center justify-between mb-2">
                         <label className="block text-sm font-medium text-gray-700">
-                            Headline *
+                            {t('adCreativeStep.headline')}
                         </label>
                         {creativeData.headlines.length < 3 && (
                             <button
@@ -611,7 +613,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                 </svg>
-                                Add Headline
+                                {t('adCreativeStep.addHeadline')}
                             </button>
                         )}
                     </div>
@@ -622,7 +624,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                                     type="text"
                                     value={headline}
                                     onChange={(e) => handleHeadlineChange(index, e.target.value)}
-                                    placeholder={`Headline ${index + 1}...`}
+                                    placeholder={t('adCreativeStep.headlineN', { index: index + 1 })}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                                 />
                                 {index >= 1 && (
@@ -630,7 +632,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                                         type="button"
                                         onClick={() => removeHeadlineField(index)}
                                         className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                                        title="Remove this headline"
+                                        title={t('adCreativeStep.removeThisHeadline')}
                                     >
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -645,13 +647,13 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                 {/* Description */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Description
+                        {t('adCreativeStep.description')}
                     </label>
                     <input
                         type="text"
                         value={creativeData.description}
                         onChange={(e) => handleInputChange('description', e.target.value)}
-                        placeholder="Shop now and save!"
+                        placeholder={t('adCreativeStep.shopNowAndSave')}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     />
                 </div>
@@ -671,13 +673,13 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                                     const imageCount = creativeData.creatives.filter(c => c.mediaType !== 'video').length;
                                     const videoCount = creativeData.creatives.filter(c => c.mediaType === 'video').length;
                                     const mediaDesc = [];
-                                    if (imageCount > 0) mediaDesc.push(`${imageCount} image${imageCount !== 1 ? 's' : ''}`);
-                                    if (videoCount > 0) mediaDesc.push(`${videoCount} video${videoCount !== 1 ? 's' : ''}`);
+                                    if (imageCount > 0) mediaDesc.push(t('adCreativeStep.imagesN', { count: imageCount }));
+                                    if (videoCount > 0) mediaDesc.push(t('adCreativeStep.videosN', { count: videoCount }));
                                     return (
                                         <>
-                                            {totalAds} ad{totalAds !== 1 ? 's' : ''} will be created
+                                            {t('adCreativeStep.adsWillBeCreated', { count: totalAds })}
                                             <span className="text-sm font-normal ml-2">
-                                                ({mediaDesc.join(' + ')} × {validHeadlines} headline{validHeadlines !== 1 ? 's' : ''} × {validBodies} bod{validBodies !== 1 ? 'ies' : 'y'})
+                                                ({mediaDesc.join(' + ')} × {t('adCreativeStep.headlinesN', { count: validHeadlines })} × {t('adCreativeStep.bodiesN', { count: validBodies })})
                                             </span>
                                         </>
                                     );
@@ -690,7 +692,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                 {/* Call to Action */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Call to Action *
+                        {t('adCreativeStep.callToAction')}
                     </label>
                     <select
                         value={creativeData.cta}
@@ -698,7 +700,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     >
                         {CTA_OPTIONS.map(cta => (
-                            <option key={cta} value={cta}>{cta.replace(/_/g, ' ')}</option>
+                            <option key={cta} value={cta}>{t(`options.cta.${cta}`, { defaultValue: cta.replace(/_/g, ' ') })}</option>
                         ))}
                     </select>
                 </div>
@@ -706,13 +708,13 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                 {/* Website URL */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Website URL (Landing Page) *
+                        {t('adCreativeStep.websiteUrlLandingPage')}
                     </label>
                     <input
                         type="url"
                         value={creativeData.websiteUrl}
                         onChange={(e) => handleInputChange('websiteUrl', e.target.value)}
-                        placeholder="https://yourwebsite.com/landing"
+                        placeholder={t('adCreativeStep.httpsYourwebsiteComLanding')}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     />
                 </div>
@@ -724,13 +726,13 @@ const AdCreativeStep = ({ onNext, onBack }) => {
                     onClick={onBack}
                     className="px-6 py-3 text-gray-600 hover:text-gray-800 font-medium"
                 >
-                    Back
+                    {t('adCreativeStep.back')}
                 </button>
                 <button
                     onClick={handleNext}
                     className="flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700"
                 >
-                    Next Step <ChevronRight size={20} />
+                    {t('adCreativeStep.nextStep')} <ChevronRight size={20} />
                 </button>
             </div>
         </div>

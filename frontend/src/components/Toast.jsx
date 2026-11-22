@@ -1,7 +1,9 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 const Toast = ({ id, type = 'info', message, onClose }) => {
+    const { t } = useTranslation('common');
     const config = {
         success: {
             bgColor: 'bg-green-500',
@@ -37,7 +39,7 @@ const Toast = ({ id, type = 'info', message, onClose }) => {
             <button
                 onClick={() => onClose(id)}
                 className="flex-shrink-0 hover:opacity-80 transition-opacity"
-                aria-label="Close"
+                aria-label={t('actions.close')}
             >
                 <X size={18} />
             </button>

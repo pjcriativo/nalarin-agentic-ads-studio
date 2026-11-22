@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '../context/ToastContext';
 
 const CopyBuilder = ({ data, setData, onNext, brandVoice, activeBrand }) => {
+    const { t } = useTranslation('creatives');
     const { showWarning } = useToast();
     const [isGenerating, setIsGenerating] = useState(false);
     const [lastGenerated, setLastGenerated] = useState(0);
@@ -17,7 +19,7 @@ const CopyBuilder = ({ data, setData, onNext, brandVoice, activeBrand }) => {
     const handleGenerateCopy = async () => {
         const now = Date.now();
         if (now - lastGenerated < COOLDOWN_MS) {
-            showWarning(`Please wait ${Math.ceil((COOLDOWN_MS - (now - lastGenerated)) / 1000)} seconds before generating again`);
+            showWarning(t('copyBuilder.pleaseWaitLastgeneratedSecondsBefore', { lastGenerated: Math.ceil((COOLDOWN_MS - (now - lastGenerated)) / 1000) }));
             return;
         }
 
@@ -38,18 +40,18 @@ const CopyBuilder = ({ data, setData, onNext, brandVoice, activeBrand }) => {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-800">Step 1: Create Ad Copy</h2>
+            <h2 className="text-2xl font-bold text-gray-800">{t('copyBuilder.step1CreateAdCopy')}</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Product Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('copyBuilder.productName')}</label>
                     {activeBrand?.products?.length > 0 ? (
                         <select
                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             value={data.productName}
                             onChange={(e) => updateData('productName', e.target.value)}
                         >
-                            <option value="">Select a product...</option>
+                            <option value="">{t('copyBuilder.selectAProduct')}</option>
                             {activeBrand.products.map(product => (
                                 <option key={product.id} value={product.name}>
                                     {product.name}
@@ -60,18 +62,18 @@ const CopyBuilder = ({ data, setData, onNext, brandVoice, activeBrand }) => {
                         <input
                             type="text"
                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="e.g., Glow Serum"
+                            placeholder={t('copyBuilder.eGGlowSerum')}
                             value={data.productName}
                             onChange={(e) => updateData('productName', e.target.value)}
                         />
                     )}
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Target Audience</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('copyBuilder.targetAudience')}</label>
                     <input
                         type="text"
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="e.g., Skincare enthusiasts"
+                        placeholder={t('copyBuilder.eGSkincareEnthusiasts')}
                         value={data.targetAudience}
                         onChange={(e) => updateData('targetAudience', e.target.value)}
                     />
@@ -87,13 +89,13 @@ const CopyBuilder = ({ data, setData, onNext, brandVoice, activeBrand }) => {
                         : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-lg transform hover:-translate-y-0.5'
                         }`}
                 >
-                    {isGenerating ? 'Generating Magic...' : 'Generate Copy with AI'}
+                    {isGenerating ? t('copyBuilder.generatingMagic') : t('copyBuilder.generateCopyWithAi')}
                 </button>
             </div>
 
             {data.generatedCopy && (
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 animate-fade-in">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Generated Copy</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('copyBuilder.generatedCopy')}</label>
                     <textarea
                         className="w-full p-3 border border-gray-300 rounded-lg bg-white"
                         rows="3"
@@ -112,7 +114,7 @@ const CopyBuilder = ({ data, setData, onNext, brandVoice, activeBrand }) => {
                         : 'bg-blue-600 text-white hover:bg-blue-700'
                         }`}
                 >
-                    Next: Select Template
+                    {t('copyBuilder.nextSelectTemplate')}
                 </button>
             </div>
         </div>

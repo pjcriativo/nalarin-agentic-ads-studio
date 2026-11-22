@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { categoryLabel, promptCategoryLabel, industryLabel, styleText, promptText } from '../i18n/catalog';
 import { Settings as SettingsIcon, Plus, Sparkles, Edit, Trash2, Save, X, FileText, Code, AlertTriangle } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +10,7 @@ import { PROMPT_CATEGORIES } from '../data/prompts';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 export default function Settings() {
+    const { t } = useTranslation('settings');
     const { showSuccess, showError } = useToast();
     const { authFetch } = useAuth();
     const [activeTab, setActiveTab] = useState('styles');
@@ -48,7 +51,7 @@ export default function Settings() {
             }
         } catch (error) {
             console.error('Error loading settings:', error);
-            showError('Failed to load settings');
+            showError(t('settings.failedToLoadSettings'));
             // Fallback to local data
             setStyles(initialStyles);
         } finally {
@@ -57,9 +60,9 @@ export default function Settings() {
     };
 
     const tabs = [
-        { id: 'styles', label: 'Ad Styles', count: styles.length },
-        { id: 'prompts', label: 'Prompts', count: prompts.length },
-        { id: 'general', label: 'General', count: null }
+        { id: 'styles', label: t('settings.tabStyles'), count: styles.length },
+        { id: 'prompts', label: t('settings.tabPrompts'), count: prompts.length },
+        { id: 'general', label: t('settings.tabGeneral'), count: null }
     ];
 
     const handleDeleteStyle = (styleId) => {
@@ -69,7 +72,7 @@ export default function Settings() {
     const confirmDeleteStyle = () => {
         if (styleToDelete) {
             setStyles(styles.filter(s => s.id !== styleToDelete));
-            showSuccess('Style deleted successfully');
+            showSuccess(t('settings.styleDeletedSuccessfully'));
             setStyleToDelete(null);
         }
     };
@@ -81,7 +84,7 @@ export default function Settings() {
     const handleSaveEdit = () => {
         setStyles(styles.map(s => s.id === editingStyle.id ? editingStyle : s));
         setEditingStyle(null);
-        showSuccess('Style updated successfully');
+        showSuccess(t('settings.styleUpdatedSuccessfully'));
     };
 
     const handleAddStyle = (newStyle) => {
@@ -91,7 +94,7 @@ export default function Settings() {
         };
         setStyles([...styles, styleWithId]);
         setShowAddModal(false);
-        showSuccess('Style added successfully');
+        showSuccess(t('settings.styleAddedSuccessfully'));
     };
 
     const handleGenerateAIStyles = async (prompt, count) => {
@@ -99,10 +102,10 @@ export default function Settings() {
         try {
             // TODO: Implement AI generation endpoint
             await new Promise(resolve => setTimeout(resolve, 2000)); // Simulated API call
-            showSuccess(`Generated ${count} new styles!`);
+            showSuccess(t('settings.generatedCountNewStyles', { count }));
             setShowAIModal(false);
         } catch (error) {
-            showError('Failed to generate styles');
+            showError(t('settings.failedToGenerateStyles'));
         } finally {
             setGenerating(false);
         }
@@ -114,9 +117,9 @@ export default function Settings() {
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                     <SettingsIcon size={32} className="text-purple-600" />
-                    Settings
+                    {t('settings.settings')}
                 </h1>
-                <p className="text-gray-600 mt-1">Manage your ad styles and application settings</p>
+                <p className="text-gray-600 mt-1">{t('settings.manageYourAdStylesAnd')}</p>
             </div>
 
             {/* Tabs */}
@@ -164,7 +167,7 @@ export default function Settings() {
                             onSave={() => {
                                 setPrompts(prompts.map(p => p.id === editingPrompt.id ? editingPrompt : p));
                                 setEditingPrompt(null);
-                                showSuccess('Prompt updated successfully');
+                                showSuccess(t('settings.promptUpdatedSuccessfully'));
                             }}
                             onCancel={() => setEditingPrompt(null)}
                             onUpdate={(updatedPrompt) => setEditingPrompt(updatedPrompt)}
@@ -199,23 +202,23 @@ export default function Settings() {
                     <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
                         <div className="flex items-center gap-3 text-red-600 mb-4">
                             <AlertTriangle size={24} />
-                            <h3 className="text-lg font-bold">Delete Style?</h3>
+                            <h3 className="text-lg font-bold">{t('settings.deleteStyle')}</h3>
                         </div>
                         <p className="text-gray-600 mb-6">
-                            Are you sure you want to delete this ad style? This action cannot be undone.
+                            {t('settings.areYouSureYouWant')}
                         </p>
                         <div className="flex justify-end gap-3">
                             <button
                                 onClick={() => setStyleToDelete(null)}
                                 className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium"
                             >
-                                Cancel
+                                {t('settings.cancel')}
                             </button>
                             <button
                                 onClick={confirmDeleteStyle}
                                 className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700"
                             >
-                                Delete
+                                {t('settings.delete')}
                             </button>
                         </div>
                     </div>
@@ -226,6 +229,7 @@ export default function Settings() {
 }
 
 function StylesSettings({ styles, editingStyle, onEdit, onDelete, onSave, onCancelEdit, onUpdateEdit, onShowAdd, onShowAI }) {
+    const { t } = useTranslation('settings');
     const [filterCategory, setFilterCategory] = useState('all');
 
     const filteredStyles = filterCategory === 'all'
@@ -242,10 +246,10 @@ function StylesSettings({ styles, editingStyle, onEdit, onDelete, onSave, onCanc
                         onChange={(e) => setFilterCategory(e.target.value)}
                         className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
                     >
-                        <option value="all">All Categories ({styles.length})</option>
+                        <option value="all">{t('settings.allCategoriesCount', { count: styles.length })}</option>
                         {Object.values(AD_CATEGORIES).map(cat => (
                             <option key={cat} value={cat}>
-                                {cat} ({styles.filter(s => s.category === cat).length})
+                                {categoryLabel(cat)} ({styles.filter(s => s.category === cat).length})
                             </option>
                         ))}
                     </select>
@@ -257,14 +261,14 @@ function StylesSettings({ styles, editingStyle, onEdit, onDelete, onSave, onCanc
                         className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                     >
                         <Sparkles size={20} />
-                        Generate with AI
+                        {t('settings.generateWithAi')}
                     </button>
                     <button
                         onClick={onShowAdd}
                         className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
                     >
                         <Plus size={20} />
-                        Add Style
+                        {t('settings.addStyle')}
                     </button>
                 </div>
             </div>
@@ -287,23 +291,23 @@ function StylesSettings({ styles, editingStyle, onEdit, onDelete, onSave, onCanc
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-2">
-                                        <h3 className="text-lg font-semibold text-gray-900">{style.name}</h3>
+                                        <h3 className="text-lg font-semibold text-gray-900">{styleText(style, 'name')}</h3>
                                         <span className="px-3 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
-                                            {style.category}
+                                            {categoryLabel(style.category)}
                                         </span>
                                     </div>
-                                    <p className="text-gray-600 text-sm mb-3">{style.description}</p>
+                                    <p className="text-gray-600 text-sm mb-3">{styleText(style, 'description')}</p>
                                     <div className="flex flex-wrap gap-2 mb-2">
-                                        <span className="text-xs text-gray-500">Best for:</span>
+                                        <span className="text-xs text-gray-500">{t('settings.bestFor')}</span>
                                         {style.bestFor?.map((industry, idx) => (
                                             <span key={idx} className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded">
-                                                {industry}
+                                                {industryLabel(industry)}
                                             </span>
                                         ))}
                                     </div>
                                     <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                                        <div><strong>Mood:</strong> {style.mood}</div>
-                                        <div><strong>Design:</strong> {style.design_style}</div>
+                                        <div><strong>{t('settings.mood')}</strong> {styleText(style, 'mood')}</div>
+                                        <div><strong>{t('settings.design')}</strong> {styleText(style, 'design_style')}</div>
                                     </div>
                                 </div>
                                 <div className="flex gap-2 ml-4">
@@ -330,10 +334,11 @@ function StylesSettings({ styles, editingStyle, onEdit, onDelete, onSave, onCanc
 }
 
 function EditStyleForm({ style, onChange, onSave, onCancel }) {
+    const { t } = useTranslation('settings');
     return (
         <div className="space-y-4">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.name')}</label>
                 <input
                     type="text"
                     value={style.name}
@@ -342,7 +347,7 @@ function EditStyleForm({ style, onChange, onSave, onCancel }) {
                 />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.description')}</label>
                 <textarea
                     value={style.description}
                     onChange={(e) => onChange({ ...style, description: e.target.value })}
@@ -352,7 +357,7 @@ function EditStyleForm({ style, onChange, onSave, onCancel }) {
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mood</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.mood2')}</label>
                     <input
                         type="text"
                         value={style.mood}
@@ -361,7 +366,7 @@ function EditStyleForm({ style, onChange, onSave, onCancel }) {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Design Style</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.designStyle')}</label>
                     <input
                         type="text"
                         value={style.design_style}
@@ -376,14 +381,14 @@ function EditStyleForm({ style, onChange, onSave, onCancel }) {
                     className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                     <X size={18} />
-                    Cancel
+                    {t('settings.cancel')}
                 </button>
                 <button
                     onClick={onSave}
                     className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                 >
                     <Save size={18} />
-                    Save Changes
+                    {t('settings.saveChanges')}
                 </button>
             </div>
         </div>
@@ -391,6 +396,7 @@ function EditStyleForm({ style, onChange, onSave, onCancel }) {
 }
 
 function AddStyleModal({ onClose, onSave }) {
+    const { t } = useTranslation('settings');
     const [newStyle, setNewStyle] = useState({
         name: '',
         category: AD_CATEGORIES.TRUST_AUTHORITY,
@@ -412,22 +418,22 @@ function AddStyleModal({ onClose, onSave }) {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6 border-b border-gray-200">
-                    <h2 className="text-2xl font-bold text-gray-900">Add New Style</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">{t('settings.addNewStyle')}</h2>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.name2')}</label>
                         <input
                             type="text"
                             required
                             value={newStyle.name}
                             onChange={(e) => setNewStyle({ ...newStyle, name: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
-                            placeholder="e.g., The Bold Comparison"
+                            placeholder={t('settings.eGTheBoldComparison')}
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.category')}</label>
                         <select
                             required
                             value={newStyle.category}
@@ -435,51 +441,51 @@ function AddStyleModal({ onClose, onSave }) {
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
                         >
                             {Object.values(AD_CATEGORIES).map(cat => (
-                                <option key={cat} value={cat}>{cat}</option>
+                                <option key={cat} value={cat}>{categoryLabel(cat)}</option>
                             ))}
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.description2')}</label>
                         <textarea
                             required
                             value={newStyle.description}
                             onChange={(e) => setNewStyle({ ...newStyle, description: e.target.value })}
                             rows={3}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
-                            placeholder="What makes this style unique?"
+                            placeholder={t('settings.whatMakesThisStyleUnique')}
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Mood</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.mood2')}</label>
                             <input
                                 type="text"
                                 value={newStyle.mood}
                                 onChange={(e) => setNewStyle({ ...newStyle, mood: e.target.value })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
-                                placeholder="e.g., Bold and energetic"
+                                placeholder={t('settings.eGBoldAndEnergetic')}
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Design Style</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.designStyle')}</label>
                             <input
                                 type="text"
                                 value={newStyle.design_style}
                                 onChange={(e) => setNewStyle({ ...newStyle, design_style: e.target.value })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
-                                placeholder="e.g., Modern minimal"
+                                placeholder={t('settings.eGModernMinimal')}
                             />
                         </div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Image Generation Prompt</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.imageGenerationPrompt')}</label>
                         <textarea
                             value={newStyle.prompt}
                             onChange={(e) => setNewStyle({ ...newStyle, prompt: e.target.value })}
                             rows={4}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
-                            placeholder="Detailed prompt for AI image generation..."
+                            placeholder={t('settings.detailedPromptForAiImage')}
                         />
                     </div>
                     <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
@@ -488,13 +494,13 @@ function AddStyleModal({ onClose, onSave }) {
                             onClick={onClose}
                             className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                         >
-                            Cancel
+                            {t('settings.cancel')}
                         </button>
                         <button
                             type="submit"
                             className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                         >
-                            Add Style
+                            {t('settings.addStyle')}
                         </button>
                     </div>
                 </form>
@@ -504,6 +510,7 @@ function AddStyleModal({ onClose, onSave }) {
 }
 
 function AIGenerationModal({ onClose, onGenerate, generating }) {
+    const { t } = useTranslation('settings');
     const [prompt, setPrompt] = useState('');
     const [count, setCount] = useState(5);
 
@@ -518,14 +525,14 @@ function AIGenerationModal({ onClose, onGenerate, generating }) {
                 <div className="p-6 border-b border-gray-200">
                     <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                         <Sparkles className="text-purple-600" />
-                        Generate Styles with AI
+                        {t('settings.generateStylesWithAi')}
                     </h2>
-                    <p className="text-gray-600 mt-1">Describe the types of ad styles you want to create</p>
+                    <p className="text-gray-600 mt-1">{t('settings.describeTheTypesOfAd')}</p>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            What kind of ad styles do you need?
+                            {t('settings.whatKindOfAdStyles')}
                         </label>
                         <textarea
                             required
@@ -533,12 +540,12 @@ function AIGenerationModal({ onClose, onGenerate, generating }) {
                             onChange={(e) => setPrompt(e.target.value)}
                             rows={5}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
-                            placeholder="Example: Create ad styles for fitness supplements targeting women aged 25-40. Focus on before/after transformations and social proof..."
+                            placeholder={t('settings.exampleCreateAdStylesFor')}
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            How many styles to generate?
+                            {t('settings.howManyStylesToGenerate')}
                         </label>
                         <input
                             type="number"
@@ -556,7 +563,7 @@ function AIGenerationModal({ onClose, onGenerate, generating }) {
                             disabled={generating}
                             className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
                         >
-                            Cancel
+                            {t('settings.cancel')}
                         </button>
                         <button
                             type="submit"
@@ -564,7 +571,7 @@ function AIGenerationModal({ onClose, onGenerate, generating }) {
                             className="flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
                         >
                             <Sparkles size={18} className={generating ? 'animate-spin' : ''} />
-                            {generating ? 'Generating...' : 'Generate Styles'}
+                            {generating ? t('settings.generating') : t('settings.generateStyles')}
                         </button>
                     </div>
                 </form>
@@ -574,6 +581,7 @@ function AIGenerationModal({ onClose, onGenerate, generating }) {
 }
 
 function PromptsSettings({ prompts, editingPrompt, onEdit, onSave, onCancel, onUpdate }) {
+    const { t } = useTranslation('settings');
     const [filterCategory, setFilterCategory] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -591,7 +599,7 @@ function PromptsSettings({ prompts, editingPrompt, onEdit, onSave, onCancel, onU
             <div className="flex items-center gap-3">
                 <input
                     type="text"
-                    placeholder="Search prompts..."
+                    placeholder={t('settings.searchPrompts')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
@@ -601,10 +609,10 @@ function PromptsSettings({ prompts, editingPrompt, onEdit, onSave, onCancel, onU
                     onChange={(e) => setFilterCategory(e.target.value)}
                     className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
                 >
-                    <option value="all">All Categories ({prompts.length})</option>
+                    <option value="all">{t('settings.allCategoriesCount', { count: prompts.length })}</option>
                     {Object.values(PROMPT_CATEGORIES).map(cat => (
                         <option key={cat} value={cat}>
-                            {cat} ({prompts.filter(p => p.category === cat).length})
+                            {promptCategoryLabel(cat)} ({prompts.filter(p => p.category === cat).length})
                         </option>
                     ))}
                 </select>
@@ -630,15 +638,15 @@ function PromptsSettings({ prompts, editingPrompt, onEdit, onSave, onCancel, onU
                                     <div className="flex-1">
                                         <div className="flex items-center gap-3 mb-2">
                                             <FileText size={20} className="text-purple-600" />
-                                            <h3 className="text-lg font-semibold text-gray-900">{prompt.name}</h3>
+                                            <h3 className="text-lg font-semibold text-gray-900">{promptText(prompt, 'name')}</h3>
                                             <span className="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
-                                                {prompt.category}
+                                                {promptCategoryLabel(prompt.category)}
                                             </span>
                                         </div>
-                                        <p className="text-gray-600 text-sm mb-3">{prompt.description}</p>
+                                        <p className="text-gray-600 text-sm mb-3">{promptText(prompt, 'description')}</p>
                                         {prompt.variables && prompt.variables.length > 0 && (
                                             <div className="flex flex-wrap gap-2 mb-3">
-                                                <span className="text-xs text-gray-500 font-medium">Variables:</span>
+                                                <span className="text-xs text-gray-500 font-medium">{t('settings.variables')}</span>
                                                 {prompt.variables.map((variable, idx) => (
                                                     <code key={idx} className="px-2 py-1 text-xs bg-gray-200 text-gray-800 rounded font-mono">
                                                         {'{' + variable + '}'}
@@ -648,7 +656,7 @@ function PromptsSettings({ prompts, editingPrompt, onEdit, onSave, onCancel, onU
                                         )}
                                         {prompt.notes && (
                                             <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mt-2">
-                                                <strong>Note:</strong> {prompt.notes}
+                                                <strong>{t('settings.note')}</strong> {prompt.notes}
                                             </div>
                                         )}
                                     </div>
@@ -662,7 +670,7 @@ function PromptsSettings({ prompts, editingPrompt, onEdit, onSave, onCancel, onU
                                 <details className="mt-4">
                                     <summary className="cursor-pointer text-sm font-medium text-purple-600 hover:text-purple-700 flex items-center gap-2">
                                         <Code size={16} />
-                                        View Full Prompt Template
+                                        {t('settings.viewFullPromptTemplate')}
                                     </summary>
                                     <pre className="mt-3 p-4 bg-gray-800 text-gray-100 rounded-lg overflow-x-auto text-xs leading-relaxed">
                                         {prompt.template}
@@ -678,10 +686,11 @@ function PromptsSettings({ prompts, editingPrompt, onEdit, onSave, onCancel, onU
 }
 
 function EditPromptForm({ prompt, onChange, onSave, onCancel }) {
+    const { t } = useTranslation('settings');
     return (
         <div className="space-y-4">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.name')}</label>
                 <input
                     type="text"
                     value={prompt.name}
@@ -690,7 +699,7 @@ function EditPromptForm({ prompt, onChange, onSave, onCancel }) {
                 />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.description')}</label>
                 <textarea
                     value={prompt.description}
                     onChange={(e) => onChange({ ...prompt, description: e.target.value })}
@@ -699,7 +708,7 @@ function EditPromptForm({ prompt, onChange, onSave, onCancel }) {
                 />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Prompt Template</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.promptTemplate')}</label>
                 <textarea
                     value={prompt.template}
                     onChange={(e) => onChange({ ...prompt, template: e.target.value })}
@@ -708,7 +717,7 @@ function EditPromptForm({ prompt, onChange, onSave, onCancel }) {
                 />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.notes')}</label>
                 <textarea
                     value={prompt.notes}
                     onChange={(e) => onChange({ ...prompt, notes: e.target.value })}
@@ -722,14 +731,14 @@ function EditPromptForm({ prompt, onChange, onSave, onCancel }) {
                     className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                     <X size={18} />
-                    Cancel
+                    {t('settings.cancel')}
                 </button>
                 <button
                     onClick={onSave}
                     className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                 >
                     <Save size={18} />
-                    Save Changes
+                    {t('settings.saveChanges')}
                 </button>
             </div>
         </div>
@@ -737,11 +746,12 @@ function EditPromptForm({ prompt, onChange, onSave, onCancel }) {
 }
 
 function GeneralSettings() {
+    const { t } = useTranslation('settings');
     return (
         <div className="space-y-6">
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Application Settings</h3>
-                <p className="text-gray-600">General settings coming soon...</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('settings.applicationSettings')}</h3>
+                <p className="text-gray-600">{t('settings.generalSettingsComingSoon')}</p>
             </div>
         </div>
     );

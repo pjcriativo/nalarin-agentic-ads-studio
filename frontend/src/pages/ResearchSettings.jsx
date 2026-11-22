@@ -1,8 +1,10 @@
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect } from 'react';
 import { getBlacklist, addToBlacklist, removeFromBlacklist, getKeywordBlacklist, addToKeywordBlacklist, removeFromKeywordBlacklist } from '../api/research';
 
 const ResearchSettings = () => {
+    const { t } = useTranslation('research');
     const { showSuccess, showError } = useToast();
     const [blacklist, setBlacklist] = useState([]);
     const [keywordBlacklist, setKeywordBlacklist] = useState([]);
@@ -42,22 +44,22 @@ const ResearchSettings = () => {
 
         try {
             await addToBlacklist(pageName);
-            showSuccess(`Added "${pageName}" to blacklist`);
+            showSuccess(t('researchSettings.addedPagenameToBlacklist', { pageName }));
             fetchBlacklist();
             setBlacklistPageName('');
             setShowBlacklistModal(false);
         } catch (error) {
-            showError('Failed to add to blacklist');
+            showError(t('researchSettings.failedToAddToBlacklist'));
         }
     };
 
     const handleRemoveFromBlacklist = async (id, pageName) => {
         try {
             await removeFromBlacklist(id);
-            showSuccess(`Removed "${pageName}" from blacklist`);
+            showSuccess(t('researchSettings.removedPagenameFromBlacklist', { pageName }));
             fetchBlacklist();
         } catch (error) {
-            showError('Failed to remove from blacklist');
+            showError(t('researchSettings.failedToRemoveFromBlacklist'));
         }
     };
 
@@ -69,46 +71,46 @@ const ResearchSettings = () => {
 
         try {
             await addToKeywordBlacklist(keyword);
-            showSuccess(`Added "${keyword}" to keyword blacklist`);
+            showSuccess(t('researchSettings.addedKeywordToKeywordBlacklist', { keyword }));
             fetchKeywordBlacklist();
             setBlacklistKeyword('');
             setShowKeywordModal(false);
         } catch (error) {
-            showError('Failed to add to keyword blacklist');
+            showError(t('researchSettings.failedToAddToKeyword'));
         }
     };
 
     const handleRemoveFromKeywordBlacklist = async (id, keyword) => {
         try {
             await removeFromKeywordBlacklist(id);
-            showSuccess(`Removed "${keyword}" from keyword blacklist`);
+            showSuccess(t('researchSettings.removedKeywordFromKeywordBlacklist', { keyword }));
             fetchKeywordBlacklist();
         } catch (error) {
-            showError('Failed to remove from keyword blacklist');
+            showError(t('researchSettings.failedToRemoveFromKeyword'));
         }
     };
 
     return (
         <div className="max-w-6xl mx-auto p-6">
-            <h1 className="text-3xl font-bold mb-6">Research Settings</h1>
+            <h1 className="text-3xl font-bold mb-6">{t('researchSettings.researchSettings')}</h1>
 
             {/* Page Blacklist Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">Page Blacklist</h2>
+                    <h2 className="text-xl font-semibold">{t('researchSettings.pageBlacklist')}</h2>
                     <button
                         onClick={() => setShowBlacklistModal(true)}
                         className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
                     >
-                        Add Page
+                        {t('researchSettings.addPage')}
                     </button>
                 </div>
                 <p className="text-gray-600 mb-4">
-                    Pages added here will be automatically filtered out from all future searches.
+                    {t('researchSettings.pagesAddedHereWillBe')}
                 </p>
 
                 {blacklist.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">No blacklisted pages</p>
+                    <p className="text-gray-500 text-center py-8">{t('researchSettings.noBlacklistedPages')}</p>
                 ) : (
                     <div className="space-y-2">
                         {blacklist.map((item) => (
@@ -121,7 +123,7 @@ const ResearchSettings = () => {
                                     onClick={() => handleRemoveFromBlacklist(item.id, item.page_name)}
                                     className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
                                 >
-                                    Remove
+                                    {t('researchSettings.remove')}
                                 </button>
                             </div>
                         ))}
@@ -132,20 +134,20 @@ const ResearchSettings = () => {
             {/* Keyword Blacklist Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">Keyword Blacklist</h2>
+                    <h2 className="text-xl font-semibold">{t('researchSettings.keywordBlacklist')}</h2>
                     <button
                         onClick={() => setShowKeywordModal(true)}
                         className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
                     >
-                        Add Keyword
+                        {t('researchSettings.addKeyword')}
                     </button>
                 </div>
                 <p className="text-gray-600 mb-4">
-                    Keywords added here will filter out ads containing these words in the title, body, or caption.
+                    {t('researchSettings.keywordsAddedHereWillFilter')}
                 </p>
 
                 {keywordBlacklist.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">No blacklisted keywords</p>
+                    <p className="text-gray-500 text-center py-8">{t('researchSettings.noBlacklistedKeywords')}</p>
                 ) : (
                     <div className="flex flex-wrap gap-2">
                         {keywordBlacklist.map((item) => (
@@ -167,12 +169,12 @@ const ResearchSettings = () => {
             {showBlacklistModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                        <h3 className="text-lg font-semibold mb-4">Add Page to Blacklist</h3>
+                        <h3 className="text-lg font-semibold mb-4">{t('researchSettings.addPageToBlacklist')}</h3>
                         <input
                             type="text"
                             value={blacklistPageName}
                             onChange={(e) => setBlacklistPageName(e.target.value)}
-                            placeholder="Page name"
+                            placeholder={t('researchSettings.pageName')}
                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none mb-4"
                             autoFocus
                         />
@@ -184,13 +186,13 @@ const ResearchSettings = () => {
                                 }}
                                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
                             >
-                                Cancel
+                                {t('researchSettings.cancel')}
                             </button>
                             <button
                                 onClick={() => handleAddToBlacklist(blacklistPageName)}
                                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
                             >
-                                Add
+                                {t('researchSettings.add')}
                             </button>
                         </div>
                     </div>
@@ -201,12 +203,12 @@ const ResearchSettings = () => {
             {showKeywordModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                        <h3 className="text-lg font-semibold mb-4">Add Keyword to Blacklist</h3>
+                        <h3 className="text-lg font-semibold mb-4">{t('researchSettings.addKeywordToBlacklist')}</h3>
                         <input
                             type="text"
                             value={blacklistKeyword}
                             onChange={(e) => setBlacklistKeyword(e.target.value)}
-                            placeholder="Keyword"
+                            placeholder={t('researchSettings.keyword')}
                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none mb-4"
                             autoFocus
                         />
@@ -218,13 +220,13 @@ const ResearchSettings = () => {
                                 }}
                                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
                             >
-                                Cancel
+                                {t('researchSettings.cancel')}
                             </button>
                             <button
                                 onClick={() => handleAddToKeywordBlacklist(blacklistKeyword)}
                                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
                             >
-                                Add
+                                {t('researchSettings.add')}
                             </button>
                         </div>
                     </div>

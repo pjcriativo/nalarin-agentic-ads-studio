@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { translateBackendMessage } from '../i18n/backendErrors';
 import { TrendingUp, Plus, Play, Pause } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -8,16 +10,17 @@ import ConfirmationModal from '../components/ConfirmationModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
-const CAMPAIGN_COLUMNS = [
-    { key: 'name', label: 'Campaign', numeric: false },
-    { key: 'status', label: 'Status', numeric: false },
-    { key: 'impressions', label: 'Impressions', numeric: true },
-    { key: 'clicks', label: 'Clicks', numeric: true },
-    { key: 'cost', label: 'Cost', numeric: true, format: (v) => `$${Number(v).toFixed(2)}` },
-    { key: 'conversions', label: 'Conversions', numeric: true },
+const buildCampaignColumns = (t) => [
+    { key: 'name', label: t('columns.campaign'), numeric: false },
+    { key: 'status', label: t('columns.status'), numeric: false },
+    { key: 'impressions', label: t('columns.impressions'), numeric: true },
+    { key: 'clicks', label: t('columns.clicks'), numeric: true },
+    { key: 'cost', label: t('columns.cost'), numeric: true, format: (v) => `$${Number(v).toFixed(2)}` },
+    { key: 'conversions', label: t('columns.conversions'), numeric: true },
 ];
 
 export default function GoogleAdsCampaigns() {
+    const { t } = useTranslation('campaigns');
     const { authFetch } = useAuth();
     const { showError, showSuccess } = useToast();
 
@@ -84,15 +87,16 @@ export default function GoogleAdsCampaigns() {
                 setCampaigns(data.campaigns || []);
             } else if (response.status !== 404) {
                 const error = await response.json().catch(() => ({}));
-                throw new Error(error.detail || 'Failed to load Google Ads campaigns');
+                throw new Error(translateBackendMessage(error.detail) || t('googleAdsCampaigns.failedToLoadGoogleAds'));
             }
         } catch (error) {
-            const message = error.message || 'Failed to load Google Ads campaigns';
+            const message = translateBackendMessage(error.message) || t('googleAdsCampaigns.failedToLoadGoogleAds');
             setCampaignError(message);
             showError(message);
         } finally {
             setCampaignsLoading(false);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `t` only formats messages; changing language must not re-fetch data
     }, [authFetch, datePreset, showError]);
 
     useEffect(() => {
@@ -101,12 +105,13 @@ export default function GoogleAdsCampaigns() {
         // Query param set by the OAuth callback redirect
         const query = new URLSearchParams(window.location.search);
         if (query.get('connected') === '1') {
-            showSuccess('Google Ads account connected');
+            showSuccess(t('googleAdsCampaigns.googleAdsAccountConnected'));
             window.history.replaceState({}, '', window.location.pathname);
         } else if (query.get('select') === '1') {
             setSelectingAccount(true);
             window.history.replaceState({}, '', window.location.pathname);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `t` only formats messages; changing language must not re-fetch data
     }, [loadConnection, loadConnections, showSuccess]);
 
     useEffect(() => {
@@ -120,12 +125,12 @@ export default function GoogleAdsCampaigns() {
             const response = await authFetch(`${API_URL}/google-ads/oauth/start`);
             if (!response.ok) {
                 const error = await response.json().catch(() => ({}));
-                throw new Error(error.detail || 'Failed to start Google Ads connection');
+                throw new Error(translateBackendMessage(error.detail) || t('googleAdsCampaigns.failedToStartGoogleAds'));
             }
             const { oauth_url } = await response.json();
             window.location.href = oauth_url;
         } catch (error) {
-            showError(error.message || 'Failed to start Google Ads connection');
+            showError(translateBackendMessage(error.message) || t('googleAdsCampaigns.failedToStartGoogleAds'));
         }
     };
 
@@ -135,9 +140,9 @@ export default function GoogleAdsCampaigns() {
             await authFetch(`${API_URL}/google-ads/connection`, { method: 'DELETE' });
             setConnection({ connected: false });
             setCampaigns([]);
-            showSuccess('Google Ads account disconnected');
+            showSuccess(t('googleAdsCampaigns.googleAdsAccountDisconnected'));
         } catch (error) {
-            showError('Failed to disconnect');
+            showError(t('googleAdsCampaigns.failedToDisconnect'));
         } finally {
             setDisconnecting(false);
         }
@@ -155,7 +160,7 @@ export default function GoogleAdsCampaigns() {
             });
             if (!response.ok) {
                 const error = await response.json().catch(() => ({}));
-                throw new Error(error.detail || 'Failed to select Google Ads account');
+                throw new Error(translateBackendMessage(error.detail) || t('googleAdsCampaigns.failedToSelectGoogleAds'));
             }
             setConnection(await response.json());
             setCampaigns([]);
@@ -165,9 +170,9 @@ export default function GoogleAdsCampaigns() {
                 selected: candidate.customer_id === customerId,
             })));
             setSelectingAccount(false);
-            showSuccess(`Google Ads account ${formatCustomerId(customerId)} selected`);
+            showSuccess(t('google.accountSelected', { id: formatCustomerId(customerId) }));
         } catch (error) {
-            showError(error.message || 'Failed to select Google Ads account');
+            showError(translateBackendMessage(error.message) || t('googleAdsCampaigns.failedToSelectGoogleAds'));
         } finally {
             setSelectingCustomerId(null);
         }
@@ -178,7 +183,7 @@ export default function GoogleAdsCampaigns() {
         const name = newName.trim();
         const budgetDollars = parseFloat(newBudget);
         if (!name || !budgetDollars || budgetDollars <= 0) {
-            showError('Enter a campaign name and a daily budget greater than $0');
+            showError(t('googleAdsCampaigns.enterACampaignNameAnd'));
             return;
         }
         const keywords = newKeywords
@@ -186,9 +191,8 @@ export default function GoogleAdsCampaigns() {
             .map((k) => k.trim())
             .filter(Boolean);
         const budgetMicros = Math.round(budgetDollars * 1_000_000);
-        const message = `Create "${name}" as a Search campaign with a daily budget of $${budgetDollars.toFixed(2)}. `
-            + 'It will be created PAUSED -- no spending starts until you explicitly enable it.'
-            + (keywords.length ? ` Keywords: ${keywords.join(', ')}.` : '');
+        const message = t('google.createPreview', { name, budget: budgetDollars.toFixed(2) })
+            + (keywords.length ? t('google.createPreviewKeywords', { keywords: keywords.join(', ') }) : '');
         setCreatePreview({ name, budgetMicros, keywords, message });
     };
 
@@ -208,16 +212,16 @@ export default function GoogleAdsCampaigns() {
             });
             if (!response.ok) {
                 const error = await response.json().catch(() => ({}));
-                throw new Error(error.detail || 'Failed to create campaign');
+                throw new Error(translateBackendMessage(error.detail) || t('googleAdsCampaigns.failedToCreateCampaign'));
             }
-            showSuccess('Campaign created (paused) -- enable it when you\'re ready to spend');
+            showSuccess(t('google.campaignCreated'));
             setNewName('');
             setNewBudget('');
             setNewKeywords('');
             setShowCreateForm(false);
             loadCampaigns();
         } catch (error) {
-            showError(error.message || 'Failed to create campaign');
+            showError(translateBackendMessage(error.message) || t('googleAdsCampaigns.failedToCreateCampaign'));
         } finally {
             setCreating(false);
             setCreatePreview(null);
@@ -229,10 +233,10 @@ export default function GoogleAdsCampaigns() {
         setStatusChangePreview({
             campaign,
             action: isEnabled ? 'pause' : 'enable',
-            title: isEnabled ? 'Pause campaign?' : 'Enable campaign?',
+            title: isEnabled ? t('googleAdsCampaigns.pauseCampaign') : t('googleAdsCampaigns.enableCampaign'),
             message: isEnabled
-                ? `Pause "${campaign.name}"? It will stop serving ads and spending immediately.`
-                : `Enable "${campaign.name}"? This starts serving ads and spending against its budget immediately.`,
+                ? t('google.pauseConfirm', { name: campaign.name })
+                : t('google.enableConfirm', { name: campaign.name }),
         });
     };
 
@@ -248,12 +252,12 @@ export default function GoogleAdsCampaigns() {
             });
             if (!response.ok) {
                 const error = await response.json().catch(() => ({}));
-                throw new Error(error.detail || `Failed to ${action} campaign`);
+                throw new Error(translateBackendMessage(error.detail) || t(action === 'pause' ? 'google.pauseFailed' : 'google.enableFailed'));
             }
-            showSuccess(action === 'pause' ? 'Campaign paused' : 'Campaign enabled');
+            showSuccess(action === 'pause' ? t('googleAdsCampaigns.campaignPaused') : t('googleAdsCampaigns.campaignEnabled'));
             loadCampaigns();
         } catch (error) {
-            showError(error.message || `Failed to ${action} campaign`);
+            showError(translateBackendMessage(error.message) || t(action === 'pause' ? 'google.pauseFailed' : 'google.enableFailed'));
         } finally {
             setStatusChanging(false);
             setStatusChangePreview(null);
@@ -268,7 +272,7 @@ export default function GoogleAdsCampaigns() {
                         <TrendingUp size={32} className="text-amber-600" />
                         Google Ads
                     </h1>
-                    <p className="text-gray-600">Connect a Google Ads account to see campaign performance</p>
+                    <p className="text-gray-600">{t('googleAdsCampaigns.connectAGoogleAdsAccount')}</p>
                 </div>
                 {connection?.connected && (
                     <button
@@ -276,7 +280,7 @@ export default function GoogleAdsCampaigns() {
                         className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors shadow-sm shrink-0"
                     >
                         <Plus size={18} />
-                        Create campaign
+                        {t('googleAdsCampaigns.createCampaign')}
                     </button>
                 )}
             </div>
@@ -299,7 +303,7 @@ export default function GoogleAdsCampaigns() {
                             onClick={() => setSelectingAccount(true)}
                             className="text-sm font-medium text-amber-700 hover:text-amber-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600"
                         >
-                            Change Google Ads account
+                            {t('googleAdsCampaigns.changeGoogleAdsAccount')}
                         </button>
                     )}
                 </div>
@@ -308,10 +312,10 @@ export default function GoogleAdsCampaigns() {
             {selectingAccount && connections.length > 0 && (
                 <section aria-labelledby="google-account-heading" className="border-y border-gray-200 py-5">
                     <div className="flex items-center justify-between gap-4 mb-3">
-                        <h2 id="google-account-heading" className="text-lg font-bold text-gray-900">Choose a Google Ads account</h2>
+                        <h2 id="google-account-heading" className="text-lg font-bold text-gray-900">{t('googleAdsCampaigns.chooseAGoogleAdsAccount')}</h2>
                         {connection?.connected && (
                             <button type="button" onClick={() => setSelectingAccount(false)} className="text-sm text-gray-600 hover:text-gray-900">
-                                Cancel
+                                {t('googleAdsCampaigns.cancel')}
                             </button>
                         )}
                     </div>
@@ -326,10 +330,10 @@ export default function GoogleAdsCampaigns() {
                                 className={`min-h-16 border px-4 py-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:opacity-60 ${candidate.selected ? 'border-amber-600 bg-amber-50' : 'border-gray-300 bg-white hover:border-amber-500'}`}
                             >
                                 <span className="block font-semibold text-gray-900">
-                                    {candidate.account_name || `Account ${formatCustomerId(candidate.customer_id)}`}
+                                    {candidate.account_name || t('google.accountFallback', { id: formatCustomerId(candidate.customer_id) })}
                                 </span>
                                 {candidate.account_name && <span className="block text-sm text-gray-500">{formatCustomerId(candidate.customer_id)}</span>}
-                                {selectingCustomerId === candidate.customer_id && <span className="block text-xs text-amber-700 mt-1">Selecting…</span>}
+                                {selectingCustomerId === candidate.customer_id && <span className="block text-xs text-amber-700 mt-1">{t('googleAdsCampaigns.selecting')}</span>}
                             </button>
                         ))}
                     </div>
@@ -338,11 +342,11 @@ export default function GoogleAdsCampaigns() {
 
             {campaignError && connection?.connected && (
                 <section role="alert" className="border border-amber-300 bg-amber-50 px-4 py-4 text-amber-950">
-                    <h2 className="font-bold">Google Ads data is not available yet</h2>
+                    <h2 className="font-bold">{t('googleAdsCampaigns.googleAdsDataIsNot')}</h2>
                     <p className="mt-1 text-sm leading-6">{campaignError}</p>
                     {campaignError.includes('developer token is only approved') && (
                         <p className="mt-2 text-sm leading-6">
-                            The account is connected correctly. Google must approve Basic or Standard API access before production campaigns can be read.
+                            {t('googleAdsCampaigns.theAccountIsConnectedCorrectly')}
                         </p>
                     )}
                 </section>
@@ -350,49 +354,49 @@ export default function GoogleAdsCampaigns() {
 
             {showCreateForm && connection?.connected && (
                 <form onSubmit={handleReviewCreate} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
-                    <h2 className="text-lg font-bold text-gray-900">New Search campaign</h2>
+                    <h2 className="text-lg font-bold text-gray-900">{t('googleAdsCampaigns.newSearchCampaign')}</h2>
                     <div className="grid sm:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Campaign name</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('googleAdsCampaigns.campaignName')}</label>
                             <input
                                 type="text"
                                 value={newName}
                                 onChange={(e) => setNewName(e.target.value)}
-                                placeholder="e.g. Spring Sale - Search"
+                                placeholder={t('googleAdsCampaigns.eGSpringSaleSearch')}
                                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Daily budget (USD)</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('googleAdsCampaigns.dailyBudgetUsd')}</label>
                             <input
                                 type="number"
                                 min="1"
                                 step="0.01"
                                 value={newBudget}
                                 onChange={(e) => setNewBudget(e.target.value)}
-                                placeholder="e.g. 25"
+                                placeholder={t('google.budgetPlaceholder')}
                                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                             />
                         </div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Keywords (optional, comma or newline separated)</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('googleAdsCampaigns.keywordsOptionalCommaOrNewline')}</label>
                         <textarea
                             value={newKeywords}
                             onChange={(e) => setNewKeywords(e.target.value)}
                             rows={3}
-                            placeholder="running shoes, trail shoes, marathon training"
+                            placeholder={t('googleAdsCampaigns.runningShoesTrailShoesMarathon')}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         />
                     </div>
-                    <p className="text-xs text-gray-500">The campaign is created PAUSED. Nothing spends until you enable it from the table below.</p>
+                    <p className="text-xs text-gray-500">{t('googleAdsCampaigns.theCampaignIsCreatedPaused')}</p>
                     <div className="flex justify-end gap-3">
                         <button
                             type="button"
                             onClick={() => setShowCreateForm(false)}
                             className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium"
                         >
-                            Cancel
+                            {t('googleAdsCampaigns.cancel')}
                         </button>
                         <button
                             type="submit"
@@ -407,11 +411,11 @@ export default function GoogleAdsCampaigns() {
             {connection?.connected && !campaignError && (
                 <PerformanceTable
                     rows={campaigns}
-                    columns={CAMPAIGN_COLUMNS}
+                    columns={buildCampaignColumns(t)}
                     loading={campaignsLoading}
                     datePreset={datePreset}
                     onDatePresetChange={setDatePreset}
-                    emptyMessage="No campaigns found for this date range."
+                    emptyMessage={t('googleAdsCampaigns.noCampaignsFoundForThis')}
                     renderActions={(campaign) => (
                         <button
                             onClick={() => handleRequestStatusChange(campaign)}
@@ -419,7 +423,7 @@ export default function GoogleAdsCampaigns() {
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 text-gray-700 hover:border-amber-500 hover:text-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         >
                             {campaign.status === 'ENABLED' ? <Pause size={13} /> : <Play size={13} />}
-                            {campaign.status === 'ENABLED' ? 'Pause' : 'Enable'}
+                            {campaign.status === 'ENABLED' ? t('googleAdsCampaigns.pause') : t('googleAdsCampaigns.enable')}
                         </button>
                     )}
                 />
@@ -429,9 +433,9 @@ export default function GoogleAdsCampaigns() {
                 isOpen={!!createPreview}
                 onClose={() => setCreatePreview(null)}
                 onConfirm={handleConfirmCreate}
-                title="Create this campaign?"
+                title={t('googleAdsCampaigns.createThisCampaign')}
                 message={createPreview?.message}
-                confirmText={creating ? 'Creating…' : 'Create campaign'}
+                confirmText={creating ? t('googleAdsCampaigns.creating') : t('googleAdsCampaigns.createCampaign')}
                 isDestructive={false}
                 icon={Plus}
             />
@@ -442,7 +446,7 @@ export default function GoogleAdsCampaigns() {
                 onConfirm={handleConfirmStatusChange}
                 title={statusChangePreview?.title}
                 message={statusChangePreview?.message}
-                confirmText={statusChanging ? 'Please wait…' : (statusChangePreview?.action === 'pause' ? 'Pause' : 'Enable')}
+                confirmText={statusChanging ? t('google.pleaseWait') : (statusChangePreview?.action === 'pause' ? t('googleAdsCampaigns.pause') : t('googleAdsCampaigns.enable'))}
                 isDestructive={statusChangePreview?.action === 'pause'}
                 icon={statusChangePreview?.action === 'pause' ? Pause : Play}
             />

@@ -1,3 +1,6 @@
+import i18n from '../i18n';
+import { translateBackendMessage } from '../i18n/backendErrors';
+
 // Facebook Marketing API Integration Service
 // Now proxies through our backend with authentication
 
@@ -29,7 +32,7 @@ export async function getAdAccounts() {
         const response = await authFetch(`${API_BASE_URL}/accounts`);
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to fetch ad accounts');
+            throw new Error(translateBackendMessage(error.detail) || i18n.t('errors:api.failedToFetchAdAccounts'));
         }
         const accounts = await response.json();
 
@@ -68,7 +71,7 @@ export async function getCampaigns(adAccountId) {
         const response = await authFetch(`${API_BASE_URL}/campaigns?ad_account_id=${adAccountId}`);
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to fetch campaigns');
+            throw new Error(translateBackendMessage(error.detail) || i18n.t('errors:api.failedToFetchCampaigns'));
         }
         const campaigns = await response.json();
 
@@ -98,7 +101,7 @@ export async function getPixels(adAccountId) {
         const response = await authFetch(`${API_BASE_URL}/pixels?ad_account_id=${adAccountId}`);
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to fetch pixels');
+            throw new Error(translateBackendMessage(error.detail) || i18n.t('errors:api.failedToFetchPixels'));
         }
         const pixels = await response.json();
 
@@ -123,7 +126,7 @@ export async function getPages(adAccountId) {
         const response = await authFetch(`${API_BASE_URL}/pages`);
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to fetch pages');
+            throw new Error(translateBackendMessage(error.detail) || i18n.t('errors:api.failedToFetchPages'));
         }
         const pages = await response.json();
 
@@ -151,7 +154,7 @@ export const getAdSets = async (campaignId, adAccountId) => {
         const response = await authFetch(url);
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to fetch ad sets');
+            throw new Error(translateBackendMessage(error.detail) || i18n.t('errors:api.failedToFetchAdSets'));
         }
         const adSets = await response.json();
         return adSets;
@@ -205,7 +208,7 @@ export async function uploadVideoToFacebook(videoUrl, adAccountId, waitForReady 
             });
 
             if (!uploadResponse.ok) {
-                throw new Error('Failed to upload video to server');
+                throw new Error(i18n.t('errors:api.failedToUploadVideoTo'));
             }
 
             const uploadResult = await uploadResponse.json();
@@ -226,7 +229,7 @@ export async function uploadVideoToFacebook(videoUrl, adAccountId, waitForReady 
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to upload video to Facebook');
+            throw new Error(translateBackendMessage(error.detail) || i18n.t('errors:api.failedToUploadVideoTo'));
         }
 
         return await response.json();
@@ -246,7 +249,7 @@ export async function getVideoStatus(videoId) {
         const response = await authFetch(`${API_BASE_URL}/video-status/${videoId}`);
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to get video status');
+            throw new Error(translateBackendMessage(error.detail) || i18n.t('errors:api.failedToGetVideoStatus'));
         }
         return await response.json();
     } catch (error) {
@@ -265,7 +268,7 @@ export async function getVideoThumbnails(videoId) {
         const response = await authFetch(`${API_BASE_URL}/video-thumbnails/${videoId}`);
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to get video thumbnails');
+            throw new Error(translateBackendMessage(error.detail) || i18n.t('errors:api.failedToGetVideoThumbnails'));
         }
         return await response.json();
     } catch (error) {
@@ -300,7 +303,7 @@ export async function uploadImageToFacebook(imageUrl, adAccountId) {
             });
 
             if (!uploadResponse.ok) {
-                throw new Error('Failed to upload image to server');
+                throw new Error(i18n.t('errors:api.failedToUploadImageTo'));
             }
 
             const uploadResult = await uploadResponse.json();
@@ -322,7 +325,7 @@ export async function uploadImageToFacebook(imageUrl, adAccountId) {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to upload image to Facebook');
+            throw new Error(translateBackendMessage(error.detail) || i18n.t('errors:api.failedToUploadImageTo'));
         }
 
         const data = await response.json();
@@ -348,7 +351,7 @@ export async function createFacebookCampaign(campaignData, adAccountId) {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to create campaign');
+            throw new Error(translateBackendMessage(error.detail) || i18n.t('errors:api.failedToCreateCampaign'));
         }
 
         const data = await response.json();
@@ -387,7 +390,7 @@ export async function createFacebookAdSet(adsetData, campaignId, adAccountId, bu
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to create ad set');
+            throw new Error(translateBackendMessage(error.detail) || i18n.t('errors:api.failedToCreateAdSet'));
         }
 
         const data = await response.json();
@@ -436,7 +439,7 @@ export async function createFacebookCreative(creativeData, imageHash, pageId, ad
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to create creative');
+            throw new Error(translateBackendMessage(error.detail) || i18n.t('errors:api.failedToCreateCreative'));
         }
 
         const data = await response.json();
@@ -468,7 +471,7 @@ export async function createFacebookAd(adData, adsetId, creativeId, adAccountId)
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to create ad');
+            throw new Error(translateBackendMessage(error.detail) || i18n.t('errors:api.failedToCreateAd'));
         }
 
         const data = await response.json();
@@ -487,7 +490,7 @@ export async function searchLocations(query, type = 'city', adAccountId) {
         const response = await authFetch(`${API_BASE_URL}/locations/search?q=${encodeURIComponent(query)}&type=${type}&ad_account_id=${adAccountId}`);
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to search locations');
+            throw new Error(translateBackendMessage(error.detail) || i18n.t('errors:api.failedToSearchLocations'));
         }
         return await response.json();
     } catch (error) {

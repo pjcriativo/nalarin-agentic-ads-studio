@@ -1,0 +1,188 @@
+{
+  "categories": {
+    "trust_authority": "Trust & Authority",
+    "problem_solution": "Problem / Solution",
+    "social_proof_native": "Social Proof & Native",
+    "demonstration_logic": "Demonstration & Logic",
+    "disruption": "Disruption"
+  },
+  "promptCategories": {
+    "ad_copy_generation": "Ad Copy Generation",
+    "ad_remix_engine": "Ad Remix Engine",
+    "image_generation": "Image Generation",
+    "research_analysis": "Research & Analysis"
+  },
+  "bestFor": {
+    "medical": "Medical",
+    "legal": "Legal",
+    "financial": "Financial",
+    "high_ticket_services": "High-Ticket Services",
+    "saas": "SaaS",
+    "supplements": "Supplements",
+    "professional_services": "Professional Services",
+    "tech": "Tech",
+    "startups": "Startups",
+    "personal_brands": "Personal Brands",
+    "coaching": "Coaching",
+    "consulting": "Consulting",
+    "fitness": "Fitness",
+    "productivity_tools": "Productivity Tools",
+    "self_help": "Self-Help",
+    "services": "Services",
+    "subscriptions": "Subscriptions",
+    "innovation": "Innovation",
+    "disruptive_products": "Disruptive Products",
+    "modern_services": "Modern Services",
+    "e_commerce": "E-commerce",
+    "apps": "Apps",
+    "beauty": "Beauty",
+    "lifestyle_products": "Lifestyle Products",
+    "consumer_goods": "Consumer Goods",
+    "fashion": "Fashion",
+    "lifestyle": "Lifestyle",
+    "food_beverage": "Food & Beverage",
+    "natural_products": "Natural Products",
+    "skincare": "Skincare",
+    "luxury_goods": "Luxury Goods",
+    "sensory_products": "Sensory Products",
+    "saturated_markets": "Saturated Markets",
+    "contrarian_brands": "Contrarian Brands",
+    "contrarian_messaging": "Contrarian Messaging",
+    "educational_products": "Educational Products",
+    "high_stakes_decisions": "High-Stakes Decisions",
+    "time_sensitive_offers": "Time-Sensitive Offers",
+    "engagement": "Engagement"
+  },
+  "styles": {
+    "local-hero-split": {
+      "name": "The \"Local Hero\" Split",
+      "description": "Horizontal 50/50 split showing location and practitioner",
+      "visualLayout": "Horizontal 50/50 Split",
+      "psychology": "This is real, they are near me, and they are open",
+      "mood": "Professional and trustworthy",
+      "design_style": "Clean corporate aesthetic"
+    },
+    "pr-feature": {
+      "name": "The PR Feature (The \"As Seen In\")",
+      "description": "Single professional hero image with media credibility bar",
+      "visualLayout": "Single hero image with Media Bar overlay",
+      "psychology": "Transferred authority - if they wrote about it, it must be legit",
+      "mood": "Credible and authoritative",
+      "design_style": "Sophisticated and premium"
+    },
+    "founders-promise": {
+      "name": "The \"Founder's Promise\"",
+      "description": "Portrait with direct eye contact and personal touch",
+      "visualLayout": "Portrait with direct eye contact",
+      "psychology": "Accountability - a face behind the brand reduces fear of being scammed",
+      "mood": "Authentic and trustworthy",
+      "design_style": "Approachable and professional"
+    },
+    "comic-strip-agitator": {
+      "name": "The Comic Strip Agitator",
+      "description": "Sequential narrative showing transformation journey",
+      "visualLayout": "4-Panel Grid (2x2) or 3-Panel Horizontal",
+      "psychology": "Narrative transport - user sees themselves in the \"Before\" panel",
+      "mood": "Energetic and transformative",
+      "design_style": "Bold and graphic"
+    },
+    "us-vs-them-chart": {
+      "name": "The \"Us vs. Them\" Chart",
+      "description": "Comparison table framing the rational choice",
+      "visualLayout": "Split screen or table comparison",
+      "psychology": "Logic bias - frames purchase as the only rational choice",
+      "mood": "Logical and comparative",
+      "design_style": "Clean infographic style"
+    },
+    "old-way-new-way": {
+      "name": "The \"Old Way vs. New Way\"",
+      "description": "Diagonal split showing evolution and progress",
+      "visualLayout": "Diagonal split",
+      "psychology": "Evolution - implies not switching makes you outdated",
+      "mood": "Progressive and innovative",
+      "design_style": "Modern vs vintage contrast"
+    },
+    "iphone-note": {
+      "name": "The \"iPhone Note\" Screenshot",
+      "description": "Native-looking personal note that blends into feeds",
+      "visualLayout": "Exact replica of Apple Notes app",
+      "psychology": "Native camouflage - feels personal and unpolished, bypasses ad blindness",
+      "mood": "Casual and personal",
+      "design_style": "iOS native interface"
+    },
+    "testimonial-sandwich": {
+      "name": "The Testimonial Sandwich",
+      "description": "Product centered with social proof above and below",
+      "visualLayout": "Product image centered with overlays",
+      "psychology": "De-risking - users trust other users more than the brand",
+      "mood": "Trustworthy and validated",
+      "design_style": "Clean and organized"
+    },
+    "ugc-still": {
+      "name": "The \"UGC\" Still (User Generated Content)",
+      "description": "Authentic selfie-style content showing real usage",
+      "visualLayout": "Selfie-style photo (mirror or front-facing camera)",
+      "psychology": "Authenticity - high-polish feels like a lie, low-polish feels like truth",
+      "mood": "Authentic and relatable",
+      "design_style": "Unpolished and genuine"
+    },
+    "exploded-view": {
+      "name": "The \"Exploded View\" (Ingredients)",
+      "description": "Product breakdown showing ingredients inside",
+      "visualLayout": "Product centered with ingredient callouts",
+      "psychology": "Transparency - shows exactly what's inside, implies purity and potency",
+      "mood": "Educational and transparent",
+      "design_style": "Scientific and clean"
+    },
+    "texture-shot": {
+      "name": "The Texture Shot (Sensory)",
+      "description": "Extreme macro triggering sensory desire",
+      "visualLayout": "Extreme macro close-up",
+      "psychology": "Sensory triggering - creates visceral desire to touch or taste",
+      "mood": "Luxurious and appetizing",
+      "design_style": "High-end product photography"
+    },
+    "ugly-ad-doodle": {
+      "name": "The \"Ugly Ad\" (Doodle)",
+      "description": "Intentionally crude graphics that stand out",
+      "visualLayout": "Stick figures or MS Paint style graphics",
+      "psychology": "Novelty - looks so bad it stands out in a feed of perfect photos",
+      "mood": "Playful and disruptive",
+      "design_style": "Intentionally crude and simple"
+    },
+    "warning-label": {
+      "name": "The \"Warning Label\"",
+      "description": "Caution-style design triggering attention",
+      "visualLayout": "Bright yellow/red background with caution tape",
+      "psychology": "Curiosity gap - brain is wired to pay attention to warnings",
+      "mood": "Urgent and attention-grabbing",
+      "design_style": "Industrial safety signage"
+    },
+    "notification-fakeout": {
+      "name": "The \"Notification\" Fakeout",
+      "description": "Realistic notification that grabs attention",
+      "visualLayout": "Blurred background with notification bubble",
+      "psychology": "Reflex - conditioned to check notifications immediately",
+      "mood": "Urgent and attention-grabbing",
+      "design_style": "Mobile UI realistic"
+    }
+  },
+  "prompts": {
+    "copy-generation-main": {
+      "name": "Ad Copy Generation",
+      "description": "Main prompt for generating ad copy variations with brand voice, product details, and campaign specifics"
+    },
+    "copy-field-regeneration": {
+      "name": "Field Regeneration",
+      "description": "Regenerate a specific field (headline, body, or CTA) while maintaining brand consistency"
+    },
+    "ad-remix-deconstruction": {
+      "name": "Ad Template Deconstruction",
+      "description": "Analyze a winning ad to extract its structural blueprint for reuse"
+    },
+    "ad-remix-reconstruction": {
+      "name": "Ad Template Reconstruction",
+      "description": "Apply a proven ad blueprint to new brand/product data"
+    }
+  }
+}

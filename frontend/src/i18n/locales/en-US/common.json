@@ -1,0 +1,17 @@
+{
+  "language": {
+    "label": "Language",
+    "pt": "Português (Brasil)",
+    "en": "English (US)"
+  },
+  "actions": {
+    "close": "Close",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "save": "Save",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "retry": "Try again"
+  }
+}

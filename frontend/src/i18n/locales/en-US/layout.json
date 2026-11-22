@@ -1,0 +1,31 @@
+{
+  "menu": {
+    "overview": "Overview",
+    "dashboard": "Dashboard",
+    "research": "Research",
+    "scrapeBrandAds": "Scrape Brand Ads",
+    "settings": "Settings",
+    "buildCreatives": "Build Creatives",
+    "brands": "Brands",
+    "products": "Products",
+    "customerProfiles": "Customer Profiles",
+    "winningAds": "Winning Ads",
+    "generatedAds": "Generated Ads",
+    "facebookCampaigns": "Facebook Campaigns",
+    "googleAds": "Google Ads",
+    "tiktokAds": "TikTok Ads",
+    "userManagement": "User Management",
+    "logout": "Logout"
+  },
+  "nav": {
+    "open": "Open navigation menu",
+    "close": "Close navigation menu"
+  },
+  "sidebar": {
+    "expand": "Expand sidebar",
+    "collapse": "Collapse sidebar"
+  },
+  "toast": {
+    "loggedOut": "Logged out successfully"
+  }
+}

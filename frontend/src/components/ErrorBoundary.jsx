@@ -1,4 +1,5 @@
 import React from 'react';
+import ErrorFallback from './ErrorFallback';
 
 /**
  * Global render-crash boundary (Sprint 8). Before this, a throw inside any
@@ -27,23 +28,7 @@ export default class ErrorBoundary extends React.Component {
 
     render() {
         if (this.state.error) {
-            return (
-                <div className="min-h-[50vh] flex items-center justify-center p-6">
-                    <div role="alert" className="bg-white border border-amber-200 rounded-xl shadow-sm p-6 max-w-md w-full">
-                        <h2 className="text-lg font-bold text-gray-900">Something went wrong</h2>
-                        <p className="mt-2 text-sm text-gray-600">
-                            The page failed to render. Your data is safe — try again.
-                        </p>
-                        <button
-                            type="button"
-                            onClick={this.handleRetry}
-                            className="mt-4 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700"
-                        >
-                            Try again
-                        </button>
-                    </div>
-                </div>
-            );
+            return <ErrorFallback onRetry={this.handleRetry} />;
         }
         return this.props.children;
     }

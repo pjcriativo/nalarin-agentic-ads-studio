@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import { translateBackendMessage } from '../i18n/backendErrors';
 import { X, Upload, Loader } from 'lucide-react';
 import { useBrands } from '../context/BrandContext';
 import { useToast } from '../context/ToastContext';
@@ -8,6 +10,7 @@ import { validateProductName, validateProductDescription } from '../utils/valida
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 const ProductForm = ({ onClose, onSave, initialData = null }) => {
+    const { t } = useTranslation('brands');
     const { brands } = useBrands();
     const { showSuccess, showError } = useToast();
     const { authFetch } = useAuth();
@@ -30,7 +33,7 @@ const ProductForm = ({ onClose, onSave, initialData = null }) => {
         setSaving(true);
         try {
             if (!formData.brandId) {
-                throw new Error('Please select a brand');
+                throw new Error(t('productForm.selectBrand'));
             }
 
             const validatedData = {
@@ -41,10 +44,10 @@ const ProductForm = ({ onClose, onSave, initialData = null }) => {
             };
 
             await onSave(validatedData);
-            showSuccess('Product saved successfully');
+            showSuccess(t('productForm.saved'));
             onClose();
         } catch (err) {
-            showError(err.message);
+            showError(translateBackendMessage(err.message));
         } finally {
             setSaving(false);
         }
@@ -57,11 +60,11 @@ const ProductForm = ({ onClose, onSave, initialData = null }) => {
         // Client-side validation
         for (const file of files) {
             if (!ALLOWED_TYPES.includes(file.type)) {
-                showError(`Invalid file type: ${file.name}. Allowed types: JPEG, PNG, GIF, WebP`);
+                showError(t('productForm.invalidType', { name: file.name }));
                 return;
             }
             if (file.size > MAX_SIZE) {
-                showError(`File too large: ${file.name}. Maximum size: 10MB`);
+                showError(t('productForm.tooLarge', { name: file.name }));
                 return;
             }
         }
@@ -79,8 +82,8 @@ const ProductForm = ({ onClose, onSave, initialData = null }) => {
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ detail: 'Upload failed' }));
-                    throw new Error(errorData.detail || 'Upload failed');
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(translateBackendMessage(errorData.detail) || t('productForm.uploadFailed'));
                 }
 
                 const data = await response.json();
@@ -91,10 +94,10 @@ const ProductForm = ({ onClose, onSave, initialData = null }) => {
                 ...prev,
                 product_shots: [...(prev.product_shots || []), ...newShots]
             }));
-            showSuccess(`Successfully uploaded ${newShots.length} image(s)`);
+            showSuccess(t('productForm.uploaded', { count: newShots.length }));
         } catch (err) {
             console.error('Upload error:', err);
-            showError(err.message || 'Failed to upload images');
+            showError(translateBackendMessage(err.message) || t('productForm.uploadImagesFailed'));
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -113,7 +116,7 @@ const ProductForm = ({ onClose, onSave, initialData = null }) => {
             <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center p-6 border-b border-gray-100">
                     <h2 className="text-xl font-bold text-gray-900">
-                        {initialData ? 'Edit Product' : 'Add New Product'}
+                        {initialData ? t('productForm.edit') : t('productForm.add')}
                     </h2>
                     <button onClick={onClose} className="text-gray-500 hover:bg-gray-100 p-2 rounded-full">
                         <X size={20} />
@@ -122,7 +125,7 @@ const ProductForm = ({ onClose, onSave, initialData = null }) => {
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.brand')}</label>
                         <select
                             required
                             value={formData.brandId}
@@ -130,18 +133,18 @@ const ProductForm = ({ onClose, onSave, initialData = null }) => {
                             className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                             disabled={!!initialData}
                         >
-                            <option value="">Select a Brand...</option>
+                            <option value="">{t('productForm.selectBrandOption')}</option>
                             {brands.map(brand => (
                                 <option key={brand.id} value={brand.id}>{brand.name}</option>
                             ))}
                         </select>
                         {brands.length === 0 && (
-                            <p className="text-xs text-red-500 mt-1">No brands available. Please create a brand first.</p>
+                            <p className="text-xs text-red-500 mt-1">{t('productForm.noBrands')}</p>
                         )}
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.name')}</label>
                         <input
                             required
                             type="text"
@@ -149,28 +152,28 @@ const ProductForm = ({ onClose, onSave, initialData = null }) => {
                             value={formData.name}
                             onChange={e => setFormData({ ...formData, name: e.target.value })}
                             className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            placeholder="e.g. Glow Serum"
+                            placeholder={t('productForm.namePlaceholder')}
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.description')}</label>
                         <textarea
                             value={formData.description}
                             maxLength={500}
                             onChange={e => setFormData({ ...formData, description: e.target.value })}
                             className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                             rows="3"
-                            placeholder="Short description of the product..."
+                            placeholder={t('productForm.descriptionPlaceholder')}
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Product Shots</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">{t('productForm.shots')}</label>
                         <div className="grid grid-cols-3 gap-2 mb-3">
                             {(formData.product_shots || []).map((shot, index) => (
                                 <div key={index} className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden group">
-                                    <img src={shot} alt={`Product shot ${index + 1}`} className="w-full h-full object-cover" />
+                                    <img src={shot} alt={t('productForm.shotAlt', { index: index + 1 })} className="w-full h-full object-cover" />
                                     <button
                                         type="button"
                                         onClick={() => removeShot(index)}
@@ -187,7 +190,7 @@ const ProductForm = ({ onClose, onSave, initialData = null }) => {
                                 className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-blue-500 hover:text-blue-500 transition-colors"
                             >
                                 {uploading ? <Loader size={20} className="animate-spin" /> : <Upload size={20} />}
-                                <span className="text-xs mt-1">{uploading ? 'Uploading...' : 'Upload'}</span>
+                                <span className="text-xs mt-1">{uploading ? t('productForm.uploading') : t('productForm.upload')}</span>
                             </button>
                         </div>
                         <input
@@ -198,7 +201,7 @@ const ProductForm = ({ onClose, onSave, initialData = null }) => {
                             onChange={handleFileUpload}
                             className="hidden"
                         />
-                        <p className="text-xs text-gray-500">Upload product images to use in ad generation.</p>
+                        <p className="text-xs text-gray-500">{t('productForm.uploadHint')}</p>
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -207,7 +210,7 @@ const ProductForm = ({ onClose, onSave, initialData = null }) => {
                             onClick={onClose}
                             className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
                         >
-                            Cancel
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="submit"
@@ -215,7 +218,7 @@ const ProductForm = ({ onClose, onSave, initialData = null }) => {
                             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             {saving && <Loader size={16} className="animate-spin" />}
-                            {saving ? 'Saving...' : 'Save Product'}
+                            {saving ? t('productForm.saving') : t('productForm.save')}
                         </button>
                     </div>
                 </form>
