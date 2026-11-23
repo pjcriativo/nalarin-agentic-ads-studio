@@ -1,4 +1,8 @@
-"""TikTok Marketing API OAuth, reporting, and guarded campaign creation."""
+"""TikTok Marketing API OAuth, reporting, and guarded campaign creation.
+
+All data is scoped to the caller's ORGANIZATION: connections, advertiser links and
+tokens belong to the organization that ran the OAuth flow, never to the user.
+"""
 from datetime import date, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -7,11 +11,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.deps import get_current_active_user
-from app.core.oauth_state import create_oauth_state, verify_oauth_state, set_oauth_state_cookie, get_oauth_state_cookie_name
+from app.core.oauth_state import clear_oauth_state_cookie
+from app.core.tenancy import OrgContext, require_org_permission
 from app.core.token_encryption import encrypt_token
 from app.database import get_db
-from app.models import TikTokAdsConnection, User
+from app.models import TikTokAdsConnection
+from app.services import integrations
 from app.services.tiktok_ads_service import (
     TikTokAdsApiError,
     TikTokAdsNotConfigured,
@@ -23,13 +28,18 @@ from app.services.tiktok_ads_service import (
 )
 
 router = APIRouter()
-PROVIDER = "tiktok-ads"
+PROVIDER = "tiktok-ads"  # OAuth state provider
+PLATFORM = "tiktok"      # account-link provider
 
 
 class CreateCampaignRequest(BaseModel):
     name: str = Field(min_length=1, max_length=512)
     daily_budget: float = Field(gt=0)
     confirm: bool = False
+
+
+class SelectAdvertiserRequest(BaseModel):
+    advertiser_id: str
 
 
 def _require_configured() -> None:
@@ -42,14 +52,9 @@ def _require_confirmed(confirm: bool) -> None:
         raise HTTPException(status_code=400, detail="This action requires explicit confirmation. Set confirm=true after showing a preview.")
 
 
-def _active_connection(db: Session, user_id: str) -> TikTokAdsConnection:
-    connection = db.query(TikTokAdsConnection).filter(
-        TikTokAdsConnection.user_id == user_id,
-        TikTokAdsConnection.is_active.is_(True),
-    ).first()
-    if not connection:
-        raise HTTPException(status_code=404, detail="No connected TikTok Ads advertiser. Connect one first.")
-    return connection
+def _active_connection(db: Session, ctx: OrgContext) -> TikTokAdsConnection:
+    """The organization's authorized, selected advertiser (404 otherwise)."""
+    return integrations.selected_connection(db, ctx.org.id, PLATFORM)
 
 
 def _date_range(preset: str) -> tuple[str, str]:
@@ -70,10 +75,14 @@ def _date_range(preset: str) -> tuple[str, str]:
 
 
 @router.get("/oauth/start")
-async def oauth_start(request: Request, response: Response, current_user: User = Depends(get_current_active_user)):
+async def oauth_start(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    ctx: OrgContext = Depends(require_org_permission("connections:manage")),
+):
     _require_configured()
-    state = create_oauth_state(current_user.id, PROVIDER)
-    set_oauth_state_cookie(response, state, secure=request.url.scheme == "https")
+    state = integrations.begin_oauth(db, request, response, ctx, PROVIDER)
     return {"oauth_url": build_oauth_url(settings.TIKTOK_ADS_OAUTH_REDIRECT_URI, state)}
 
 
@@ -82,15 +91,12 @@ async def oauth_callback(request: Request, auth_code: Optional[str] = None, code
     if error:
         raise HTTPException(status_code=400, detail=f"TikTok OAuth error: {error}")
     authorization_code = auth_code or code
-    if not authorization_code or not state:
+    if not authorization_code:
         raise HTTPException(status_code=400, detail="Missing TikTok OAuth authorization code or state")
-    cookie = request.cookies.get(get_oauth_state_cookie_name())
-    if cookie and cookie != state:
-        raise HTTPException(status_code=400, detail="OAuth state mismatch between cookie and callback parameter")
+    oauth = integrations.finish_oauth(db, request, state, PROVIDER)  # consumes the single-use state
     try:
-        user_id = verify_oauth_state(state, PROVIDER)
         tokens = await exchange_code_for_tokens(authorization_code)
-    except (ValueError, TikTokAdsApiError) as exc:
+    except TikTokAdsApiError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
     advertiser_ids = tokens.get("advertiser_ids") or tokens.get("advertiser_id") or []
@@ -99,88 +105,46 @@ async def oauth_callback(request: Request, auth_code: Optional[str] = None, code
     advertiser_ids = [str(a) for a in advertiser_ids if str(a)]
     if not advertiser_ids or not tokens.get("refresh_token") or not tokens.get("access_token"):
         raise HTTPException(status_code=400, detail="TikTok OAuth did not return an advertiser and renewable tokens.")
-    # Multi-advertiser parity (Sprint 7): store every advertiser in the grant,
-    # the same shape Meta/Google Ads use. The connection auto-activates only
-    # when the grant covers a single advertiser; otherwise the user picks one
-    # via /connection/select right after the redirect.
-    select_required = len(advertiser_ids) > 1
-    values = {
-        "encrypted_refresh_token": encrypt_token(tokens["refresh_token"]),
-        "encrypted_access_token": encrypt_token(tokens["access_token"]),
-    }
-    db.query(TikTokAdsConnection).filter(
-        TikTokAdsConnection.user_id == user_id
-    ).update({"is_active": False}, synchronize_session=False)
-    for advertiser_id in advertiser_ids:
-        connection = db.query(TikTokAdsConnection).filter(
-            TikTokAdsConnection.user_id == user_id,
-            TikTokAdsConnection.advertiser_id == advertiser_id,
-        ).first()
-        if connection:
-            for key, value in values.items():
-                setattr(connection, key, value)
-            connection.is_active = not select_required
-        else:
-            db.add(TikTokAdsConnection(user_id=user_id, advertiser_id=advertiser_id, is_active=not select_required, **values))
+    # Every advertiser of the grant becomes a candidate of THIS organization; a
+    # single-advertiser grant is activated, otherwise a member picks one via
+    # /connection/select right after the redirect.
+    select_required = integrations.store_oauth_grant(
+        db, oauth.organization_id, oauth.user_id, PLATFORM,
+        [{"id": a} for a in advertiser_ids],
+        {"encrypted_refresh_token": encrypt_token(tokens["refresh_token"]),
+         "encrypted_access_token": encrypt_token(tokens["access_token"])},
+    )
     db.commit()
     query = "select=1" if select_required else "connected=1"
-    return RedirectResponse(url=f"{settings.FRONTEND_URL.rstrip('/')}/tiktok-ads?{query}")
+    redirect = RedirectResponse(url=f"{settings.FRONTEND_URL.rstrip('/')}/tiktok-ads?{query}")
+    clear_oauth_state_cookie(redirect)
+    return redirect
 
 
 @router.get("/connection")
-def connection_status(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    connection = db.query(TikTokAdsConnection).filter(
-        TikTokAdsConnection.user_id == current_user.id,
-        TikTokAdsConnection.is_active.is_(True),
-    ).first()
-    if not connection:
+def connection_status(db: Session = Depends(get_db), ctx: OrgContext = Depends(require_org_permission("connections:read"))):
+    try:
+        connection = _active_connection(db, ctx)
+    except HTTPException:
         return {"connected": False}
     return {"connected": True, "advertiser_id": connection.advertiser_id, "account_name": connection.account_name,
             "connected_at": connection.created_at.isoformat() if connection.created_at else None}
 
 
 @router.get("/connections")
-def list_connections(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)) -> dict:
-    """All TikTok advertisers authorized by this user (Sprint 7 multi-account parity)."""
-    connections = (
-        db.query(TikTokAdsConnection)
-        .filter(TikTokAdsConnection.user_id == current_user.id)
-        .order_by(TikTokAdsConnection.advertiser_id)
-        .all()
-    )
-    return {
-        "connections": [
-            {
-                "advertiser_id": connection.advertiser_id,
-                "account_name": connection.account_name,
-                "selected": connection.is_active,
-            }
-            for connection in connections
-        ]
-    }
-
-
-class SelectAdvertiserRequest(BaseModel):
-    advertiser_id: str
+def list_connections(db: Session = Depends(get_db), ctx: OrgContext = Depends(require_org_permission("connections:read"))) -> dict:
+    """All TikTok advertisers authorized by THIS organization."""
+    return {"connections": [integrations.public_view(PLATFORM, c) for c in integrations.list_connections(db, ctx.org.id, PLATFORM)]}
 
 
 @router.post("/connection/select")
 def select_connection(
     body: SelectAdvertiserRequest,
+    request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    ctx: OrgContext = Depends(require_org_permission("connections:manage")),
 ) -> dict:
-    connection = db.query(TikTokAdsConnection).filter(
-        TikTokAdsConnection.user_id == current_user.id,
-        TikTokAdsConnection.advertiser_id == body.advertiser_id,
-    ).first()
-    if not connection:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="TikTok advertiser is not available for this user.")
-    db.query(TikTokAdsConnection).filter(
-        TikTokAdsConnection.user_id == current_user.id
-    ).update({"is_active": False}, synchronize_session=False)
-    connection.is_active = True
-    db.commit()
+    connection = integrations.select_account(db, ctx, PLATFORM, body.advertiser_id, request)
     return {
         "connected": True,
         "advertiser_id": connection.advertiser_id,
@@ -190,18 +154,15 @@ def select_connection(
 
 
 @router.delete("/connection")
-def disconnect_connection(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    db.query(TikTokAdsConnection).filter(
-        TikTokAdsConnection.user_id == current_user.id
-    ).update({"is_active": False}, synchronize_session=False)
-    db.commit()
+def disconnect_connection(request: Request, db: Session = Depends(get_db), ctx: OrgContext = Depends(require_org_permission("connections:manage"))):
+    integrations.disconnect(db, ctx, PLATFORM, request)
     return {"message": "Disconnected"}
 
 
 @router.get("/campaigns")
-async def campaigns(date_preset: str = "last_30d", db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+async def campaigns(date_preset: str = "last_30d", db: Session = Depends(get_db), ctx: OrgContext = Depends(require_org_permission("ads:read"))):
     _require_configured()
-    connection = _active_connection(db, current_user.id)
+    connection = _active_connection(db, ctx)
     try:
         token = await get_valid_access_token(db, connection)
         start, end = _date_range(date_preset)
@@ -212,10 +173,12 @@ async def campaigns(date_preset: str = "last_30d", db: Session = Depends(get_db)
 
 
 @router.post("/campaigns", status_code=status.HTTP_201_CREATED)
-async def create_campaign(body: CreateCampaignRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+async def create_campaign(body: CreateCampaignRequest, db: Session = Depends(get_db), ctx: OrgContext = Depends(require_org_permission("ads:draft"))):
+    """Creates the campaign DISABLED (``operation_status = DISABLE`` in the service):
+    a draft that cannot spend. Enabling it is not exposed here."""
     _require_configured()
     _require_confirmed(body.confirm)
-    connection = _active_connection(db, current_user.id)
+    connection = _active_connection(db, ctx)
     try:
         token = await get_valid_access_token(db, connection)
         return await create_tiktok_campaign(token, connection.advertiser_id, body.name, body.daily_budget)

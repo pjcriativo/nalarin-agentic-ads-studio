@@ -42,7 +42,12 @@ _VIEWER = frozenset({
     "ads:read", "templates:read", "campaigns:read", "research:read",
 })
 # Analysts research the market (Ads Library queries spend shared API quota).
-_ANALYST = _VIEWER | {"reports:read", "research:write"}
+# Ad-platform operations (etapa 01.3):
+#   ads:read    see platform data (campaigns, performance, approvals)
+#   ads:draft   prepare things that cannot spend (PAUSED campaigns, approval requests)
+#   ads:publish change live state without raising spend (pause, negative keywords)
+#   ads:spend   approve/execute operations that can spend money (human approval)
+_ANALYST = _VIEWER | {"reports:read", "research:write", "connections:read"}
 _MANAGER = _ANALYST | {
     "brands:write", "brands:delete",
     "products:write", "products:delete",
@@ -52,9 +57,10 @@ _MANAGER = _ANALYST | {
     "campaigns:write", "campaigns:delete",
     "research:delete",
     "uploads:write",
+    "ads:draft",
 }
-_ADMIN = _MANAGER | {"members:manage", "audit:read"}
-_OWNER = _ADMIN | {"org:manage"}
+_ADMIN = _MANAGER | {"members:manage", "audit:read", "connections:manage", "apikeys:manage", "ads:publish"}
+_OWNER = _ADMIN | {"org:manage", "ads:spend"}
 
 ROLE_PERMISSIONS = {
     "viewer": frozenset(_VIEWER),

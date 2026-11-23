@@ -7,18 +7,19 @@ useful page.
 """
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from google.ads.googleads.errors import GoogleAdsException
 from sqlalchemy.orm import Session
 
 from app.core.tenancy import OrgContext, require_org_permission
 from app.core.token_encryption import decrypt_token
 from app.database import get_db
-from app.models import GoogleAdsConnection, MetaAdsConnection, TikTokAdsConnection
+from app.services import integrations
 from app.services.facebook_service import FacebookService
 from app.services.google_ads_service import (
     get_campaign_performance,
     get_valid_access_token,
+    use_login_customer,
     GoogleAdsConnectionError,
     GoogleAdsNotConfigured,
 )
@@ -55,30 +56,26 @@ def _normalize(platform: str, campaign_name: str, spend: float, impressions: int
     }
 
 
-def _fetch_meta_rows(db: Session, user_id: str, ad_account_id: Optional[str], date_preset: str) -> List[Dict[str, Any]]:
-    # Per-user Meta OAuth connection (Sprint 6): when the user has an active
-    # MetaAdsConnection, its decrypted token and selected ad account drive the
-    # fetch. The legacy env-token path only remains as a fallback for
-    # deployments that never adopted per-user OAuth.
-    connection = (
-        db.query(MetaAdsConnection)
-        .filter(MetaAdsConnection.user_id == user_id, MetaAdsConnection.is_active.is_(True))
-        .first()
-    )
-    if connection is not None:
-        service = FacebookService(
-            access_token=decrypt_token(connection.encrypted_access_token),
-            ad_account_id=connection.ad_account_id,
-        )
-    else:
-        # NO fallback to the server-wide FACEBOOK_ACCESS_TOKEN: that account is not
-        # any tenant's, and showing its performance to whoever has no connection
-        # would leak it across organizations.
+def _selected(db: Session, org_id: str, provider: str):
+    """The organization's authorized + selected connection, or None."""
+    try:
+        return integrations.selected_connection(db, org_id, provider)
+    except HTTPException:
+        return None
+
+
+def _fetch_meta_rows(db: Session, org_id: str, ad_account_id: Optional[str], date_preset: str) -> List[Dict[str, Any]]:
+    # The ORGANIZATION'S selected, authorized Meta connection drives the fetch.
+    # There is NO fallback to a server-wide token: that account belongs to no tenant.
+    connection = _selected(db, org_id, "meta")
+    if connection is None:
         raise ValueError("No connected Meta Ads account. Connect Meta Ads in Facebook Campaigns first.")
+    service = FacebookService(
+        access_token=decrypt_token(connection.encrypted_access_token),
+        ad_account_id=connection.ad_account_id,
+    )
     if not service.api:
         service.initialize()
-    if service.ad_account_id is None and ad_account_id:
-        service.ad_account_id = ad_account_id
     campaigns = service.get_campaigns(service.ad_account_id)
     rows = []
     for campaign in campaigns:
@@ -97,14 +94,11 @@ def _fetch_meta_rows(db: Session, user_id: str, ad_account_id: Optional[str], da
     return rows
 
 
-async def _fetch_google_rows(db: Session, user_id: str, date_preset: str) -> List[Dict[str, Any]]:
-    connection = (
-        db.query(GoogleAdsConnection)
-        .filter(GoogleAdsConnection.user_id == user_id, GoogleAdsConnection.is_active.is_(True))
-        .first()
-    )
+async def _fetch_google_rows(db: Session, org_id: str, date_preset: str) -> List[Dict[str, Any]]:
+    connection = _selected(db, org_id, "google_ads")
     if connection is None:
         raise GoogleAdsConnectionError("No connected Google Ads account.")
+    use_login_customer(connection.login_customer_id)
 
     refresh_token = decrypt_token(connection.encrypted_refresh_token)
     await get_valid_access_token(db, connection)
@@ -123,12 +117,8 @@ async def _fetch_google_rows(db: Session, user_id: str, date_preset: str) -> Lis
     ]
 
 
-async def _fetch_tiktok_rows(db: Session, user_id: str, date_preset: str) -> List[Dict[str, Any]]:
-    connection = (
-        db.query(TikTokAdsConnection)
-        .filter(TikTokAdsConnection.user_id == user_id, TikTokAdsConnection.is_active.is_(True))
-        .first()
-    )
+async def _fetch_tiktok_rows(db: Session, org_id: str, date_preset: str) -> List[Dict[str, Any]]:
+    connection = _selected(db, org_id, "tiktok")
     if connection is None:
         raise TikTokAdsApiError("No connected TikTok Ads advertiser.")
 
@@ -155,11 +145,11 @@ async def _fetch_tiktok_rows(db: Session, user_id: str, date_preset: str) -> Lis
 
 async def build_overview(
     db: Session,
-    user_id: str,
+    org_id: str,
     date_preset: str = "last_30d",
     ad_account_id: Optional[str] = None,
 ):
-    """Build normalized cross-platform performance data for one owner.
+    """Build normalized cross-platform performance data for ONE ORGANIZATION.
 
     Used by the authenticated dashboard and the separately scoped bot API.
     Callers decide authentication; this function never receives provider OAuth
@@ -169,7 +159,7 @@ async def build_overview(
     errors: Dict[str, str] = {}
 
     try:
-        rows.extend(_fetch_meta_rows(db, user_id, ad_account_id, date_preset))
+        rows.extend(_fetch_meta_rows(db, org_id, ad_account_id, date_preset))
     except Exception as exc:  # Meta config/API errors shouldn't block Google's rows
         # A bare "NoneType ... encode" means no token at all (env fallback empty
         # and no per-user connection) — translate to a user-actionable message
@@ -180,7 +170,7 @@ async def build_overview(
         errors["meta"] = message
 
     try:
-        rows.extend(await _fetch_google_rows(db, user_id, date_preset))
+        rows.extend(await _fetch_google_rows(db, org_id, date_preset))
     except GoogleAdsConnectionError as exc:
         errors["google"] = str(exc)
     except GoogleAdsNotConfigured as exc:
@@ -194,7 +184,7 @@ async def build_overview(
         errors["google"] = str(exc)
 
     try:
-        rows.extend(await _fetch_tiktok_rows(db, user_id, date_preset))
+        rows.extend(await _fetch_tiktok_rows(db, org_id, date_preset))
     except (TikTokAdsApiError, TikTokAdsNotConfigured) as exc:
         errors["tiktok"] = str(exc)
     except Exception as exc:
@@ -213,6 +203,5 @@ async def get_overview(
 ):
     """Combined campaign performance (requires reports:read in the organization).
 
-    The ad-platform connections are still per USER (isolation of connections is the
-    next stage), so the figures come from the caller's own connections."""
-    return await build_overview(db, ctx.user.id, date_preset, ad_account_id)
+    The figures come from the ORGANIZATION'S authorized accounts only."""
+    return await build_overview(db, ctx.org.id, date_preset, ad_account_id)

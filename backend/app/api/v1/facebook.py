@@ -5,19 +5,21 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 from app.services.facebook_service import FacebookService
-from app.models import FacebookAd, FacebookAdSet, FacebookCampaign, MetaAdsConnection, User
+from app.models import FacebookAd, FacebookAdSet, FacebookCampaign
 from app.database import get_db
-from app.core.deps import get_current_active_user
+from app.core.config import settings
+from app.core.executor import canonical_payload_hash  # noqa: F401
+from app.core.oauth_state import clear_oauth_state_cookie
 from app.core.tenancy import OrgContext, client_or_new_id, require_org_permission
 from app.core.storage import require_own_media, resolve_media_reference
-from app.core.config import settings
-from app.core.oauth_state import create_oauth_state, verify_oauth_state, set_oauth_state_cookie, clear_oauth_state_cookie, get_oauth_state_cookie_name
 from app.core.token_encryption import encrypt_token, decrypt_token
+from app.services import approvals, integrations
 from app.services.meta_ads_oauth import build_oauth_url, exchange_code, list_ad_accounts, MetaOAuthError
 from sqlalchemy.orm import Session
 
 router = APIRouter()
-PROVIDER = "meta-ads"
+PROVIDER = "meta-ads"  # OAuth state provider
+PLATFORM = "meta"      # account-link provider
 
 
 class SelectMetaAccountRequest(BaseModel):
@@ -33,15 +35,20 @@ def _require_meta_configured():
 
 
 def get_facebook_service(
+    ad_account_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    ctx: OrgContext = Depends(require_org_permission("ads:read")),
 ):
-    connection = db.query(MetaAdsConnection).filter(
-        MetaAdsConnection.user_id == current_user.id,
-        MetaAdsConnection.is_active.is_(True),
-    ).first()
-    if not connection:
-        raise HTTPException(status_code=404, detail="No connected Meta Ads account. Connect and select one first.")
+    """Meta client for the caller's ORGANIZATION.
+
+    Uses the organization's selected, authorized account and its own token. A
+    ``ad_account_id`` sent by the caller must be linked to the organization
+    (404 otherwise): the token may technically reach other accounts, the
+    organization may not.
+    """
+    connection = integrations.selected_connection(db, ctx.org.id, PLATFORM)
+    if ad_account_id:
+        integrations.require_authorized_account(db, ctx, PLATFORM, ad_account_id)
     service = FacebookService(
         access_token=decrypt_token(connection.encrypted_access_token),
         ad_account_id=connection.ad_account_id,
@@ -56,15 +63,69 @@ def get_facebook_service(
     return service
 
 
+def _require_object_in_linked_account(service: FacebookService, db: Session, ctx: OrgContext, object_id: Optional[str]) -> None:
+    """A campaign / ad set id from the request must live in an account the
+    organization is linked to (the token may reach others)."""
+    if not object_id:
+        return
+    try:
+        account = service.object_account_id(object_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Object not found")
+    if not integrations.account_is_authorized(db, ctx.org.id, PLATFORM, account):
+        raise HTTPException(status_code=404, detail="Object not found")
+
+
+def _budget_micros(data: Dict[str, Any]) -> Optional[int]:
+    """Meta budgets are in minor currency units (cents): scale to micros."""
+    raw = data.get("daily_budget") or data.get("dailyBudget")
+    try:
+        return int(float(raw)) * 10_000 if raw is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _gate_creation(db: Session, ctx: OrgContext, service: FacebookService, kind: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """Creating something PAUSED is a draft (``ads:draft``, already required by the
+    route). Anything that would go live can spend: it needs ``ads:spend``, an
+    explicit budget and a persisted human approval; ACTIVE ads/creatives are not
+    creatable here at all (activate through the approved flow). Fails closed."""
+    data = dict(data)
+    approval_id = data.pop("approval_id", None) or data.pop("approvalId", None)
+    status_value = str(data.get("status") or "PAUSED").upper()
+    if status_value == "PAUSED":
+        data["status"] = "PAUSED"
+        return data
+    if kind not in ("campaign", "adset"):
+        raise HTTPException(status_code=403, detail="Ads are created PAUSED; activation needs an approved spend operation")
+    if not ctx.can("ads:spend"):
+        raise HTTPException(status_code=403, detail="Creating an ACTIVE object requires the ads:spend permission")
+    budget = _budget_micros(data)
+    if not budget or budget <= 0:
+        raise HTTPException(status_code=400, detail="An explicit daily budget is required to create an ACTIVE object")
+    account = integrations.normalize_account(PLATFORM, service.ad_account_id or "")
+    approval = approvals.consume(db, ctx, approval_id=approval_id, provider=PLATFORM, account_id=account,
+                                 action="campaign.create.active", payload={"kind": kind, **data}, budget_micros=budget)
+    data["_approval"] = approval.id
+    return data
+
+
+def _finish_gate(db: Session, ctx: OrgContext, data: Dict[str, Any], result: Any) -> None:
+    approval_id = data.get("_approval")
+    if approval_id:
+        approval = approvals.get_approval(db, ctx, approval_id)
+        approvals.record_result(db, ctx, approval, {"id": str(dict(result).get("id", ""))})
+
+
 @router.get("/oauth/start")
 async def start_meta_oauth(
     request: Request,
     response: Response,
-    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+    ctx: OrgContext = Depends(require_org_permission("connections:manage")),
 ):
     _require_meta_configured()
-    state_token = create_oauth_state(current_user.id, PROVIDER)
-    set_oauth_state_cookie(response, state_token, secure=request.url.scheme == "https")
+    state_token = integrations.begin_oauth(db, request, response, ctx, PROVIDER)
     return {"oauth_url": build_oauth_url(settings.FACEBOOK_APP_ID, settings.FACEBOOK_OAUTH_REDIRECT_URI, state_token)}
 
 
@@ -79,13 +140,10 @@ async def meta_oauth_callback(
 ):
     if error:
         raise HTTPException(status_code=400, detail=error_description or f"Meta OAuth error: {error}")
-    if not code or not state:
+    if not code:
         raise HTTPException(status_code=400, detail="Missing Meta OAuth authorization code or state")
-    state_cookie = request.cookies.get(get_oauth_state_cookie_name())
-    if state_cookie and state_cookie != state:
-        raise HTTPException(status_code=400, detail="OAuth state mismatch between cookie and callback parameter")
+    oauth = integrations.finish_oauth(db, request, state, PROVIDER)  # single use; re-authorizes the user
     try:
-        user_id = verify_oauth_state(state, PROVIDER)
         token_data = await exchange_code(
             code,
             settings.FACEBOOK_APP_ID,
@@ -98,28 +156,13 @@ async def meta_oauth_callback(
     if not accounts:
         raise HTTPException(status_code=400, detail="No Meta ad accounts are available for this login.")
 
-    encrypted_token = encrypt_token(token_data["access_token"])
     expires_in = token_data.get("expires_in")
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in) if isinstance(expires_in, (int, float)) else None
-    select_required = len(accounts) > 1
-    db.query(MetaAdsConnection).filter(MetaAdsConnection.user_id == user_id).update(
-        {MetaAdsConnection.is_active: False}, synchronize_session=False
+    select_required = integrations.store_oauth_grant(
+        db, oauth.organization_id, oauth.user_id, PLATFORM,
+        [{"id": str(a.get("id") or ""), "name": a.get("name")} for a in accounts],
+        {"encrypted_access_token": encrypt_token(token_data["access_token"]), "access_token_expires_at": expires_at},
     )
-    for account in accounts:
-        account_id = str(account.get("id") or "")
-        if not account_id:
-            continue
-        connection = db.query(MetaAdsConnection).filter(
-            MetaAdsConnection.user_id == user_id,
-            MetaAdsConnection.ad_account_id == account_id,
-        ).first()
-        if not connection:
-            connection = MetaAdsConnection(user_id=user_id, ad_account_id=account_id, encrypted_access_token=encrypted_token)
-            db.add(connection)
-        connection.account_name = account.get("name")
-        connection.encrypted_access_token = encrypted_token
-        connection.access_token_expires_at = expires_at
-        connection.is_active = not select_required
     db.commit()
 
     redirect = RedirectResponse(
@@ -132,25 +175,21 @@ async def meta_oauth_callback(
 @router.get("/connection")
 def meta_connection_status(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    ctx: OrgContext = Depends(require_org_permission("connections:read")),
 ):
-    connection = db.query(MetaAdsConnection).filter(
-        MetaAdsConnection.user_id == current_user.id,
-        MetaAdsConnection.is_active.is_(True),
-    ).first()
-    if not connection:
+    try:
+        connection = integrations.selected_connection(db, ctx.org.id, PLATFORM)
+    except HTTPException:
         return {"connected": False}
     expires_at = connection.access_token_expires_at
     if expires_at is not None and expires_at.tzinfo is None:
-        from datetime import timezone as _tz
-        expires_at = expires_at.replace(tzinfo=_tz.utc)
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
     return {
         "connected": True,
         "ad_account_id": connection.ad_account_id,
         "account_name": connection.account_name,
         "connected_at": connection.created_at.isoformat() if connection.created_at else None,
-        # Sprint 8: lets the UI flag a soon/lapsed user token so the operator
-        # reconnects BEFORE campaigns start failing with raw Meta 401s.
+        # lets the UI flag a soon/lapsed token so the operator reconnects BEFORE campaigns fail
         "token_expires_at": expires_at.isoformat() if expires_at else None,
     }
 
@@ -158,57 +197,35 @@ def meta_connection_status(
 @router.get("/connections")
 def meta_connections(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    ctx: OrgContext = Depends(require_org_permission("connections:read")),
 ):
-    connections = db.query(MetaAdsConnection).filter(
-        MetaAdsConnection.user_id == current_user.id,
-    ).order_by(MetaAdsConnection.ad_account_id).all()
-    return {"connections": [
-        {
-            "ad_account_id": connection.ad_account_id,
-            "account_name": connection.account_name,
-            "selected": connection.is_active,
-        }
-        for connection in connections
-    ]}
+    return {"connections": [integrations.public_view(PLATFORM, c) for c in integrations.list_connections(db, ctx.org.id, PLATFORM)]}
 
 
 @router.post("/connection/select")
 def select_meta_connection(
     body: SelectMetaAccountRequest,
+    request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    ctx: OrgContext = Depends(require_org_permission("connections:manage")),
 ):
-    account_id = body.ad_account_id if body.ad_account_id.startswith("act_") else f"act_{body.ad_account_id}"
-    connection = db.query(MetaAdsConnection).filter(
-        MetaAdsConnection.user_id == current_user.id,
-        MetaAdsConnection.ad_account_id == account_id,
-    ).first()
-    if not connection:
-        raise HTTPException(status_code=404, detail="Meta ad account is not available for this user.")
-    db.query(MetaAdsConnection).filter(MetaAdsConnection.user_id == current_user.id).update(
-        {MetaAdsConnection.is_active: False}, synchronize_session=False
-    )
-    connection.is_active = True
-    db.commit()
+    connection = integrations.select_account(db, ctx, PLATFORM, body.ad_account_id, request)
     return {"connected": True, "ad_account_id": connection.ad_account_id, "account_name": connection.account_name}
 
 
 @router.delete("/connection")
 def disconnect_meta_connection(
+    request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    ctx: OrgContext = Depends(require_org_permission("connections:manage")),
 ):
-    db.query(MetaAdsConnection).filter(MetaAdsConnection.user_id == current_user.id).update(
-        {MetaAdsConnection.is_active: False}, synchronize_session=False
-    )
-    db.commit()
+    integrations.disconnect(db, ctx, PLATFORM, request)
     return {"message": "Disconnected"}
 
 @router.get("/accounts")
 def get_ad_accounts(
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
+    ctx: OrgContext = Depends(require_org_permission("ads:read"))
 ):
     try:
         return service.get_ad_accounts()
@@ -219,7 +236,7 @@ def get_ad_accounts(
 def read_campaigns(
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
+    ctx: OrgContext = Depends(require_org_permission("ads:read"))
 ):
     try:
         campaigns = service.get_campaigns(ad_account_id)
@@ -233,13 +250,16 @@ def create_campaign(
     campaign: Dict[str, Any],
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
+    db: Session = Depends(get_db),
+    ctx: OrgContext = Depends(require_org_permission("ads:draft"))
 ):
+    campaign = _gate_creation(db, ctx, service, "campaign", campaign)
     try:
-        # Check if ad_account_id is in query or body (body takes precedence if we structured it that way, but here we use query or separate param)
-        # For POST, usually better to have it in the body or query. Let's support query for consistency with GET
-        result = service.create_campaign(campaign, ad_account_id)
+        result = service.create_campaign({k: v for k, v in campaign.items() if k != "_approval"}, ad_account_id)
+        _finish_gate(db, ctx, campaign, result)
         return dict(result)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -247,7 +267,7 @@ def create_campaign(
 def read_pixels(
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
+    ctx: OrgContext = Depends(require_org_permission("ads:read"))
 ):
     try:
         pixels = service.get_pixels(ad_account_id)
@@ -259,7 +279,7 @@ def read_pixels(
 @router.get("/pages")
 def read_pages(
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
+    ctx: OrgContext = Depends(require_org_permission("ads:read"))
 ):
     try:
         pages = service.get_pages()
@@ -273,8 +293,10 @@ def read_adsets(
     ad_account_id: Optional[str] = None,
     campaign_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
+    db: Session = Depends(get_db),
+    ctx: OrgContext = Depends(require_org_permission("ads:read"))
 ):
+    _require_object_in_linked_account(service, db, ctx, campaign_id)
     try:
         adsets = service.get_adsets(ad_account_id, campaign_id)
         return [dict(a) for a in adsets]
@@ -286,11 +308,17 @@ def create_adset(
     adset: Dict[str, Any],
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
+    db: Session = Depends(get_db),
+    ctx: OrgContext = Depends(require_org_permission("ads:draft"))
 ):
+    _require_object_in_linked_account(service, db, ctx, adset.get("campaign_id") or adset.get("campaignId"))
+    adset = _gate_creation(db, ctx, service, "adset", adset)
     try:
-        result = service.create_adset(adset, ad_account_id)
+        result = service.create_adset({k: v for k, v in adset.items() if k != "_approval"}, ad_account_id)
+        _finish_gate(db, ctx, adset, result)
         return dict(result)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -299,7 +327,7 @@ def create_creative(
     creative: Dict[str, Any],
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
+    ctx: OrgContext = Depends(require_org_permission("ads:draft"))
 ):
     try:
         result = service.create_creative(creative, ad_account_id)
@@ -312,11 +340,16 @@ def create_ad(
     ad: Dict[str, Any],
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
+    db: Session = Depends(get_db),
+    ctx: OrgContext = Depends(require_org_permission("ads:draft"))
 ):
+    _require_object_in_linked_account(service, db, ctx, ad.get("adset_id") or ad.get("adsetId"))
+    ad = _gate_creation(db, ctx, service, "ad", ad)
     try:
         result = service.create_ad(ad, ad_account_id)
         return dict(result)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -324,8 +357,10 @@ def create_ad(
 def read_ads(
     adset_id: str,
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
+    db: Session = Depends(get_db),
+    ctx: OrgContext = Depends(require_org_permission("ads:read"))
 ):
+    _require_object_in_linked_account(service, db, ctx, adset_id)
     try:
         ads = service.get_ads(adset_id)
         return [dict(a) for a in ads]
@@ -488,7 +523,7 @@ def upload_image(
     data: Dict[str, str],
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
+    ctx: OrgContext = Depends(require_org_permission("ads:draft"))
 ):
     try:
         image_url = data.get("image_url")
@@ -506,7 +541,7 @@ def upload_video(
     data: Dict[str, Any],
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
+    ctx: OrgContext = Depends(require_org_permission("ads:draft"))
 ):
     """Upload a video to Facebook Ad Library.
 
@@ -544,7 +579,7 @@ def upload_video(
 def get_video_status(
     video_id: str,
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
+    ctx: OrgContext = Depends(require_org_permission("ads:read"))
 ):
     """Check the processing status of a video.
 
@@ -562,7 +597,7 @@ def get_video_status(
 def get_video_thumbnails(
     video_id: str,
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
+    ctx: OrgContext = Depends(require_org_permission("ads:read"))
 ):
     """Get auto-generated thumbnails for a video.
 
@@ -582,7 +617,7 @@ def search_locations(
     limit: int = 10,
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
+    ctx: OrgContext = Depends(require_org_permission("ads:read"))
 ):
     try:
         locations = service.search_locations(q, type, limit, ad_account_id)

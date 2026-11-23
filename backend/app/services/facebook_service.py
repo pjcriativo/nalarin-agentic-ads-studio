@@ -86,6 +86,13 @@ class FacebookService:
             
         raise Exception("No Ad Account ID provided and no default account set.")
 
+    def object_account_id(self, object_id):
+        """READ-ONLY: normalized ad account id that owns a campaign / ad set / ad."""
+        from facebook_business.api import FacebookAdsApi
+        api = FacebookAdsApi.get_default_api()
+        response = api.call('GET', (str(object_id),), params={'fields': 'account_id'})
+        return str(response.json().get('account_id', ''))
+
     def get_campaigns(self, ad_account_id=None):
         """Fetch all campaigns from the ad account."""
         account = self._get_account(ad_account_id)

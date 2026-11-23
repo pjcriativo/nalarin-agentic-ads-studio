@@ -22,8 +22,13 @@ class TestBotApiScopes:
     def test_read_key_can_get_safety_policy(self, client, db_session):
         from app.models import ApiKey
         from app.core.deps import _hash_api_key
+        import uuid
+        from app.models import Organization
+        org = Organization(id=str(uuid.uuid4()), name="bot org", slug=f"bot-{uuid.uuid4().hex[:8]}")
+        db_session.add(org)
+        db_session.commit()
         raw = f"ads_studio_bot_test_{secrets.token_urlsafe(16)}"
-        db_session.add(ApiKey(name="bot", key_hash=_hash_api_key(raw), scopes=["ads:read"]))
+        db_session.add(ApiKey(name="bot", key_hash=_hash_api_key(raw), scopes=["ads:read"], organization_id=org.id))
         db_session.commit()
 
         response = client.get("/api/v1/bot/safety", headers={"Authorization": f"Bearer {raw}"})
@@ -38,5 +43,7 @@ class TestBotApiScopes:
             "/api/v1/bot/safety",
             "/api/v1/bot/spend",
             "/api/v1/bot/overview",
+            "/api/v1/bot/approvals",
         ])
-        assert all("post" not in schema["paths"][path] for path in bot_paths)
+        # the ONLY write a bot has is REQUESTING a spend approval (a human decides)
+        assert [p for p in bot_paths if "post" in schema["paths"][p]] == ["/api/v1/bot/approvals"]

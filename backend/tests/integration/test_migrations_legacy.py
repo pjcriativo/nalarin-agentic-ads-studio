@@ -17,6 +17,7 @@ from sqlalchemy.engine import make_url
 
 from app.core.config import settings
 from app.scripts.claim_legacy_data import ClaimError, assert_privileged, claim, claim_tables, report, ALL_TABLES
+from app.scripts import reconcile_legacy_integrations as recon
 
 PRE_TENANT = "a1d2e3f4b5c6"
 BACKEND = Path(__file__).resolve().parent.parent.parent
@@ -79,6 +80,19 @@ def _legacy_rows(engine):
         conn.execute(text("INSERT INTO keyword_blacklist (id, keyword) VALUES ('kb-1','kw')"))
         conn.execute(text("INSERT INTO brand_scrapes (id, brand_name, page_id, page_url) VALUES ('bs-1','B','1','http://u')"))
         conn.execute(text("INSERT INTO brand_scraped_ads (id, brand_scrape_id, external_id) VALUES ('bsa-1','bs-1','x')"))
+        # etapa 01.3 data: per-USER ad connections, an API key and a mutation audit
+        conn.execute(text("INSERT INTO google_ads_connections (id, user_id, customer_id, encrypted_refresh_token, is_active) "
+                          "VALUES ('gc-1','u-legacy-1','1111111111','LEGACY-REFRESH-G1',true), "
+                          "('gc-2','u-legacy-1','2222222222','LEGACY-REFRESH-G1',false)"))
+        conn.execute(text("INSERT INTO meta_ads_connections (id, user_id, ad_account_id, encrypted_access_token, is_active) "
+                          "VALUES ('mc-1','u-legacy-1','act_555','LEGACY-ACCESS-M1',true)"))
+        conn.execute(text("INSERT INTO tiktok_ads_connections (id, user_id, advertiser_id, encrypted_refresh_token, is_active) "
+                          "VALUES ('tc-1','u-legacy-2','777','LEGACY-REFRESH-T1',true)"))
+        conn.execute(text("INSERT INTO api_keys (id, name, key_hash, scopes, created_by_user_id) "
+                          "VALUES ('ak-1','legacy bot','hash-1','[\"ads:read\",\"ads:publish\",\"ads:spend\"]','u-legacy-1'), "
+                          "('ak-2','orphan bot','hash-2','[\"ads:read\"]',NULL)"))
+        conn.execute(text("INSERT INTO mutation_audits (id, user_id, provider, account_id, action, payload_hash, mode) "
+                          "VALUES ('ma-1','u-legacy-1','google_ads','1111111111','campaign.pause','h','manual')"))
 
 
 def _signed(conn, org_id):
@@ -95,7 +109,7 @@ class TestFromEmptyDatabase:
             tables = set(text_ for (text_,) in conn.execute(text(
                 "SELECT tablename FROM pg_tables WHERE schemaname = 'public'")))
             assert {"organizations", "organization_members", "brands"} <= tables
-            assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar() == "a7b8c9d0e1f2"
+            assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar() == "b8c9d0e1f2a3"
         command.downgrade(cfg, PRE_TENANT)
         with scratch_db.connect() as conn:
             tables = set(t for (t,) in conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname='public'")))
@@ -256,3 +270,142 @@ class TestLegacyData:
         with migrated.connect() as conn:
             for table in ("generated_ads", "winning_ads", "facebook_ads", "scraped_ads", "brand_scraped_ads"):
                 assert conn.execute(text(f"SELECT count(*) FROM {table}")).scalar() == 1, table
+
+
+class TestLegacyIntegrations:
+    """Etapa 01.3: per-USER connections / keys / audits survive the migration in quarantine."""
+
+    @pytest.fixture
+    def migrated(self, scratch_db):
+        cfg = _alembic_cfg()
+        command.upgrade(cfg, PRE_TENANT)
+        _legacy_rows(scratch_db)
+        command.upgrade(cfg, "head")
+        return scratch_db
+
+    @staticmethod
+    def orgs(conn):
+        rows = conn.execute(text(
+            "SELECT m.user_id, m.organization_id FROM organization_members m WHERE m.role = 'owner'")).all()
+        return {user: org for user, org in rows}
+
+    def test_every_legacy_row_and_token_is_preserved_untouched_and_unowned(self, migrated):
+        with migrated.connect() as conn:
+            counts = recon.report(conn)
+            tokens = dict(conn.execute(text(
+                "SELECT id, encrypted_refresh_token FROM google_ads_connections")).all())
+            assert conn.execute(text("SELECT encrypted_access_token FROM meta_ads_connections")).scalar() == "LEGACY-ACCESS-M1"
+            owners = conn.execute(text("SELECT count(*) FROM google_ads_connections WHERE organization_id IS NOT NULL")).scalar()
+        assert counts["google_ads_connections"] == {"u-legacy-1": 2}
+        assert counts["meta_ads_connections"] == {"u-legacy-1": 1} and counts["tiktok_ads_connections"] == {"u-legacy-2": 1}
+        assert counts["api_keys"] == 2 and counts["mutation_audits"] == 1
+        assert tokens == {"gc-1": "LEGACY-REFRESH-G1", "gc-2": "LEGACY-REFRESH-G1"} and owners == 0
+
+    def test_quarantined_rows_are_invisible_to_every_organization_and_keys_authenticate_nobody(self, migrated):
+        from sqlalchemy import event
+        from app.database import _drop_to_runtime_role
+        engine = create_engine(migrated.url)
+        event.listen(engine, "connect", _drop_to_runtime_role)
+        with engine.connect() as conn:
+            org_ids = conn.execute(text("SELECT id FROM organizations")).scalars().all()
+        for org_id in org_ids:
+            with engine.begin() as conn:
+                _signed(conn, org_id)
+                for table in ("google_ads_connections", "meta_ads_connections", "tiktok_ads_connections",
+                              "mutation_audits", "ad_account_links", "api_keys"):
+                    assert conn.execute(text(f"SELECT count(*) FROM {table}")).scalar() == 0, table
+        with engine.begin() as conn:      # presenting a hash reveals that single row ... which the app then refuses
+            conn.execute(text("SELECT set_config('app.api_key_hash', 'hash-1', true)"))
+            assert conn.execute(text("SELECT organization_id FROM api_keys")).all() == [(None,)]
+        engine.dispose()
+
+    def test_new_ownerless_rows_are_blocked_by_the_not_valid_checks(self, migrated):
+        with migrated.connect() as conn:
+            for stmt, name in (
+                ("INSERT INTO api_keys (id, name, key_hash, scopes) VALUES ('n','n','hh','[]')", "ck_api_keys_org_required"),
+                ("INSERT INTO google_ads_connections (id, user_id, customer_id, encrypted_refresh_token) "
+                 "VALUES ('n','u-legacy-1','9','x')", "ck_google_ads_connections_org_required"),
+            ):
+                with pytest.raises(Exception, match=name):
+                    conn.execute(text(stmt))
+                conn.rollback()
+
+    def test_claiming_connections_is_a_dry_run_then_creates_links_without_touching_tokens(self, migrated):
+        with migrated.connect() as conn:
+            org = self.orgs(conn)["u-legacy-1"]
+            would = recon.claim_connections(conn, org, "u-legacy-1", apply=False)
+            assert would == {"google_ads_connections": 2, "meta_ads_connections": 1, "tiktok_ads_connections": 0}
+            assert recon.report(conn)["google_ads_connections"] == {"u-legacy-1": 2}            # nothing written
+            recon.claim_connections(conn, org, "u-legacy-1", apply=True)
+            conn.commit()
+            links = {(p, a): st for p, a, st in conn.execute(text(
+                "SELECT provider, external_account_id, status FROM ad_account_links WHERE organization_id = :o"), {"o": org})}
+            tokens = dict(conn.execute(text("SELECT id, encrypted_refresh_token FROM google_ads_connections")).all())
+        # the selected account becomes an ACTIVE link; the other stays a PENDING candidate; Meta drops the act_ prefix
+        assert links == {("google_ads", "1111111111"): "active", ("google_ads", "2222222222"): "pending",
+                         ("meta", "555"): "active"}
+        assert tokens == {"gc-1": "LEGACY-REFRESH-G1", "gc-2": "LEGACY-REFRESH-G1"}
+        with migrated.connect() as conn:                                   # u-legacy-2's TikTok connection is untouched
+            assert recon.report(conn)["tiktok_ads_connections"] == {"u-legacy-2": 1}
+
+    def test_connection_claim_refuses_non_members_non_admins_and_inactive_organizations(self, migrated):
+        with migrated.connect() as conn:
+            orgs = self.orgs(conn)
+            with pytest.raises(recon.ReconcileError, match="not an active member"):
+                recon.claim_connections(conn, orgs["u-legacy-2"], "u-legacy-1", apply=True)   # someone else's organization
+            conn.rollback()
+            conn.execute(text("UPDATE organization_members SET role = 'viewer' WHERE user_id = 'u-legacy-1'"))
+            conn.commit()
+            with pytest.raises(recon.ReconcileError, match="only"):
+                recon.claim_connections(conn, orgs["u-legacy-1"], "u-legacy-1", apply=True)
+            conn.rollback()
+            with pytest.raises(recon.ReconcileError, match="does not exist"):
+                recon.claim_connections(conn, str(uuid.uuid4()), "u-legacy-1", apply=True)
+            conn.rollback()
+            assert recon.report(conn)["google_ads_connections"] == {"u-legacy-1": 2}
+
+    def test_connection_claim_is_atomic_when_an_account_is_already_linked(self, migrated):
+        with migrated.connect() as conn:
+            org = self.orgs(conn)["u-legacy-1"]
+            conn.execute(text(
+                "INSERT INTO ad_account_links (id, organization_id, provider, external_account_id, status) "
+                "VALUES ('pre', :o, 'meta', '555', 'active')"), {"o": org})
+            conn.commit()
+            with pytest.raises(recon.ReconcileError, match="nothing changed"):
+                recon.claim_connections(conn, org, "u-legacy-1", apply=True)
+            conn.rollback()
+            report_now = recon.report(conn)
+            assert report_now["google_ads_connections"] == {"u-legacy-1": 2}     # Google part rolled back too
+
+    def test_api_key_claim_strips_publish_and_spend_and_refuses_ownerless_keys(self, migrated):
+        with migrated.connect() as conn:
+            org = self.orgs(conn)["u-legacy-1"]
+            with pytest.raises(recon.ReconcileError, match="no creator"):
+                recon.claim_api_keys(conn, org, ["ak-2"], apply=True)
+            conn.rollback()
+            assert recon.claim_api_keys(conn, org, ["ak-1"], apply=False) == 1
+            assert conn.execute(text("SELECT organization_id FROM api_keys WHERE id = 'ak-1'")).scalar() is None
+            recon.claim_api_keys(conn, org, ["ak-1"], apply=True)
+            conn.commit()
+            row = conn.execute(text("SELECT organization_id, scopes FROM api_keys WHERE id = 'ak-1'")).one()
+            with pytest.raises(recon.ReconcileError, match="already bound"):
+                recon.claim_api_keys(conn, org, ["ak-1"], apply=True)
+            conn.rollback()
+        assert row[0] == org and sorted(row[1]) == ["ads:read"]
+
+    def test_audit_claim_assigns_only_that_users_rows(self, migrated):
+        with migrated.connect() as conn:
+            orgs = self.orgs(conn)
+            assert recon.claim_audits(conn, orgs["u-legacy-1"], "u-legacy-1", apply=True) == 1
+            conn.commit()
+            assert recon.report(conn)["mutation_audits"] == 0
+
+    def test_reconcile_cannot_run_as_the_unprivileged_runtime_role(self, migrated):
+        from sqlalchemy import event
+        from app.database import _drop_to_runtime_role
+        engine = create_engine(migrated.url)
+        event.listen(engine, "connect", _drop_to_runtime_role)
+        with engine.connect() as conn:
+            with pytest.raises(recon.ReconcileError, match="subject to row level security"):
+                recon.claim_audits(conn, "x", "y", apply=True)
+        engine.dispose()

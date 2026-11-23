@@ -3,6 +3,7 @@ refresh, mirroring apps/optima/lib/google-ads-client.ts) and GAQL queries for
 campaign/ad performance.
 """
 from datetime import datetime, timedelta, timezone
+import contextvars
 import re
 from typing import Optional
 
@@ -67,6 +68,16 @@ async def get_valid_access_token(db: Session, connection: GoogleAdsConnection) -
     return access_token
 
 
+# Manager (MCC) account the CURRENT request logs in through. It comes from the
+# organization's own configuration (set by the router around each call): there is
+# no server-wide MCC fallback, which every tenant would otherwise share.
+_login_customer_id: contextvars.ContextVar = contextvars.ContextVar("google_ads_login_customer_id", default=None)
+
+
+def use_login_customer(value: Optional[str]) -> None:
+    _login_customer_id.set(normalize_login_customer_id(value) if value else None)
+
+
 def _build_client(refresh_token: str):
     """Build a google.ads.googleads.client.GoogleAdsClient for one connection."""
     _require_configured()
@@ -79,8 +90,9 @@ def _build_client(refresh_token: str):
         "refresh_token": refresh_token,
         "use_proto_plus": True,
     }
-    if settings.GOOGLE_ADS_LOGIN_CUSTOMER_ID:
-        config["login_customer_id"] = normalize_login_customer_id(settings.GOOGLE_ADS_LOGIN_CUSTOMER_ID)
+    login_customer_id = _login_customer_id.get()
+    if login_customer_id:
+        config["login_customer_id"] = login_customer_id
     return GoogleAdsClient.load_from_dict(config)
 
 
@@ -338,3 +350,18 @@ async def add_negative_keywords(refresh_token: str, customer_id: str, campaign_i
         criterion_service.mutate_campaign_criteria(customer_id=customer_id, operations=operations)
     return {"campaign_id": campaign_id, "negative_keywords_added": len(keywords)}
 
+
+
+async def get_campaign_budget_micros(refresh_token: str, customer_id: str, campaign_id: str) -> int:
+    """READ-ONLY: the daily budget (micros) a campaign would spend once enabled.
+    Used to check the real amount against the approved budget scope."""
+    client = _build_client(refresh_token)
+    customer_id = normalize_login_customer_id(customer_id)
+    campaign_id = "".join(ch for ch in str(campaign_id) if ch.isdigit())
+    if not campaign_id:
+        raise GoogleAdsConnectionError("Invalid campaign id")
+    ga_service = client.get_service("GoogleAdsService")
+    query = f"SELECT campaign.id, campaign_budget.amount_micros FROM campaign WHERE campaign.id = {campaign_id}"
+    for row in ga_service.search(customer_id=customer_id, query=query):
+        return int(row.campaign_budget.amount_micros)
+    raise GoogleAdsConnectionError("Campaign not found in the connected account")

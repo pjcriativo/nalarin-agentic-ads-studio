@@ -22,7 +22,7 @@ from app.core.tenancy import (
     create_organization,
 )
 from app.database import get_db
-from app.models import Organization, OrganizationMember, User
+from app.models import ApiKey, Organization, OrganizationMember, User
 
 router = APIRouter()
 
@@ -240,9 +240,16 @@ def revoke_member(
         raise HTTPException(status_code=409, detail="An organization must keep at least one owner")
     member.status = "revoked"
     member.revoked_at = datetime.now(timezone.utc)
+    # Machine credentials minted by someone who loses access die with that access.
+    revoked_keys = (
+        db.query(ApiKey)
+        .filter(ApiKey.organization_id == ctx.org.id, ApiKey.created_by_user_id == user_id,
+                ApiKey.revoked_at.is_(None))
+        .update({ApiKey.revoked_at: datetime.now(timezone.utc)}, synchronize_session=False)
+    )
     audit_event(db, action="member.revoked" if user_id != ctx.user.id else "member.left",
                 organization_id=ctx.org.id, actor_user_id=ctx.user.id, target=user_id,
-                detail={"role": member.role}, request=request)
+                detail={"role": member.role, "api_keys_revoked": revoked_keys}, request=request)
     db.commit()
     return {"success": True}
 
@@ -269,3 +276,70 @@ def list_audit_log(
          "ip_address": r.ip_address}
         for r in rows
     ]
+
+
+# ----------------------------------------------------------------------------
+# Machine API keys (bots). Owned by the organization; only ads:read / ads:draft.
+# ----------------------------------------------------------------------------
+class ApiKeyCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    scopes: List[str] = Field(default_factory=lambda: ["ads:read"])
+
+
+def _key_out(k: ApiKey) -> dict:
+    return {"id": k.id, "name": k.name, "scopes": k.scopes, "created_at": k.created_at,
+            "last_used_at": k.last_used_at, "revoked_at": k.revoked_at,
+            "created_by_user_id": k.created_by_user_id}  # never the hash
+
+
+@router.post("/{org_id}/api-keys", status_code=status.HTTP_201_CREATED)
+def create_api_key(
+    body: ApiKeyCreate,
+    request: Request,
+    ctx: OrgContext = Depends(path_org_permission("apikeys:manage")),
+    db: Session = Depends(get_db),
+):
+    """Mint a key for THIS organization. The plaintext is returned once and never stored."""
+    import hashlib
+    import secrets
+    from app.core.deps import BOT_SCOPES
+
+    scopes = sorted(set(body.scopes))
+    if not scopes or any(sc not in BOT_SCOPES for sc in scopes):
+        raise HTTPException(status_code=422, detail=f"Allowed scopes: {sorted(BOT_SCOPES)} (keys can never publish or spend)")
+    raw = f"ads_studio_{secrets.token_urlsafe(32)}"
+    key = ApiKey(organization_id=ctx.org.id, name=body.name.strip(), key_hash=hashlib.sha256(raw.encode()).hexdigest(),
+                 scopes=scopes, created_by_user_id=ctx.user.id)
+    db.add(key)
+    db.flush()
+    audit_event(db, action="apikey.created", organization_id=ctx.org.id, actor_user_id=ctx.user.id,
+                target=key.id, detail={"scopes": scopes}, request=request)
+    db.commit()
+    return {**_key_out(key), "key": raw}
+
+
+@router.get("/{org_id}/api-keys")
+def list_api_keys(
+    ctx: OrgContext = Depends(path_org_permission("apikeys:manage")),
+    db: Session = Depends(get_db),
+) -> List[dict]:
+    rows = db.query(ApiKey).filter(ApiKey.organization_id == ctx.org.id).order_by(ApiKey.created_at).all()
+    return [_key_out(k) for k in rows]
+
+
+@router.delete("/{org_id}/api-keys/{key_id}")
+def revoke_api_key(
+    key_id: str,
+    request: Request,
+    ctx: OrgContext = Depends(path_org_permission("apikeys:manage")),
+    db: Session = Depends(get_db),
+):
+    key = db.query(ApiKey).filter(ApiKey.organization_id == ctx.org.id, ApiKey.id == key_id).first()
+    if key is None:
+        raise HTTPException(status_code=404, detail="API key not found")
+    if key.revoked_at is None:
+        key.revoked_at = datetime.now(timezone.utc)
+        audit_event(db, action="apikey.revoked", organization_id=ctx.org.id, actor_user_id=ctx.user.id,
+                    target=key.id, request=request)
+        db.commit()
+    return {"success": True}

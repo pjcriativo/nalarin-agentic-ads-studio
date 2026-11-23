@@ -97,6 +97,14 @@ def google_ads_configured(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _hermetic_dns(monkeypatch):
+    """The SSRF guard resolves hostnames; tests must not depend on real DNS."""
+    from app.core import storage
+    monkeypatch.setattr(storage, "_resolve_host", lambda host: ["93.184.216.34"])
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _reset_rate_limiter():
     """Reset slowapi's limiter before every test.
 
@@ -133,6 +141,8 @@ def db_session():
         # This session is the (superuser) seeding connection, so it bypasses RLS
         # and can wipe the tenant tables of the disposable test database.
         for table in (
+            "spend_approvals", "ad_account_links", "oauth_states", "mutation_audits",
+            "google_ads_connections", "meta_ads_connections", "tiktok_ads_connections", "api_keys",
             "brand_scraped_ads", "brand_scrapes", "scraped_ads", "search_logs", "api_usage_logs",
             "page_blacklist", "keyword_blacklist", "saved_searches", "facebook_pages", "verticals",
             "facebook_ads", "facebook_adsets", "facebook_campaigns", "generated_ads", "winning_ads",
@@ -338,3 +348,32 @@ import pytest
 @pytest.fixture
 def anyio_backend():
     return 'asyncio'
+
+
+# ---- integration helpers (etapa 01.3) ----------------------------------------
+@pytest.fixture
+def org_id_of(db_session):
+    """The personal organization id of a user created by ``test_user`` / ``make_user(personal_org=True)``."""
+    def _of(user):
+        from app.models import OrganizationMember
+        return db_session.query(OrganizationMember).filter(
+            OrganizationMember.user_id == user.id, OrganizationMember.status == "active").first().organization_id
+    return _of
+
+
+@pytest.fixture
+def add_connection(db_session):
+    """Persist an ad-platform connection for an ORGANIZATION plus its explicit
+    account link (``active`` when the connection is selected, else ``pending``)."""
+    def _add(org_id, provider, connection, link_status=None):
+        from app.models import AdAccountLink
+        from app.services.integrations import PROVIDERS, normalize_account
+        connection.organization_id = org_id
+        db_session.add(connection)
+        account = normalize_account(provider, getattr(connection, PROVIDERS[provider]["account_col"]))
+        status_value = link_status or ("active" if connection.is_active else "pending")
+        db_session.add(AdAccountLink(organization_id=org_id, provider=provider, external_account_id=account,
+                                     account_name=connection.account_name, status=status_value))
+        db_session.commit()
+        return connection
+    return _add

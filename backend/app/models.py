@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, String, Integer, ForeignKey, DateTime, Text, JSON, Table, Boolean,
+    Column, String, Integer, BigInteger, ForeignKey, DateTime, Text, JSON, Table, Boolean,
     UniqueConstraint, ForeignKeyConstraint, CheckConstraint, Index,
 )
 from sqlalchemy.orm import relationship
@@ -692,8 +692,12 @@ class ApiKey(Base):
     """Machine-to-machine key (e.g. the Hermes Telegram bot). Hashed at rest —
     the plaintext key is shown once at creation time and never stored or logged."""
     __tablename__ = "api_keys"
+    __table_args__ = (Index('ix_api_keys_organization_id', 'organization_id'),)
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    # Owner organization. NULL = LEGACY key: it authenticates nobody (quarantine)
+    # until an operator binds it explicitly.
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     name = Column(String, nullable=False)
     key_hash = Column(String, unique=True, nullable=False, index=True)
     # Allowed values: "ads:read", "ads:draft". "ads:publish" / "ads:spend" do not
@@ -711,8 +715,17 @@ class GoogleAdsConnection(Base):
     """One connected Google Ads account, tokens encrypted at rest via Fernet
     (see app.core.token_encryption)."""
     __tablename__ = "google_ads_connections"
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'customer_id', name='uq_google_ads_connections_org_customer'),
+        Index('ix_google_ads_connections_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    # Tenant owner (NULL = legacy per-user connection in quarantine).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
+    # Manager (MCC) account to log in through, chosen per organization. There is
+    # deliberately NO server-wide fallback (it would be shared by every tenant).
+    login_customer_id = Column(String, nullable=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     customer_id = Column(String, nullable=False)  # Google Ads customer ID (no dashes)
     account_name = Column(String, nullable=True)
@@ -729,8 +742,13 @@ class GoogleAdsConnection(Base):
 class MetaAdsConnection(Base):
     """One Meta Ads account authorized by a user OAuth grant."""
     __tablename__ = "meta_ads_connections"
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'ad_account_id', name='uq_meta_ads_connections_org_account'),
+        Index('ix_meta_ads_connections_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     ad_account_id = Column(String, nullable=False)
     account_name = Column(String, nullable=True)
@@ -747,8 +765,13 @@ class TikTokAdsConnection(Base):
     """One TikTok Marketing API advertiser connection, with OAuth tokens
     encrypted at rest through app.core.token_encryption."""
     __tablename__ = "tiktok_ads_connections"
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'advertiser_id', name='uq_tiktok_ads_connections_org_advertiser'),
+        Index('ix_tiktok_ads_connections_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     advertiser_id = Column(String, nullable=False)
     account_name = Column(String, nullable=True)
@@ -767,9 +790,13 @@ class MutationAudit(Base):
     auto-mode verdicts, manual approvals, previews, and rejections. Written
     by the auto-mode scheduler and the optimization endpoints; never updated."""
     __tablename__ = "mutation_audits"
+    __table_args__ = (Index('ix_mutation_audits_organization_id', 'organization_id'),)
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    api_key_id = Column(String, nullable=True)         # machine actor, when the request came from a bot key
+    approval_id = Column(String, nullable=True)        # spend approval this decision relates to
     provider = Column(String, nullable=False)          # meta / google / tiktok
     account_id = Column(String, nullable=False)
     action = Column(String, nullable=False)            # campaign.pause / budget.update / ...
@@ -810,3 +837,90 @@ class AuditLog(Base):
     detail = Column(JSON, nullable=True)          # small, non-secret context
     ip_address = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class AdAccountLink(Base):
+    """Explicit authorization of ONE ad account for ONE organization.
+
+    OAuth only produces *candidates* (status ``pending``); an organization member
+    with ``connections:manage`` activates exactly the accounts the organization
+    may operate. Every read/write against an ad platform requires an ``active``
+    link of the caller's organization: a user who belongs to two organizations
+    never shares accounts between them implicitly.
+    """
+    __tablename__ = "ad_account_links"
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'provider', 'external_account_id', name='uq_ad_account_links_org_provider_account'),
+        CheckConstraint("provider IN ('google_ads','meta','tiktok')", name='ck_ad_account_links_provider'),
+        CheckConstraint("status IN ('pending','active','revoked')", name='ck_ad_account_links_status'),
+        Index('ix_ad_account_links_organization_id', 'organization_id'),
+    )
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
+    provider = Column(String, nullable=False)
+    external_account_id = Column(String, nullable=False)      # customer_id / ad_account_id / advertiser_id
+    account_name = Column(String, nullable=True)
+    login_customer_id = Column(String, nullable=True)         # Google MCC for this organization
+    status = Column(String, nullable=False, default="pending", server_default="pending")
+    authorized_by_user_id = Column(String, nullable=True)
+    authorized_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class SpendApproval(Base):
+    """Persisted human approval for an operation that can spend money.
+
+    Lifecycle: ``pending`` -> ``approved`` (a human with ``ads:spend``; never an API
+    key) -> ``consumed`` (exactly once, atomically, by the executing endpoint).
+    The approval is bound to organization, account, action and payload hash and
+    carries the budget scope the approver accepted. ``idempotency_key`` is unique
+    per organization: repeating a request returns the stored result instead of
+    executing twice.
+    """
+    __tablename__ = "spend_approvals"
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'idempotency_key', name='uq_spend_approvals_org_idem'),
+        CheckConstraint("status IN ('pending','approved','rejected','consumed','expired')", name='ck_spend_approvals_status'),
+        Index('ix_spend_approvals_organization_id', 'organization_id'),
+    )
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
+    provider = Column(String, nullable=False)
+    account_id = Column(String, nullable=False)
+    action = Column(String, nullable=False)
+    payload_hash = Column(String, nullable=False)
+    requested_budget_micros = Column(BigInteger, nullable=True)   # what the payload asks for
+    max_budget_micros = Column(BigInteger, nullable=True)         # scope granted by the approver
+    idempotency_key = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="pending", server_default="pending")
+    requested_by_user_id = Column(String, nullable=True)
+    requested_by_api_key_id = Column(String, nullable=True)
+    approved_by_user_id = Column(String, nullable=True)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    consumed_at = Column(DateTime(timezone=True), nullable=True)
+    result = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class OAuthState(Base):
+    """Server-side record of one OAuth authorization attempt (single use).
+
+    Control table (no RLS): the unauthenticated provider callback must be able to
+    find its state before any organization context exists. It stores only a hash
+    of the browser-binding cookie, never a token.
+    """
+    __tablename__ = "oauth_states"
+    __table_args__ = (Index('ix_oauth_states_expires_at', 'expires_at'),)
+
+    id = Column(String, primary_key=True, default=generate_uuid)   # the state's jti
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    provider = Column(String, nullable=False)
+    cookie_hash = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)

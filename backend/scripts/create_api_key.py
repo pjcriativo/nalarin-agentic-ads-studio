@@ -15,7 +15,7 @@ from pathlib import Path
 # app package — insert the backend/ directory (this script's parent) on sys.path.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.database import SessionLocal  # noqa: E402
+from app.database import SessionLocal, bind_context  # noqa: E402
 from app.models import ApiKey  # noqa: E402
 
 ALLOWED_SCOPES = {"ads:read", "ads:draft"}
@@ -24,6 +24,7 @@ KEY_PREFIX = "ads_studio"
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--org-id", required=True, help="Organization that owns the key (it can only ever act inside it)")
     parser.add_argument("--name", required=True, help="Human-readable label, e.g. the Hermes profile name")
     parser.add_argument(
         "--created-by-user-id",
@@ -43,7 +44,10 @@ def main() -> None:
 
     db = SessionLocal()
     try:
+        # the session must be bound to the organization (RLS) to insert its key
+        bind_context(db, args.org_id)
         api_key = ApiKey(
+            organization_id=args.org_id,
             name=args.name,
             key_hash=key_hash,
             scopes=list(args.scopes),

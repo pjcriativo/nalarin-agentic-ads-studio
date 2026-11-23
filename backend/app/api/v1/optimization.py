@@ -6,11 +6,17 @@ the *guardrail* layer only: nothing here (or anywhere else yet) executes
 autonomous changes -- see ``AUTONOMOUS_EXECUTION_IMPLEMENTED``.
 
 Trust rules enforced server-side:
-* callers are active users (inactive accounts are rejected);
+* every endpoint needs an ACTIVE membership in an organization and the matching
+  organization permission (ads:read / ads:draft / ads:spend); audits, approvals
+  and accounts are all scoped to that organization (RLS + explicit filters);
 * spend / action counters are never taken from the request body -- the action
   count comes from the audit log and spend is "unverifiable" (fails closed when
   a daily-spend ceiling is configured) until a trusted metrics source exists;
-* an approval token is only signed for an ad account the caller has connected.
+* an approval token is only signed for an ad account that is LINKED to the
+  caller's organization (an explicit, active ad_account_links row);
+* anything that can spend needs a persisted human approval with a budget scope
+  (see app.services.approvals): requested by ads:draft, decided by a human with
+  ads:spend, consumed atomically and idempotently by the executing endpoint.
 """
 
 from datetime import datetime, timezone
@@ -21,7 +27,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_active_user, get_db
+from app.database import get_db
+from app.core.tenancy import OrgContext, require_org_permission
+from app.services import approvals, integrations
 from app.core.executor import (
     AUTONOMOUS_EXECUTION_IMPLEMENTED,
     AutoModePolicy,
@@ -30,13 +38,7 @@ from app.core.executor import (
     is_kill_switch_active,
     MUTATION_ACTIONS,
 )
-from app.models import (
-    GoogleAdsConnection,
-    MetaAdsConnection,
-    MutationAudit,
-    TikTokAdsConnection,
-    User,
-)
+from app.models import MutationAudit, SpendApproval
 
 # The "/api/v1/optimization" prefix is applied once, in app.main.
 router = APIRouter(tags=["optimization"])
@@ -81,32 +83,12 @@ def _normalize_provider(provider: str) -> str:
     return normalized
 
 
-def _digits(value: str) -> str:
-    return "".join(ch for ch in (value or "") if ch.isdigit())
-
-
-def _user_owns_account(db: Session, user_id: str, provider: str, account_id: str) -> bool:
-    """True only if the user has this ad account connected (active or not)."""
-    if provider == "google_ads":
-        wanted = _digits(account_id)
-        rows = db.query(GoogleAdsConnection.customer_id).filter(GoogleAdsConnection.user_id == user_id).all()
-        return bool(wanted) and any(_digits(r[0]) == wanted for r in rows)
-    if provider == "meta":
-        wanted = account_id.replace("act_", "")
-        rows = db.query(MetaAdsConnection.ad_account_id).filter(MetaAdsConnection.user_id == user_id).all()
-        return any((r[0] or "").replace("act_", "") == wanted for r in rows)
-    if provider == "tiktok":
-        rows = db.query(TikTokAdsConnection.advertiser_id).filter(TikTokAdsConnection.user_id == user_id).all()
-        return any(str(r[0]) == str(account_id) for r in rows)
-    return False
-
-
-def _todays_auto_action_count(db: Session, user_id: str) -> int:
+def _todays_auto_action_count(db: Session, org_id: str) -> int:
     start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     return (
         db.query(MutationAudit)
         .filter(
-            MutationAudit.user_id == user_id,
+            MutationAudit.organization_id == org_id,
             MutationAudit.mode == "auto",
             MutationAudit.executed.is_(True),
             MutationAudit.created_at >= start,
@@ -116,7 +98,7 @@ def _todays_auto_action_count(db: Session, user_id: str) -> int:
 
 
 @router.get("/status")
-def get_optimization_status(current_user: User = Depends(get_current_active_user)):
+def get_optimization_status(ctx: OrgContext = Depends(require_org_permission("ads:read"))):
     """Current guardrail policy and kill-switch status."""
     policy = AutoModePolicy.from_env()
     return {
@@ -140,7 +122,7 @@ def get_optimization_status(current_user: User = Depends(get_current_active_user
 def evaluate_mutation(
     req: EvaluateMutationRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    ctx: OrgContext = Depends(require_org_permission("ads:read")),
 ):
     """Dry-run: would this action be allowed to run automatically? Advisory only
     -- nothing is executed and the response says so."""
@@ -159,7 +141,7 @@ def evaluate_mutation(
         action=req.action,
         payload=req.payload,
         today_spend_micros=None,  # no trusted spend source yet -> fail closed if a ceiling is set
-        today_action_count=_todays_auto_action_count(db, current_user.id),
+        today_action_count=_todays_auto_action_count(db, ctx.org.id),
     )
     verdict["executes"] = AUTONOMOUS_EXECUTION_IMPLEMENTED
     return verdict
@@ -169,9 +151,9 @@ def evaluate_mutation(
 def create_proposal_token(
     req: ProposalSignRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    ctx: OrgContext = Depends(require_org_permission("ads:draft")),
 ):
-    """Sign an approval token for a mutation on an account the caller owns."""
+    """Sign an approval token for a mutation on an account linked to the caller's organization."""
     if is_kill_switch_active():
         raise HTTPException(
             status_code=status.HTTP_423_LOCKED,
@@ -183,10 +165,10 @@ def create_proposal_token(
             detail=f"Unsupported action: {req.action}",
         )
     provider = _normalize_provider(req.provider)
-    if not _user_owns_account(db, current_user.id, provider, req.account_id):
+    if not integrations.account_is_authorized(db, ctx.org.id, provider, req.account_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This ad account is not connected to your user.",
+            detail="This ad account is not linked to your organization.",
         )
 
     payload_hash = canonical_payload_hash(req.payload)
@@ -194,7 +176,7 @@ def create_proposal_token(
     issued_at = int(time.time())
 
     token = ProposalTokenService.sign(
-        actor=current_user.email,
+        actor=ctx.user.email,
         provider=provider,
         account_id=req.account_id,
         action=req.action,
@@ -211,7 +193,8 @@ def create_proposal_token(
 
     db.add(
         MutationAudit(
-            user_id=current_user.id,
+            organization_id=ctx.org.id,
+            user_id=ctx.user.id,
             provider=provider,
             account_id=req.account_id,
             action=req.action,
@@ -227,8 +210,98 @@ def create_proposal_token(
     return {
         "ok": True,
         "token": token,
-        "actor": current_user.email,
+        "actor": ctx.user.email,
         "payload_hash": payload_hash,
         "state_hash": state_hash,
         "issued_at": issued_at,
     }
+
+
+# ----------------------------------------------------------------------------
+# Spend approvals (human-in-the-loop, budget scope, idempotency)
+# ----------------------------------------------------------------------------
+class ApprovalRequest(BaseModel):
+    provider: str
+    account_id: str
+    action: str
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    budget_micros: Optional[int] = Field(default=None, ge=0)
+    idempotency_key: str
+
+
+class ApprovalDecision(BaseModel):
+    max_budget_micros: Optional[int] = Field(default=None, gt=0)
+    reason: Optional[str] = Field(default=None, max_length=200)
+
+
+def _approval_out(a: SpendApproval) -> Dict[str, Any]:
+    return {
+        "id": a.id, "provider": a.provider, "account_id": a.account_id, "action": a.action,
+        "status": a.status, "requested_budget_micros": a.requested_budget_micros,
+        "max_budget_micros": a.max_budget_micros, "expires_at": a.expires_at, "created_at": a.created_at,
+        "requested_by_user_id": a.requested_by_user_id, "requested_by_api_key_id": a.requested_by_api_key_id,
+        "approved_by_user_id": a.approved_by_user_id, "decided_at": a.decided_at, "consumed_at": a.consumed_at,
+    }
+
+
+@router.post("/approvals", status_code=status.HTTP_201_CREATED)
+def request_approval(
+    req: ApprovalRequest,
+    db: Session = Depends(get_db),
+    ctx: OrgContext = Depends(require_org_permission("ads:draft")),
+):
+    """Ask for approval of an operation that can spend. Does not execute anything."""
+    from app.services.approvals import SPEND_ACTIONS
+    if is_kill_switch_active():
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="Mutation kill-switch is engaged; approvals are suspended.")
+    provider = _normalize_provider(req.provider)
+    if req.action not in MUTATION_ACTIONS and req.action not in SPEND_ACTIONS:
+        raise HTTPException(status_code=400, detail=f"Unsupported action: {req.action}")
+    if not integrations.account_is_authorized(db, ctx.org.id, provider, req.account_id):
+        raise HTTPException(status_code=403, detail="This ad account is not linked to your organization.")
+    approval = approvals.request_approval(
+        db, ctx, provider=provider, account_id=integrations.normalize_account(provider, req.account_id),
+        action=req.action, payload=req.payload, budget_micros=req.budget_micros,
+        idempotency_key=req.idempotency_key)
+    return _approval_out(approval)
+
+
+@router.get("/approvals")
+def list_approvals(
+    db: Session = Depends(get_db),
+    ctx: OrgContext = Depends(require_org_permission("ads:read")),
+):
+    rows = (db.query(SpendApproval).filter(SpendApproval.organization_id == ctx.org.id)
+            .order_by(SpendApproval.created_at.desc()).limit(200).all())
+    return [_approval_out(a) for a in rows]
+
+
+@router.get("/approvals/{approval_id}")
+def read_approval(
+    approval_id: str,
+    db: Session = Depends(get_db),
+    ctx: OrgContext = Depends(require_org_permission("ads:read")),
+):
+    return _approval_out(approvals.get_approval(db, ctx, approval_id))
+
+
+@router.post("/approvals/{approval_id}/approve")
+def approve(
+    approval_id: str,
+    body: ApprovalDecision,
+    db: Session = Depends(get_db),
+    ctx: OrgContext = Depends(require_org_permission("ads:spend")),
+):
+    """HUMAN decision (a logged-in user with ads:spend; API keys cannot reach this
+    route because it requires a user session). Must state the budget scope."""
+    return _approval_out(approvals.decide(db, ctx, approval_id, True, body.max_budget_micros))
+
+
+@router.post("/approvals/{approval_id}/reject")
+def reject(
+    approval_id: str,
+    body: ApprovalDecision,
+    db: Session = Depends(get_db),
+    ctx: OrgContext = Depends(require_org_permission("ads:spend")),
+):
+    return _approval_out(approvals.decide(db, ctx, approval_id, False, None, body.reason))

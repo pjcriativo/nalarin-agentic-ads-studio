@@ -43,7 +43,7 @@ class TestTikTokMultiAdvertiser:
         response = client.post("/api/v1/tiktok-ads/connection/select", json={"advertiser_id": "123"})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_select_activates_only_owned_candidate(self, client, auth_headers, db_session, test_user):
+    def test_select_activates_only_owned_candidate(self, client, auth_headers, db_session, test_user, org_id_of, add_connection):
         from app.models import TikTokAdsConnection
 
         first = TikTokAdsConnection(
@@ -54,8 +54,8 @@ class TestTikTokMultiAdvertiser:
             user_id=test_user.id, advertiser_id="222", account_name="Second",
             encrypted_refresh_token="refresh-two", is_active=False,
         )
-        db_session.add_all([first, second])
-        db_session.commit()
+        add_connection(org_id_of(test_user), "tiktok", first)
+        add_connection(org_id_of(test_user), "tiktok", second)
 
         response = client.post(
             "/api/v1/tiktok-ads/connection/select",
@@ -78,14 +78,12 @@ class TestTikTokMultiAdvertiser:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_connections_lists_all_owned(self, client, auth_headers, db_session, test_user):
+    def test_connections_lists_all_owned(self, client, auth_headers, db_session, test_user, org_id_of, add_connection):
         from app.models import TikTokAdsConnection
 
-        db_session.add_all([
-            TikTokAdsConnection(user_id=test_user.id, advertiser_id="111", encrypted_refresh_token="r1", is_active=True),
-            TikTokAdsConnection(user_id=test_user.id, advertiser_id="222", encrypted_refresh_token="r2", is_active=False),
-        ])
-        db_session.commit()
+        org = org_id_of(test_user)
+        add_connection(org, "tiktok", TikTokAdsConnection(user_id=test_user.id, advertiser_id="111", encrypted_refresh_token="r1", is_active=True))
+        add_connection(org, "tiktok", TikTokAdsConnection(user_id=test_user.id, advertiser_id="222", encrypted_refresh_token="r2", is_active=False))
 
         response = client.get("/api/v1/tiktok-ads/connections", headers=auth_headers)
 
@@ -95,13 +93,13 @@ class TestTikTokMultiAdvertiser:
         assert entries[0]["selected"] is True
         assert entries[1]["selected"] is False
 
-    def test_disconnect_deactivates_all_owned(self, client, auth_headers, db_session, test_user):
+    def test_disconnect_deactivates_all_owned(self, client, auth_headers, db_session, test_user, org_id_of, add_connection):
         from app.models import TikTokAdsConnection
 
         first = TikTokAdsConnection(user_id=test_user.id, advertiser_id="111", encrypted_refresh_token="r1", is_active=True)
         second = TikTokAdsConnection(user_id=test_user.id, advertiser_id="222", encrypted_refresh_token="r2", is_active=False)
-        db_session.add_all([first, second])
-        db_session.commit()
+        add_connection(org_id_of(test_user), "tiktok", first)
+        add_connection(org_id_of(test_user), "tiktok", second)
 
         response = client.delete("/api/v1/tiktok-ads/connection", headers=auth_headers)
 

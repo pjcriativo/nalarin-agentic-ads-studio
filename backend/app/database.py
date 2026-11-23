@@ -51,7 +51,14 @@ TENANT_TABLES = (
     "verticals", "facebook_pages", "saved_searches", "scraped_ads",
     "search_logs", "api_usage_logs", "page_blacklist", "keyword_blacklist",
     "brand_scrapes", "brand_scraped_ads",
+    # etapa 01.3: ad-platform integrations and operations
+    "google_ads_connections", "meta_ads_connections", "tiktok_ads_connections",
+    "ad_account_links", "spend_approvals", "mutation_audits",
 )
+
+# api_keys: tenant policy + "the one row whose hash you present" (authentication
+# happens before any organization is known).
+KEY_TABLES = ("api_keys",)
 
 # Global catalogs: readable by every tenant, writable only with the signed
 # platform-admin context (see bind_context(platform_admin=True)).
@@ -158,7 +165,7 @@ def get_db():
 def verify_runtime_role_is_safe(bind=None) -> None:
     """Fail fast when RLS could be bypassed. Called at application startup."""
     bind = bind or engine
-    protected = TENANT_TABLES + CATALOG_TABLES + AUDIT_TABLES
+    protected = TENANT_TABLES + CATALOG_TABLES + AUDIT_TABLES + KEY_TABLES
     with bind.connect() as conn:
         row = conn.execute(text(
             "SELECT r.rolname, r.rolsuper, r.rolbypassrls FROM pg_roles r WHERE r.rolname = current_user"
@@ -170,15 +177,33 @@ def verify_runtime_role_is_safe(bind=None) -> None:
                 "Run migrations, then set DB_RUNTIME_ROLE to a role without bypass "
                 "(default 'ads_app') or connect with such a login role."
             )
-        if settings.REQUIRE_LOGIN_RUNTIME_ROLE:
-            login = conn.execute(text(
-                "SELECT r.rolsuper, r.rolbypassrls FROM pg_roles r WHERE r.rolname = session_user"
-            )).one()
-            if login.rolsuper or login.rolbypassrls:
+        if settings.secure_db_mode_required:
+            if not settings.RUNTIME_DATABASE_URL and bind is engine:
                 raise RuntimeError(
-                    "REQUIRE_LOGIN_RUNTIME_ROLE is set but the connection login role is privileged: "
-                    "injected SQL could RESET ROLE and bypass RLS. Set RUNTIME_DATABASE_URL to a "
-                    "dedicated unprivileged login role."
+                    "Secure database mode is required (production or REQUIRE_LOGIN_RUNTIME_ROLE) but "
+                    "RUNTIME_DATABASE_URL is not set: the API would connect as the owner and only SET ROLE, "
+                    "which injected SQL can undo with RESET ROLE. Provision a login role "
+                    "(python -m app.scripts.provision_runtime_login) and set RUNTIME_DATABASE_URL."
+                )
+            login = conn.execute(text(
+                "SELECT r.rolsuper, r.rolbypassrls, r.rolcreaterole, r.rolcreatedb FROM pg_roles r "
+                "WHERE r.rolname = session_user"
+            )).one()
+            if login.rolsuper or login.rolbypassrls or login.rolcreaterole:
+                raise RuntimeError(
+                    "Secure database mode: the connection LOGIN role is privileged "
+                    "(superuser/BYPASSRLS/CREATEROLE): injected SQL could RESET ROLE and bypass RLS. "
+                    "Set RUNTIME_DATABASE_URL to a dedicated unprivileged login role."
+                )
+            escalation = conn.execute(text(
+                "SELECT r.rolname FROM pg_roles r WHERE r.rolname <> session_user "
+                "AND (r.rolsuper OR r.rolbypassrls OR r.rolcreaterole) "
+                "AND pg_has_role(session_user, r.oid, 'MEMBER')"
+            )).scalars().all()
+            if escalation:
+                raise RuntimeError(
+                    f"Secure database mode: the login role is a member of privileged roles {escalation} "
+                    "and could SET ROLE to them."
                 )
         found = {
             name: (rls, forced) for name, rls, forced in conn.execute(text(

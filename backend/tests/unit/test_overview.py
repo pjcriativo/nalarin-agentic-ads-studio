@@ -29,7 +29,7 @@ class TestOverviewAggregation:
         )
         assert response.status_code == status.HTTP_200_OK
 
-    def test_overview_uses_active_meta_connection_token(self, client, auth_headers, db_session, test_user, monkeypatch):
+    def test_overview_uses_active_meta_connection_token(self, client, auth_headers, db_session, test_user, monkeypatch, org_id_of, add_connection):
         """Regression (Sprint 6): _fetch_meta_rows must drive FacebookService
         with the user's active MetaAdsConnection token, not the empty env
         fallback. Before the fix this died with a raw
@@ -38,14 +38,13 @@ class TestOverviewAggregation:
         from app.models import MetaAdsConnection
         from app.api.v1 import overview as overview_module
 
-        db_session.add(MetaAdsConnection(
+        add_connection(org_id_of(test_user), "meta", MetaAdsConnection(
             user_id=test_user.id,
             ad_account_id="act_1350206440591360",
             account_name="Example Ads",
             encrypted_access_token="cipher-blob",
             is_active=True,
         ))
-        db_session.commit()
 
         captured = {}
 

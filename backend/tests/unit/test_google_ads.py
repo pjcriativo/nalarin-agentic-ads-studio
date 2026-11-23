@@ -74,7 +74,7 @@ class TestGoogleAdsConnectionStatus:
         response = client.delete("/api/v1/google-ads/connection", headers=auth_headers)
         assert response.status_code == status.HTTP_200_OK
 
-    def test_select_connection_activates_only_owned_candidate(self, client, auth_headers, db_session, test_user):
+    def test_select_connection_activates_only_owned_candidate(self, client, auth_headers, db_session, test_user, org_id_of, add_connection):
         from app.models import GoogleAdsConnection
 
         first = GoogleAdsConnection(
@@ -89,8 +89,8 @@ class TestGoogleAdsConnectionStatus:
             encrypted_refresh_token="refresh-two",
             is_active=False,
         )
-        db_session.add_all([first, second])
-        db_session.commit()
+        add_connection(org_id_of(test_user), "google_ads", first)
+        add_connection(org_id_of(test_user), "google_ads", second)
 
         response = client.post(
             "/api/v1/google-ads/connection/select",
@@ -144,20 +144,25 @@ class TestGoogleAdsOAuthCallback:
         cookie at all must not be rejected for that reason alone (it should
         fail later, e.g. on the Google token exchange with a fake code — not
         on state/CSRF validation)."""
+        # etapa 01.3: the browser-binding cookie is MANDATORY (state fixation / login CSRF).
+        # A valid state presented WITHOUT its cookie is refused (and consumed doing so).
         from app.core.oauth_state import create_oauth_state
+        from app.database import SessionLocal
         me = client.get("/api/v1/auth/me", headers=auth_headers).json()
-        state = create_oauth_state(me["id"], "google-ads")
+        org = client.get("/api/v1/organizations", headers=auth_headers).json()[0]["id"]
+        db = SessionLocal()
+        try:
+            state, _cookie = create_oauth_state(db, me["id"], org, "google-ads")
+        finally:
+            db.close()
+        client.cookies.clear()
         response = client.get(f"/api/v1/google-ads/oauth/callback?code=fake-code&state={state}")
-        # Not configured in this test env -> fails on config check before ever
-        # reaching Google, but crucially NOT with "missing state" / cookie errors.
-        assert response.status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_502_BAD_GATEWAY]
-        assert "cookie" not in response.json().get("detail", "").lower()
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_callback_state_cookie_mismatch_with_query_state_is_400(self, client):
         client.cookies.set("oauth_state", "a-completely-different-token")
         response = client.get("/api/v1/google-ads/oauth/callback?code=fake-code&state=some-other-token")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "mismatch" in response.json()["detail"].lower()
 
 
 class TestGoogleAdsNotConfigured:

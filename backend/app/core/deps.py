@@ -3,9 +3,10 @@ import hashlib
 from datetime import datetime, timezone
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import text
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import User, ApiKey
+from app.database import bind_context, get_db
+from app.models import User, ApiKey, Organization
 from app.core.security import decode_access_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -128,14 +129,24 @@ def _hash_api_key(raw_key: str) -> str:
     return hashlib.sha256(raw_key.encode()).hexdigest()
 
 
+BOT_SCOPES = frozenset({"ads:read", "ads:draft"})
+
+
 def require_api_key_scope(required_scope: str) -> Callable:
     """Dependency for machine-to-machine callers (e.g. the Hermes Telegram bot).
-    Validates `Authorization: Bearer <key>` against the stored hash, rejects
-    revoked keys, and enforces the route's required scope.
 
-    Only "ads:read" and "ads:draft" are ever valid scopes for bot-issued keys.
-    "ads:publish" / "ads:spend" do not exist as grantable scopes — this is
-    enforced here in code, not left to the bot's persona/prompt text alone.
+    * ``Authorization: Bearer <key>`` is hashed and looked up in ``api_keys``. The
+      table is under row level security; the session presents ONLY the hash
+      (``app.api_key_hash``), which lets it read that single row before any
+      organization is known.
+    * The key must belong to an ACTIVE organization (legacy keys without an
+      organization authenticate nobody: quarantine), not be revoked, and carry the
+      route's scope.
+    * Only ``ads:read`` and ``ads:draft`` can ever be granted to a key.
+      ``ads:publish`` / ``ads:spend`` do not exist as machine scopes: enforced
+      here in code, not left to the bot's persona text.
+    * After authentication the session is bound to the KEY'S organization, so
+      everything the endpoint does afterwards is confined to that tenant.
     """
     async def checker(
         authorization: Optional[str] = Header(None),
@@ -149,15 +160,30 @@ def require_api_key_scope(required_scope: str) -> Callable:
             )
         raw_key = authorization[len("Bearer "):].strip()
         key_hash = _hash_api_key(raw_key)
+        db.execute(text("SELECT set_config('app.api_key_hash', :h, true)"), {"h": key_hash})
         api_key = db.query(ApiKey).filter(ApiKey.key_hash == key_hash).first()
+        invalid = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or revoked API key")
         if api_key is None or api_key.revoked_at is not None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or revoked API key")
-        if required_scope not in (api_key.scopes or []):
+            db.rollback()
+            raise invalid
+        org_id = api_key.organization_id
+        if not org_id:
+            db.rollback()
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail="This API key is not bound to an organization.")
+        org = db.query(Organization).filter(Organization.id == org_id, Organization.is_active.is_(True)).first()
+        if org is None:
+            db.rollback()
+            raise invalid
+        if required_scope not in BOT_SCOPES or required_scope not in (api_key.scopes or []):
+            db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"API key is missing the required scope: {required_scope}",
             )
         api_key.last_used_at = datetime.now(timezone.utc)
-        db.commit()
+        db.commit()  # ends the transaction: the key-hash setting dies with it
+        bind_context(db, org_id)
+        db.refresh(api_key)
         return api_key
     return checker

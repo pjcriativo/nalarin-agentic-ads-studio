@@ -16,9 +16,12 @@
 """
 import hashlib
 import hmac
+import ipaddress
 import os
 import re
+import socket
 import uuid
+from urllib.parse import urlparse
 from pathlib import Path
 from typing import Optional
 
@@ -117,6 +120,7 @@ def resolve_media_reference(org_id: str, ref: str) -> str:
       files, traversal) is refused: the service would otherwise read it from disk.
     """
     if ref.startswith(("http://", "https://")):
+        assert_public_http_url(ref)
         return ref
     parts = ref.lstrip("/").split("/")
     if len(parts) == 3 and parts[0] == "uploads" and parts[1] == org_id:
@@ -124,3 +128,39 @@ def resolve_media_reference(org_id: str, ref: str) -> str:
         if path is not None and path.is_file():
             return str(path)
     raise HTTPException(status_code=400, detail="Invalid media reference")
+
+
+def _resolve_host(host: str):
+    """DNS resolution seam (tests replace it to stay hermetic)."""
+    return [info[4][0] for info in socket.getaddrinfo(host, None)]
+
+
+def assert_public_http_url(url: str) -> None:
+    """Best-effort SSRF guard for URLs the server will fetch on a user's behalf.
+
+    Only http(s) with a host that resolves EXCLUSIVELY to public addresses:
+    loopback, private ranges, link-local (cloud metadata 169.254.169.254) and
+    reserved space are refused. RESIDUAL RISK (documented): DNS rebinding between
+    this check and the actual fetch, and redirects followed by the fetching
+    library, are not covered -- egress filtering at the network layer is needed.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username or parsed.password:
+        raise HTTPException(status_code=400, detail="Invalid media reference")
+    try:
+        ipaddress.ip_address(parsed.hostname)
+        addresses = [parsed.hostname]  # literal IP: no DNS involved
+    except ValueError:
+        try:
+            addresses = _resolve_host(parsed.hostname)
+        except OSError:
+            raise HTTPException(status_code=400, detail="Invalid media reference")
+    if not addresses:
+        raise HTTPException(status_code=400, detail="Invalid media reference")
+    for address in addresses:
+        try:
+            ip = ipaddress.ip_address(address.split("%")[0])
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid media reference")
+        if not ip.is_global or ip.is_multicast:
+            raise HTTPException(status_code=400, detail="Invalid media reference")

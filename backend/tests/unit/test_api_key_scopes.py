@@ -26,9 +26,18 @@ def api_key_app(db_session):
     return app
 
 
+def _org(db_session):
+    import uuid
+    from app.models import Organization
+    org = Organization(id=str(uuid.uuid4()), name="keys", slug=f"keys-{uuid.uuid4().hex[:8]}")
+    db_session.add(org)
+    db_session.commit()
+    return org.id
+
+
 def _make_key(db_session, scopes):
     raw = "ads_studio_test_" + secrets.token_urlsafe(24)
-    db_session.add(ApiKey(name="test key", key_hash=_hash_api_key(raw), scopes=scopes))
+    db_session.add(ApiKey(name="test key", key_hash=_hash_api_key(raw), scopes=scopes, organization_id=_org(db_session)))
     db_session.commit()
     return raw
 
@@ -61,7 +70,8 @@ class TestApiKeyScopes:
     def test_revoked_key_is_401(self, api_key_app, db_session):
         from datetime import datetime, timezone
         raw = "ads_studio_test_" + secrets.token_urlsafe(24)
-        key = ApiKey(name="revoked", key_hash=_hash_api_key(raw), scopes=["ads:read"], revoked_at=datetime.now(timezone.utc))
+        key = ApiKey(name="revoked", key_hash=_hash_api_key(raw), scopes=["ads:read"], revoked_at=datetime.now(timezone.utc),
+                     organization_id=_org(db_session))
         db_session.add(key)
         db_session.commit()
         client = TestClient(api_key_app)

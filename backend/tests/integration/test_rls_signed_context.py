@@ -192,7 +192,7 @@ class TestRunningAsALoginRole:
         monkeypatch.setattr(settings, "REQUIRE_LOGIN_RUNTIME_ROLE", True)
         verify_runtime_role_is_safe(login_engine)  # unprivileged login: fine
         from app.database import engine
-        with pytest.raises(RuntimeError, match="login role is privileged"):
+        with pytest.raises(RuntimeError, match="RUNTIME_DATABASE_URL|privileged"):
             verify_runtime_role_is_safe(engine)  # owner + SET ROLE: injected SQL could RESET ROLE
 
 

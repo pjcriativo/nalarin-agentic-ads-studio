@@ -59,14 +59,14 @@ class TestMetaConnectionStatus:
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == {"connected": False}
 
-    def test_connection_reports_token_expiry(self, client, auth_headers, db_session, test_user):
+    def test_connection_reports_token_expiry(self, client, auth_headers, db_session, test_user, org_id_of, add_connection):
         """Sprint 8: /facebook/connection must expose token_expires_at (naive
         datetimes normalized to UTC) so the UI can flag a lapsed token."""
         from datetime import datetime
         from app.models import MetaAdsConnection
 
         naive = datetime(2026, 8, 22, 6, 53, 57)  # naive on purpose — Postgres may return naive
-        db_session.add(MetaAdsConnection(
+        add_connection(org_id_of(test_user), "meta", MetaAdsConnection(
             user_id=test_user.id,
             ad_account_id="act_1350206440591360",
             account_name="Example Ads",
@@ -74,7 +74,6 @@ class TestMetaConnectionStatus:
             is_active=True,
             access_token_expires_at=naive,
         ))
-        db_session.commit()
 
         response = client.get("/api/v1/facebook/connection", headers=auth_headers)
 
@@ -83,7 +82,7 @@ class TestMetaConnectionStatus:
         assert body["connected"] is True
         assert body["token_expires_at"].startswith("2026-08-22T06:53:57")
 
-    def test_select_activates_only_owned_candidate(self, client, auth_headers, db_session, test_user):
+    def test_select_activates_only_owned_candidate(self, client, auth_headers, db_session, test_user, org_id_of, add_connection):
         first = MetaAdsConnection(
             user_id=test_user.id,
             ad_account_id="act_111",
@@ -98,8 +97,8 @@ class TestMetaConnectionStatus:
             encrypted_access_token="token-two",
             is_active=False,
         )
-        db_session.add_all([first, second])
-        db_session.commit()
+        add_connection(org_id_of(test_user), "meta", first)
+        add_connection(org_id_of(test_user), "meta", second)
 
         response = client.post(
             "/api/v1/facebook/connection/select",

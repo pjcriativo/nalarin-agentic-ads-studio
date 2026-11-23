@@ -49,6 +49,23 @@ class Settings:
     # a privileged role (i.e. session_user itself is unprivileged).
     REQUIRE_LOGIN_RUNTIME_ROLE: bool = os.getenv("REQUIRE_LOGIN_RUNTIME_ROLE", "false").lower() == "true"
 
+    # Deployment mode. Production (APP_ENV=production, or any Railway environment)
+    # REQUIRES the secure database mode: RUNTIME_DATABASE_URL with an unprivileged
+    # LOGIN role. The API refuses to start otherwise (fail closed).
+    APP_ENV: str = os.getenv("APP_ENV", "development").strip().lower()
+
+    # The OAuth callback must present the browser-binding cookie set at /oauth/start.
+    # Only set to "false" for local setups where the callback runs on another host.
+    OAUTH_REQUIRE_STATE_COOKIE: bool = os.getenv("OAUTH_REQUIRE_STATE_COOKIE", "true").lower() != "false"
+
+    @property
+    def is_production(self) -> bool:
+        return self.APP_ENV in ("production", "prod") or bool(os.getenv("RAILWAY_ENVIRONMENT"))
+
+    @property
+    def secure_db_mode_required(self) -> bool:
+        return self.REQUIRE_LOGIN_RUNTIME_ROLE or self.is_production
+
     # External APIs
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     FAL_AI_API_KEY: str = os.getenv("FAL_AI_API_KEY", "")

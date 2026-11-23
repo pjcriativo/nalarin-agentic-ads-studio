@@ -20,11 +20,30 @@ BASE = "/api/v1/optimization"
 SIGN_SECRET = "unit-test-proposal-secret-0123456789abcdef"
 
 
+def _org_for(db, user):
+    """The organization of a user (created on the fly for users without one)."""
+    import uuid
+    from app.models import Organization, OrganizationMember
+    member = db.query(OrganizationMember).filter(OrganizationMember.user_id == user.id).first()
+    if member:
+        return member.organization_id
+    org = Organization(id=str(uuid.uuid4()), name=f"org-{user.id[:6]}", slug=f"org-{uuid.uuid4().hex[:8]}")
+    db.add(org)
+    db.flush()
+    db.add(OrganizationMember(organization_id=org.id, user_id=user.id, role="owner", status="active"))
+    db.commit()
+    return org.id
+
+
 def _connect_google(db, user, customer_id="1234567890"):
+    """Connect + explicitly link a Google account to the user's ORGANIZATION."""
+    from app.models import AdAccountLink
+    org_id = _org_for(db, user)
     db.add(GoogleAdsConnection(
-        user_id=user.id, customer_id=customer_id,
+        organization_id=org_id, user_id=user.id, customer_id=customer_id,
         encrypted_refresh_token="x", encrypted_access_token="x", is_active=True,
     ))
+    db.add(AdAccountLink(organization_id=org_id, provider="google_ads", external_account_id=customer_id, status="active"))
     db.commit()
 
 
@@ -121,27 +140,27 @@ class TestPropose:
         monkeypatch.setenv("ADS_MUTATION_KILL_SWITCH", "true")
         assert client.post(f"{BASE}/propose", headers=auth_headers, json=self.BODY).status_code == 423
 
-    def test_meta_and_tiktok_ownership(self, client, auth_headers, db_session, test_user):
-        db_session.add(MetaAdsConnection(user_id=test_user.id, ad_account_id="act_555",
-                                         encrypted_access_token="x", is_active=True))
-        db_session.add(TikTokAdsConnection(user_id=test_user.id, advertiser_id="777",
-                                           encrypted_refresh_token="x", is_active=True))
-        db_session.commit()
+    def test_meta_and_tiktok_ownership(self, client, auth_headers, db_session, test_user, org_id_of, add_connection):
+        add_connection(org_id_of(test_user), "meta", MetaAdsConnection(
+            user_id=test_user.id, ad_account_id="act_555", encrypted_access_token="x", is_active=True))
+        add_connection(org_id_of(test_user), "tiktok", TikTokAdsConnection(
+            user_id=test_user.id, advertiser_id="777", encrypted_refresh_token="x", is_active=True))
         meta = {**self.BODY, "provider": "meta", "account_id": "555"}
         tiktok = {**self.BODY, "provider": "tiktok", "account_id": "777"}
         assert client.post(f"{BASE}/propose", headers=auth_headers, json=meta).status_code == 200
         assert client.post(f"{BASE}/propose", headers=auth_headers, json=tiktok).status_code == 200
 
 
-class TestBotConnectionsAreScopedToKeyOwner:
+class TestBotConnectionsAreScopedToKeyOrganization:
     def _key(self, db, owner):
         raw = f"ads_studio_bot_test_{secrets.token_urlsafe(16)}"
         db.add(ApiKey(name="bot", key_hash=_hash_api_key(raw), scopes=["ads:read"],
+                      organization_id=_org_for(db, owner) if owner else None,
                       created_by_user_id=owner.id if owner else None))
         db.commit()
         return {"Authorization": f"Bearer {raw}"}
 
-    def test_key_only_sees_its_owners_connections(self, client, db_session, test_user):
+    def test_key_only_sees_its_organizations_connections(self, client, db_session, test_user):
         other = User(email="bot-other@example.com", hashed_password=get_password_hash("x"),
                      name="Other", is_active=True)
         db_session.add(other)
@@ -151,7 +170,10 @@ class TestBotConnectionsAreScopedToKeyOwner:
         data = client.get("/api/v1/bot/connections", headers=self._key(db_session, test_user)).json()
         assert [c["customer_id"] for c in data["google_ads"]] == ["1111111111"]
 
-    def test_unbound_key_sees_nothing(self, client, db_session, test_user):
+    def test_the_database_refuses_a_key_without_organization(self, db_session, test_user):
+        import pytest
+        from sqlalchemy.exc import IntegrityError
         _connect_google(db_session, test_user)
-        response = client.get("/api/v1/bot/connections", headers=self._key(db_session, None))
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        with pytest.raises(IntegrityError):
+            self._key(db_session, None)
+        db_session.rollback()
