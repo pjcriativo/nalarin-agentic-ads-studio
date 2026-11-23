@@ -34,15 +34,19 @@ def _preflight(env) -> int:
         m = _model_for(p, env)
         print(f"  price {p:10} input={'set' if m.input_price_micros_per_mtok is not None else 'MISSING'} "
               f"output={'set' if m.output_price_micros_per_mtok is not None else 'MISSING'}")
+    ledger = guard.CostLedger.shared(env)
+    print(f"  aggregate ceiling (whole Phase B): US$ {ledger.max_total_micros / 1e6:.2f}; already recorded: US$ {ledger.spent_micros / 1e6:.4f}")
     print(f"  authorization phrase: {'present' if guard.authorized(env) else 'absent (real calls refused)'}")
     return 0
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="python -m app.homologation")
-    ap.add_argument("mode", choices=["plan", "preflight", "run"])
+    ap.add_argument("mode", choices=["plan", "preflight", "run", "scan", "redact"])
     ap.add_argument("--execute", action="store_true", help="really send the requests (also needs HOMOLOG_AUTHORIZATION)")
     ap.add_argument("--only", nargs="*", help="restrict to these operation ids")
+    ap.add_argument("paths", nargs="*", help="(scan) files/directories to check for secrets")
+    ap.add_argument("--values-only", action="store_true", help="(scan) match only configured secret values, not token-shaped patterns")
     ap.add_argument("--out", help="write the JSON report here")
     ap.add_argument("--max-total-usd", type=float, default=guard.DEFAULT_MAX_TOTAL_USD)
     ap.add_argument("--max-op-usd", type=float, default=guard.DEFAULT_MAX_OP_USD)
@@ -52,12 +56,21 @@ def main(argv=None) -> int:
         return _plan(env)
     if args.mode == "preflight":
         return _preflight(env)
+    if args.mode == "redact":     # stdin -> stdout with every configured secret and token-shaped string masked
+        redact = guard.Redactor(guard.secret_values(env))
+        for line in sys.stdin:
+            sys.stdout.write(redact(line.rstrip(chr(10))) + chr(10))
+        return 0
+    if args.mode == "scan":       # exit 1 when a secret value is found in the given paths (names printed, never values)
+        hits = guard.scan_for_secrets(args.paths, env, patterns=not args.values_only)
+        print(chr(10).join(f"SECRET FOUND IN: {h}" for h in hits) or "no secret found")
+        return 1 if hits else 0
     try:
         guard.require_authorization(args.execute, env)
     except guard.NotAuthorized as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)
         return 2
-    ledger = guard.CostLedger(guard.usd_to_micros(args.max_total_usd), guard.usd_to_micros(args.max_op_usd))
+    ledger = guard.CostLedger.shared(env, args.max_total_usd, args.max_op_usd)
     runner = Runner(env, ledger, args.only)
     asyncio.run(runner.execute())
     text = runner.redact(json.dumps(runner.report(), indent=2))

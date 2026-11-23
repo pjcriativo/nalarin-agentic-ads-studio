@@ -43,6 +43,28 @@ def _hermetic_dns():
     yield
 
 
+@pytest.fixture(autouse=True)
+def _global_cap_and_read_only(db_session):
+    """Phase B has ONE aggregate ceiling shared with the provider harness (app.homologation.guard.CostLedger file):
+    a test starts only if budget remains, the organization's AI budget is capped to what remains (the gateway then refuses
+    to send anything that could exceed it) and whatever the usage log recorded is added to the ledger afterwards.
+    The Google Ads SDK clients are wrapped so only reads can reach Google."""
+    from datetime import datetime, timezone
+    from app.homologation import readonly
+    from app.models import AiUsageLog
+    ledger = guard.CostLedger.shared()
+    if ledger.remaining_micros < guard.usd_to_micros(0.01):
+        pytest.skip("aggregate Phase B ceiling reached: nothing more is sent")
+    uninstall = readonly.install()
+    started = datetime.now(timezone.utc)
+    yield ledger
+    uninstall()
+    db_session.expire_all()
+    spent = sum((r.cost_micros if r.cost_micros is not None else (r.estimated_cost_micros or 0))
+                for r in db_session.query(AiUsageLog).filter(AiUsageLog.created_at >= started).all())
+    ledger.add_external(spent)
+
+
 def provider_config(provider: str):
     """(key, model, in_price, out_price) from HOMOLOG_* variables, or None when not fully supplied."""
     p = provider.upper()
@@ -81,6 +103,12 @@ def real_org(w, db_session):
             models[provider] = seed_model(db_session, w.org.id, provider, model, input_price_micros_per_mtok=in_p,
                                           output_price_micros_per_mtok=out_p, supports_tools=True, supports_json=True)
     w.models = models
+    # gateway-level ceiling: the organization can never reserve more than what is left of the aggregate cap
+    from app.models import AiBudget
+    remaining = guard.CostLedger.shared().remaining_micros
+    for period in ("daily", "monthly"):
+        db_session.add(AiBudget(organization_id=w.org.id, period=period, limit_micros=remaining, enabled=True))
+    db_session.commit()
     return w
 
 

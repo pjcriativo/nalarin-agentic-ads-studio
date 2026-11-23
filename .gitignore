@@ -68,3 +68,5 @@ backend/uploads/*/
 .coverage.*
 coverage.xml
 htmlcov/
+.homolog-ledger.json*
+docs/evidence/etapa-02-07/*.tmp

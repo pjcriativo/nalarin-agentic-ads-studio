@@ -148,6 +148,8 @@ def test_gemini_without_signature_is_unchanged():
 def test_homologation_package_cannot_mutate_google_ads():
     forbidden = re.compile(r"mutate|create_campaign|pause_campaign|enable_campaign|add_negative|google_ads_service", re.I)
     for path in (ROOT / "app" / "homologation").glob("*.py"):
+        if path.name == "readonly.py":      # the guard itself imports the module it wraps; checked by its own tests below
+            continue
         code = re.sub(r'""".*?"""', "", path.read_text(encoding="utf-8"), flags=re.S)
         code = "\n".join(line for line in code.splitlines() if not line.lstrip().startswith("#"))
         assert not forbidden.findall(code), path.name
@@ -155,3 +157,93 @@ def test_homologation_package_cannot_mutate_google_ads():
 
 def test_real_tests_live_outside_the_default_collection():
     assert (ROOT / "tests_real").is_dir() and "tests_real" not in (ROOT / "pytest.ini").read_text()
+
+
+# ---- etapa 02.7 pre-flight: ONE aggregate ceiling, read-only guard, no secret leaks -------------------------------
+def test_aggregate_ceiling_is_hard_clamped_and_shared_through_the_ledger_file(tmp_path):
+    path = str(tmp_path / "ledger.json")
+    a = guard.CostLedger(guard.usd_to_micros(50), guard.usd_to_micros(0.05), path=path)
+    assert a.max_total_micros == guard.usd_to_micros(1.00)          # --max-total-usd 50 is lowered to the US$ 1.00 ceiling
+    a.charge(300_000, 0)
+    b = guard.CostLedger(guard.usd_to_micros(1.00), guard.usd_to_micros(0.05), path=path)   # e.g. the agent tests, another process
+    assert b.spent_micros == 300_000 and b.remaining_micros == 700_000
+    b.add_external(500_000)
+    c = guard.CostLedger(guard.usd_to_micros(1.00), guard.usd_to_micros(0.05), path=path)
+    assert c.spent_micros == 800_000
+    with pytest.raises(guard.CostCapExceeded):
+        c.check(300_000, "next")                                    # 800k + 300k > 1.00
+    assert json.loads(open(path).read()) == {"spent_micros": 800_000}   # numbers only
+
+
+def test_default_aggregate_ceiling_is_one_dollar():
+    assert guard.DEFAULT_MAX_TOTAL_USD == guard.HARD_MAX_TOTAL_USD == 1.00
+
+
+def test_leak_scan_finds_secret_values_without_printing_them(tmp_path):
+    env_ = {"HOMOLOG_OPENAI_API_KEY": "sk-proj-SUPERSECRETVALUE123"}
+    clean, dirty = tmp_path / "ok.json", tmp_path / "bad.txt"
+    clean.write_text('{"status": "approved"}')
+    dirty.write_text("oops sk-proj-SUPERSECRETVALUE123")
+    assert guard.scan_for_secrets([str(tmp_path)], env_) == [str(dirty)]
+    assert "SUPERSECRETVALUE" not in "".join(guard.scan_for_secrets([str(tmp_path)], env_))
+
+
+class _FakeService:
+    def __init__(self):
+        self.calls = []
+
+    def search_stream(self, customer_id=None, query=None):
+        self.calls.append(("search_stream", query))
+        return []
+
+    def mutate_campaigns(self, *a, **k):
+        self.calls.append("MUTATION")
+
+    def list_accessible_customers(self):
+        return "ok"
+
+
+class _FakeClient:
+    def __init__(self):
+        self.service = _FakeService()
+
+    def get_service(self, name, *a, **k):
+        return self.service
+
+    def get_type(self, name):
+        return object()
+
+
+def test_readonly_guard_blocks_mutations_before_any_request():
+    from app.homologation.readonly import GuardedClient, MutationBlocked
+    fake = _FakeClient()
+    client = GuardedClient(fake)
+    list(client.get_service("GoogleAdsService").search_stream(customer_id="1", query="SELECT customer.id FROM customer"))
+    assert client.get_service("CustomerService").list_accessible_customers() == "ok"
+    for bad in (lambda: client.get_service("CampaignService"),
+                lambda: client.get_service("CampaignBudgetService"),
+                lambda: client.get_service("GoogleAdsService").mutate(customer_id="1", mutate_operations=[]),
+                lambda: client.get_service("GoogleAdsService").search_stream(customer_id="1", query="UPDATE x"),
+                lambda: client.get_service("GoogleAdsService").search_stream(customer_id="1", query="SELECT a FROM b; DROP"),
+                lambda: client.get_service("CustomerService").create_customer_client(),
+                lambda: client.mutate()):
+        with pytest.raises(MutationBlocked):
+            bad()
+    assert "MUTATION" not in fake.service.calls and len(fake.service.calls) == 1
+
+
+def test_readonly_install_wraps_both_application_factories(monkeypatch):
+    from app.homologation import readonly
+    from app.services import google_ads_reader as reader
+    from app.services import google_ads_service as svc
+    monkeypatch.setattr(reader, "CLIENT_FACTORY", lambda token, login: _FakeClient())
+    monkeypatch.setattr(svc, "_build_client", lambda token: _FakeClient())
+    uninstall = readonly.install()
+    try:
+        with pytest.raises(readonly.MutationBlocked):
+            reader.CLIENT_FACTORY("t", None).get_service("CampaignService")
+        with pytest.raises(readonly.MutationBlocked):
+            svc._build_client("t").get_service("CampaignBudgetService")
+        assert reader.CLIENT_FACTORY("t", None).get_service("GoogleAdsService") is not None
+    finally:
+        uninstall()

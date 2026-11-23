@@ -13,7 +13,7 @@ from app.agents import executor
 from app.models import AgentTask, AiUsageLog, GoogleAdsConnection
 from tests.unit.agents_support import create_task_row, snapshot
 
-TASK_MAX_USD = float(os.getenv("HOMOLOG_TASK_MAX_USD", "0.10"))
+TASK_MAX_USD = min(float(os.getenv("HOMOLOG_TASK_MAX_USD", "0.10")), 0.10)   # per task; the aggregate ceiling is global (conftest)
 PRODUCT_TEXT = "Product: a reusable stainless steel water bottle, 750 ml, keeps drinks cold for 24 hours. Price BRL 89. Free shipping."
 
 
@@ -105,6 +105,7 @@ def test_budget_blocks_real_calls_before_they_are_sent(real_org, real_provider, 
     from tests_real.conftest import route_to
     provider, _ = real_provider
     route_to(db_session, real_org.org, real_org.models[provider])
+    db_session.query(AiBudget).filter(AiBudget.organization_id == real_org.org.id).delete()
     db_session.add(AiBudget(organization_id=real_org.org.id, period="daily", limit_micros=1, enabled=True))
     db_session.commit()
     status, task, _ = run_agent(db_session, real_org, "ad_copywriter", "Write search ad copy. " + PRODUCT_TEXT)

@@ -25,8 +25,7 @@ TOOL = ToolSpec("get_status", "Report the status of a component.",
 
 
 def _secret_values(env: Dict[str, str]) -> List[str]:
-    markers = ("KEY", "TOKEN", "SECRET", "REFRESH", "PASSWORD", "AUTHORIZATION")
-    return [v for k, v in env.items() if v and any(t in k.upper() for t in markers)]
+    return guard.secret_values(env)
 
 
 def _model_for(provider: str, env: Dict[str, str]):
@@ -43,7 +42,7 @@ def _model_for(provider: str, env: Dict[str, str]):
 class Runner:
     def __init__(self, env: Dict[str, str], ledger: Optional[CostLedger] = None, only: Optional[List[str]] = None):
         self.env = env
-        self.ledger = ledger or CostLedger()
+        self.ledger = ledger or CostLedger.shared(env)
         self.redact = Redactor(_secret_values(env))
         self.only = set(only) if only else None
         self.results: Dict[str, OpResult] = {}
@@ -132,6 +131,8 @@ class Runner:
         from app.core.config import settings
         for name in ("GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_DEVELOPER_TOKEN"):
             setattr(settings, name, self.env[name])
+        from app.homologation import readonly
+        readonly.install()   # from here on the SDK client can only reach the read-only allowlist
 
     async def _gads(self, op: O.Operation) -> OpResult:
         from app.services import google_ads_reader as reader

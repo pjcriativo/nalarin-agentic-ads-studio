@@ -143,7 +143,15 @@ Custo máximo do `run`: US$ 0,50 (padrão) + os testes `tests_real` (≤ US$ 0,1
 * **Esta branch**: ver o resultado dos três jobs do commit da etapa, registrado ao final (seção 9.1).
 
 ### 9.1 Jobs desta branch
-(preenchido após o push)
+Run `45237781296` (workflow *Test Suite*, commit `cc550c5`, esta branch), consultado pela API pública do GitHub:
+
+| Job | Resultado | Concluído (UTC) |
+|---|---|---|
+| `backend-tests` | **success** | 2026-11-23 18:42:31 |
+| `security-scan` | **success** | 2026-11-23 18:23:46 |
+| `frontend-tests` | **success** | 2026-11-23 18:24:17 |
+
+Nenhuma falha; nenhuma correção necessária. O commit do pré-voo (teto agregado, proteção de leitura, varredura de vazamento) tem run próprio: ver 11.1.
 
 ## 10. Riscos e pendências
 
@@ -154,3 +162,99 @@ Custo máximo do `run`: US$ 0,50 (padrão) + os testes `tests_real` (≤ US$ 0,1
 5. UI ponta a ponta com provedor real é guiada/manual (seção 6), pois o E2E automatizado da 02.6 usa gateway simulado.
 6. Teto de custo do harness é conservador (pior caso); o custo real tende a ser bem menor.
 7. Limites de Google Ads por tarefa/hora e do Keyword Planner continuam os da 02.5; o Keyword Planner pode exigir nível de token superior ao de teste.
+
+---
+
+## 11. Pré-voo final da Fase B (2026-11-23)
+
+> **Fase B NÃO iniciada.** Nenhuma chamada real, nenhuma credencial configurada neste ambiente, nenhum deploy/merge/migration em banco real.
+
+### 11.1 Itens do pré-voo
+
+| # | Item | Situação |
+|---|---|---|
+| 1–2 | Jobs verdes da Actions `45237781296` e seção 9.1 | Ver 9.1 |
+| 3 | `plan` e `preflight` sem credenciais | Executados: 17 operações listadas; **todas MISSING** (nenhuma credencial/preço presente); autorização **ausente**; teto agregado US$ 1,00, gasto registrado US$ 0,0000 |
+| 4 | **Teto financeiro global** | **US$ 1,00 agregado provisório** para a Fase B inteira (harness + testes de agentes). Implementação em 11.2. Nada executado |
+| 5 | Nenhuma credencial no Git, logs ou relatório | 11.3 |
+| 6 | Modelos e preços oficiais | 11.4 |
+| 7 | Proteção contra mutação no Google Ads | 11.5 |
+| 8 | Checklist de credenciais por provedor | 11.6 |
+| 9 | Não iniciar a Fase B | Cumprido |
+
+### 11.2 Teto agregado único (US$ 1,00)
+
+* `CostLedger` agora é **compartilhado por arquivo** (`backend/.homolog-ledger.json`, só números, no `.gitignore`; caminho alterável por `HOMOLOG_LEDGER_FILE`). O harness e a suíte `tests_real` leem e somam no **mesmo** arquivo.
+* **Trava dura**: `--max-total-usd` maior que 1,00 é rebaixado a 1,00 (`HARD_MAX_TOTAL_USD`). Subir o teto exige alterar o código, com sua aprovação.
+* **Harness**: cada chamada paga é precificada (pior caso) antes do envio contra o saldo restante; sem saldo ou sem preço ⇒ não envia.
+* **Testes de agentes**: (a) um teste só começa se restar saldo (≥ US$ 0,01); (b) a organização de teste recebe `AiBudget` diário e mensal **igual ao saldo restante**, então o próprio AI Gateway recusa reservar além do teto; (c) ao final de cada teste, o custo do `ai_usage_log` (inclusive chamadas interrompidas, cobradas pela estimativa) é somado ao arquivo; (d) teto por tarefa ≤ US$ 0,10 (clamp).
+* Reiniciar o contador exige apagar o arquivo conscientemente (nenhum comando o faz sozinho).
+* **Estimativa**: com modelos baratos (11.4) a sonda do harness custa centavos (≈ 15 requisições de ≤ 256 tokens de saída). As tarefas de agentes são maiores; o teto agregado as interrompe (testes restantes ficam "não testados") se o gasto se aproximar de US$ 1,00. Prefira modelos de custo baixo.
+* Testes: `test_aggregate_ceiling_is_hard_clamped_and_shared_through_the_ledger_file`, `test_default_aggregate_ceiling_is_one_dollar`. Ensaio sem rede com provedor falso: 3 testes aprovados e US$ 0,00228 contabilizados no arquivo a partir do log de uso.
+
+### 11.3 Nenhum segredo no Git, nos logs ou no relatório
+
+* Credenciais só em **variáveis de ambiente do seu shell**; nenhum arquivo versionado as lê (o compose de homologação não tem `env_file`). `.env*`, `*.local` e o ledger estão no `.gitignore`; nenhum `.env` é rastreado.
+* **Relatório do harness**: só status, contagens, tokens, custo e detalhe curto, mascarado por `Redactor`.
+* **Saída do pytest** da Fase B passa por `python -m app.homologation redact` (filtro de stdin) antes de ir ao terminal/disco e usa `--tb=line` (sem dump de variáveis locais).
+* **Varredura de vazamento**: `scripts/homologation.sh scan` (e automaticamente ao fim de `phase-b`) procura nas evidências, docs e código qualquer **valor** de variável com `KEY/TOKEN/SECRET/REFRESH/PASSWORD` e padrões `sk-…`, `AIza…`, `ya29.…`, `1//…`, `Bearer …`; imprime só o **nome do arquivo**, nunca o valor; sai com erro se achar.
+* Chaves dos provedores no stack isolado (BYOK) são criptografadas (Fernet) em banco descartável em memória, destruído ao final.
+* Os resultados da Fase B só serão commitados depois do `scan` limpo e de sua revisão.
+
+### 11.4 Modelos e preços oficiais (verificados em 2026-11-23)
+
+Fontes: páginas oficiais de preço lidas hoje — [Anthropic](https://platform.claude.com/docs/en/about-claude/pricing), [OpenAI](https://developers.openai.com/api/docs/pricing), [Google](https://ai.google.dev/gemini-api/docs/pricing) (redireciona para aistudio.google.com/docs/pricing). **O sistema não embute preços**: você informa os valores ao configurar; eles mudam (há degraus de preço datados), então **reconfira no console no dia**. Preço de cache **não** é configurado no harness: tokens em cache seriam cobrados ao preço de entrada (conservador, sem subestimar).
+
+| Provedor | Modelo (nome na página) | Entrada US$/Mtok | Saída US$/Mtok | Variáveis (micro-USD/Mtok: entrada / saída) |
+|---|---|---|---|---|
+| Anthropic | Claude Haiku 5.5 (prompts ≤ 100k) | 0,10 | 0,50 | `100000` / `500000` |
+| Anthropic | Claude Sonnet 5.5 | 2 | 10 | `2000000` / `10000000` |
+| Anthropic | Claude Opus 5.5 | 4 | 20 | `4000000` / `20000000` |
+| OpenAI | gpt-6.1-terra (contexto curto ≤ 272k) | 1,00 | 5,00 | `1000000` / `5000000` |
+| OpenAI | gpt-6-luna | 0,10 | 0,50 | `100000` / `500000` |
+| OpenAI | gpt-6.2-sol | 2,00 | 10,00 | `2000000` / `10000000` |
+| Gemini | gemini-3.5-flash-lite | 0,30 | 2,50 | `300000` / `2500000` |
+| Gemini | gemini-4-hydrogen | 1,50 | 7,50 | `1500000` / `7500000` |
+| Gemini | gemini-3.8-flash | 0,75 (até 31/12/2026; 1,50 depois) | 3,75 (7,50 depois) | `750000` / `3750000` |
+
+Ressalvas verificadas:
+* **Anthropic**: a página usa nomes de exibição e **não lista IDs de API**. Use o ID exato do console ou de `GET /v1/models`; `ai.anthropic.verify` confere se `HOMOLOG_ANTHROPIC_MODEL` consta na lista da sua conta. Sonnet 5 a US$ 2/10 é o preço padrão (o aumento previsto para 01/09/2026 "não ocorrerá"). Haiku 5.5 acima de 100k tokens custa US$ 0,50/2,50 (irrelevante para as sondas).
+* **OpenAI**: a página não declara suporte a tool-calling por modelo; confirme em *Models* antes. Os resumos de busca divergiam entre si nos nomes e preços; a tabela vem da leitura direta da página.
+* **Gemini**: a leitura direta cobriu ~40k de 118k caracteres; as linhas gemini-4-*, 3.8/3.6-flash e 3.5-flash-lite são literais. As linhas abaixo do corte (3.1, 2.5…) vieram de resumo e **não** são recomendadas aqui. **Degraus datados**: Gemini 4 Argon/Carbon dobram em 01/12/2026; 3.6/3.8 Flash dobram em 01/01/2027, o que importa se a Fase B ocorrer perto dessas datas.
+* Preço verificado ≠ modelo suportado pelo produto: o modelo precisa suportar tool-calling e JSON (a Fase B confirma).
+
+### 11.5 Proteção contra mutação no Google Ads (quatro camadas)
+
+1. **Estática** (CI): teste varre `app/homologation/*` e o leitor por `mutate`, criar/pausar/ativar campanha e negativos.
+2. **Allowlist de operações**: o harness só executa 6 operações `gads.*` de leitura; id fora da lista é rejeitado.
+3. **Execução (nova, `homologation/readonly.py`)**: o cliente do SDK é embrulhado e só alcança `GoogleAdsService.search/search_stream` (e os helpers de caminho), `CustomerService.list_accessible_customers` e `KeywordPlanIdeaService.generate_keyword_ideas`. Qualquer outro serviço (`CampaignService`, `CampaignBudgetService`…), método (`mutate`, `create_customer_client`…) ou GAQL que não seja um único `SELECT` (sem `;`) levanta `MutationBlocked` **antes** de montar a requisição. É instalado nas duas fábricas de cliente da aplicação (`google_ads_reader.CLIENT_FACTORY` e `google_ads_service._build_client`) durante o harness **e** durante todos os testes `tests_real`, de modo que nem os endpoints de escrita da API alcançariam o Google. Testes: `test_readonly_guard_blocks_mutations_before_any_request`, `test_readonly_install_wraps_both_application_factories`.
+4. **No Google**: use refresh token de usuário com acesso **somente leitura** à conta (e à MCC), a defesa que não depende do nosso código.
+
+Limite honesto: a camada 3 foi provada contra um cliente falso e na fiação das fábricas; o comportamento do SDK real só se confirma na Fase B (somente leitura).
+
+### 11.6 Checklist de configuração (nenhum valor deve ser colado no chat)
+
+Configure **no seu terminal**, na sessão que rodará a Fase B (ex.: `export NOME=...` ou um gerenciador de segredos); não grave em arquivo dentro do repositório. Depois rode `scripts/homologation.sh preflight`: ele mostra só "set/MISSING", nunca valores.
+
+**Para cada provedor de IA que quiser testar** (`ANTHROPIC`, `GEMINI`, `OPENAI`):
+- [ ] Chave **de teste**, de projeto/organização dedicados, com **limite de gasto** definido no console do provedor
+- [ ] Faturamento/crédito ativo no provedor
+- [ ] `HOMOLOG_<P>_API_KEY`
+- [ ] `HOMOLOG_<P>_MODEL` (ID exato; conferir em *list models* e que suporta tool-calling + JSON)
+- [ ] `HOMOLOG_<P>_INPUT_PRICE_MICROS_PER_MTOK` e `HOMOLOG_<P>_OUTPUT_PRICE_MICROS_PER_MTOK` (tabela 11.4, reconferida no dia)
+- [ ] Pelo menos **2 provedores** configurados, se quiser o teste real de fallback
+
+**Google Ads (somente leitura):**
+- [ ] Projeto Google Cloud com *Google Ads API* habilitada; cliente OAuth tipo Web → `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`
+- [ ] `GOOGLE_ADS_DEVELOPER_TOKEN` (anotar o **nível**: *Test* só lê contas de teste; o Keyword Planner pode exigir nível maior)
+- [ ] `HOMOLOG_GADS_REFRESH_TOKEN` com escopo `adwords`, de usuário com acesso **somente leitura**
+- [ ] `HOMOLOG_GADS_CUSTOMER_ID` (preferir conta de teste ou sem campanhas ativas); `HOMOLOG_GADS_LOGIN_CUSTOMER_ID` se houver MCC
+- [ ] Redirect URI do cliente OAuth idêntico ao `GOOGLE_ADS_OAUTH_REDIRECT_URI`, se for refazer o fluxo OAuth
+
+**Opcional:** `HOMOLOG_PRODUCT_URL` (página pública para o `product_analyst`).
+
+**Para disparar (só após sua autorização explícita):**
+- [ ] `export HOMOLOG_AUTHORIZATION=I_AUTHORIZE_REAL_CALLS_PHASE_B` — **não defina antes**; sem a frase nada é enviado
+- [ ] `scripts/homologation.sh phase-b`
+- [ ] `scripts/homologation.sh scan` limpo antes de commitar `docs/evidence/etapa-02-07/`
+- [ ] Revogar/rotacionar as chaves de teste ao terminar

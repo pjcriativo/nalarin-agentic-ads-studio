@@ -8,6 +8,7 @@
 * REDACTION: every string that reaches a report/log passes ``Redactor`` (exact secret values + token-shaped patterns).
   Reports hold statuses, counts, tokens and costs: never prompts, completions, keys, tokens or account data.
 """
+import json
 import math
 import os
 import re
@@ -17,8 +18,12 @@ from typing import Dict, Iterable, List, Optional
 AUTHORIZATION_PHRASE = "I_AUTHORIZE_REAL_CALLS_PHASE_B"
 AUTH_ENV = "HOMOLOG_AUTHORIZATION"
 
-DEFAULT_MAX_TOTAL_USD = 0.50
+# PROVISIONAL aggregate ceiling for the WHOLE of Phase B (harness + agent tests), approved only as a ceiling: nothing runs
+# without the explicit authorization. It is a hard clamp: a larger --max-total-usd is lowered to it.
+HARD_MAX_TOTAL_USD = 1.00
+DEFAULT_MAX_TOTAL_USD = HARD_MAX_TOTAL_USD
 DEFAULT_MAX_OP_USD = 0.05
+LEDGER_ENV = "HOMOLOG_LEDGER_FILE"
 
 _SECRET_PATTERNS = [
     re.compile(r"sk-[A-Za-z0-9_\-]{8,}"),                  # OpenAI / Anthropic style keys
@@ -71,13 +76,49 @@ def usd_to_micros(usd: float) -> int:
     return int(round(usd * 1_000_000))
 
 
+def default_ledger_path(env: Optional[Dict[str, str]] = None) -> str:
+    env = env if env is not None else os.environ
+    return env.get(LEDGER_ENV) or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                                               ".homolog-ledger.json")
+
+
 @dataclass
 class CostLedger:
-    """Hard spending cap for one homologation run (USD micros)."""
+    """Hard spending cap for the WHOLE Phase B (USD micros), shared by the harness and the agent tests through a small
+    JSON file (numbers only, git-ignored). The cap is clamped to HARD_MAX_TOTAL_USD."""
     max_total_micros: int = usd_to_micros(DEFAULT_MAX_TOTAL_USD)
     max_op_micros: int = usd_to_micros(DEFAULT_MAX_OP_USD)
     spent_micros: int = 0
     reserved: List[int] = field(default_factory=list)
+    path: Optional[str] = None
+
+    def __post_init__(self):
+        self.max_total_micros = min(self.max_total_micros, usd_to_micros(HARD_MAX_TOTAL_USD))
+        if self.path and os.path.exists(self.path):
+            with open(self.path, encoding="utf-8") as fh:
+                self.spent_micros = max(self.spent_micros, int(json.load(fh).get("spent_micros", 0)))
+
+    @classmethod
+    def shared(cls, env: Optional[Dict[str, str]] = None, max_total_usd: float = DEFAULT_MAX_TOTAL_USD,
+               max_op_usd: float = DEFAULT_MAX_OP_USD) -> "CostLedger":
+        return cls(usd_to_micros(max_total_usd), usd_to_micros(max_op_usd), path=default_ledger_path(env))
+
+    @property
+    def remaining_micros(self) -> int:
+        return max(self.max_total_micros - self.spent_micros, 0)
+
+    def _save(self) -> None:
+        if not self.path:
+            return
+        tmp = self.path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump({"spent_micros": self.spent_micros}, fh)
+        os.replace(tmp, self.path)
+
+    def add_external(self, micros: int) -> None:
+        """Account spending measured elsewhere (e.g. the usage log of an agent test)."""
+        self.spent_micros = max(self.spent_micros, 0) + max(micros, 0)
+        self._save()
 
     def check(self, worst_case_micros: Optional[int], label: str = "operation") -> None:
         if worst_case_micros is None:
@@ -91,6 +132,7 @@ class CostLedger:
         """Record the real cost; when it is unknown, charge the worst case (never under-count)."""
         value = micros if micros is not None else fallback_worst_case
         self.spent_micros += value
+        self._save()
         return value
 
 
@@ -120,3 +162,30 @@ class OpResult:
 
     def as_dict(self) -> dict:
         return {k: v for k, v in self.__dict__.items() if v not in (None, "", {})}
+
+
+# ---- leak scan --------------------------------------------------------------------------------------
+SECRET_ENV_MARKERS = ("KEY", "TOKEN", "SECRET", "REFRESH", "PASSWORD", "AUTHORIZATION")
+
+
+def secret_values(env: Dict[str, str]) -> List[str]:
+    return [v for k, v in env.items() if v and len(v) >= 8 and any(t in k.upper() for t in SECRET_ENV_MARKERS)
+            and k != AUTH_ENV]
+
+
+def scan_for_secrets(paths: Iterable[str], env: Dict[str, str], patterns: bool = True) -> List[str]:
+    """Names (never values) of files that contain a configured secret value or a token-shaped string."""
+    secrets, hits = secret_values(env), []
+    for root in paths:
+        files = [root] if os.path.isfile(root) else [os.path.join(d, f) for d, ds, fs in os.walk(root)
+                                                     if "__pycache__" not in d and "node_modules" not in d for f in fs
+                                                     if not f.endswith((".pyc", ".png", ".jpg"))]
+        for path in files:
+            try:
+                with open(path, encoding="utf-8", errors="ignore") as fh:
+                    text = fh.read()
+            except OSError:
+                continue
+            if any(sec in text for sec in secrets) or (patterns and any(p.search(text) for p in _SECRET_PATTERNS[:5])):
+                hits.append(path)
+    return hits
