@@ -20,6 +20,7 @@ export default function ConnectAccountCard({
     onDisconnect,
     disconnecting = false,
     warning,
+    canManage = true,
 }) {
     const { t, i18n } = useTranslation('campaigns');
     return (
@@ -53,7 +54,9 @@ export default function ConnectAccountCard({
                     </div>
                 </div>
 
-                {connected ? (
+                {!canManage ? (
+                    <p role="note" className="text-xs text-gray-500 max-w-[14rem] self-start sm:self-auto">{t('card.needsAdmin')}</p>
+                ) : connected ? (
                     <button
                         onClick={onDisconnect}
                         disabled={disconnecting}

@@ -62,7 +62,16 @@
     "googleApiError": "Erro na API do Google Ads.",
     "tiktokRefreshFailed": "A renovação do token do TikTok não retornou um token de acesso.",
     "tiktokRequestFailed": "Falha na requisição à API do TikTok Ads: {{message}}",
-    "tiktokInvalidResponse": "O TikTok Ads retornou uma resposta inválida (HTTP {{status}})."
+    "tiktokInvalidResponse": "O TikTok Ads retornou uma resposta inválida (HTTP {{status}}).",
+    "insufficientPermission": "Seu papel nesta organização não permite esta ação.",
+    "noOrgAccess": "Você não tem acesso a esta organização.",
+    "noOrgMembership": "Você não é membro ativo de nenhuma organização.",
+    "adAccountNotLinked": "Essa conta de anúncios não está vinculada a esta organização.",
+    "oauthStateInvalid": "O link de conexão é inválido, expirou ou já foi usado. Inicie a conexão novamente.",
+    "oauthAccessLost": "Você não tem mais acesso para conectar contas nesta organização.",
+    "platformAdminRequired": "Somente o administrador da plataforma pode alterar isto.",
+    "approvalRequired": "Esta ação pode gerar gasto e exige uma aprovação de gasto feita por uma pessoa.",
+    "severalOrganizations": "Você pertence a várias organizações: escolha uma no cabeçalho."
   },
   "api": {
     "failedToFetchAdAccounts": "Falha ao carregar as contas de anúncios",

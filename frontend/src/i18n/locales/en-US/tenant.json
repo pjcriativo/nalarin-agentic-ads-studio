@@ -1,0 +1,90 @@
+{
+  "switcher": {
+    "label": "Organization: {{name}}. Change organization",
+    "heading": "Organization",
+    "single": "You belong to a single organization.",
+    "viewPermissions": "View role permissions"
+  },
+  "toast": {
+    "accessLost": "You no longer have access to the selected organization. Switched to another one."
+  },
+  "boundary": {
+    "loading": "Loading organization",
+    "noneTitle": "No organization access",
+    "noneBody": "Your account is not an active member of any organization. Ask an administrator to add you, then sign in again.",
+    "errorTitle": "Could not load your organizations",
+    "errorBody": "We could not verify your organization access. Check your connection and try again.",
+    "retry": "Try again",
+    "logout": "Sign out"
+  },
+  "permissions": {
+    "title": "Role permissions",
+    "yourRole": "In {{organization}} you are {{role}}.",
+    "disclaimer": "This table reflects what the server grants each role. The interface only hides what you cannot do; the server checks every action.",
+    "close": "Close",
+    "loading": "Loading permissions…",
+    "loadFailed": "Could not load the permissions. Try again later.",
+    "capability": "Capability",
+    "allowed": "Allowed",
+    "denied": "Not allowed"
+  },
+  "roles": {
+    "owner": "Owner",
+    "admin": "Admin",
+    "manager": "Manager",
+    "analyst": "Analyst",
+    "viewer": "Viewer"
+  },
+  "perm": {
+    "group": {
+      "org": "Organization",
+      "members": "Members",
+      "brands": "Brands",
+      "products": "Products",
+      "profiles": "Customer profiles",
+      "ads": "Ads",
+      "templates": "Templates",
+      "campaigns": "Campaigns",
+      "research": "Research",
+      "uploads": "Files",
+      "reports": "Reports",
+      "connections": "Ad accounts",
+      "apikeys": "API keys",
+      "audit": "Audit"
+    },
+    "org_read": "View the organization",
+    "org_manage": "Manage the organization",
+    "members_read": "View members",
+    "members_manage": "Add, change and remove members",
+    "brands_read": "View brands",
+    "brands_write": "Create and edit brands",
+    "brands_delete": "Delete brands",
+    "products_read": "View products",
+    "products_write": "Create and edit products",
+    "products_delete": "Delete products",
+    "profiles_read": "View customer profiles",
+    "profiles_write": "Create and edit customer profiles",
+    "profiles_delete": "Delete customer profiles",
+    "ads_read": "View ads and ad-platform data",
+    "ads_write": "Create and save ad creatives",
+    "ads_delete": "Delete ad creatives",
+    "ads_draft": "Draft ads and request spend approval",
+    "ads_publish": "Pause or change live campaigns",
+    "ads_spend": "Approve and enable spending",
+    "templates_read": "View templates",
+    "templates_write": "Upload and analyze templates",
+    "templates_delete": "Delete templates",
+    "campaigns_read": "View saved campaigns",
+    "campaigns_write": "Save campaigns",
+    "campaigns_delete": "Delete saved campaigns",
+    "research_read": "View research",
+    "research_write": "Run research and edit blacklists",
+    "research_delete": "Delete research data",
+    "uploads_write": "Upload files",
+    "reports_read": "View reports and overview",
+    "connections_read": "View connected ad accounts",
+    "connections_manage": "Connect and manage ad accounts",
+    "apikeys_manage": "Manage API keys",
+    "audit_read": "View the audit log"
+  }
+}

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
 from app.models import GeneratedAd, Brand, Product, WinningAd
-from app.core.storage import require_own_media, save_local
+from app.core.storage import fetch_public_bytes, require_own_media, save_local
 from app.core.tenancy import OrgContext, client_or_new_id, require_org_permission
 from fastapi.responses import StreamingResponse
 import io
@@ -139,10 +139,9 @@ async def download_and_save_image(image_url: str, org_id: str, prefix: str = "ge
     upload namespace. Returns the signed local URL path.
     """
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(image_url, timeout=30.0)
-            response.raise_for_status()
-            return save_local(org_id, response.content, ".png")
+        # Public addresses only, redirects re-checked, size capped (SSRF guard)
+        content = await fetch_public_bytes(image_url, max_bytes=20 * 1024 * 1024)
+        return save_local(org_id, content, ".png")
     except Exception as e:
         print(f"Error downloading image: {e}")
         # Return original URL as fallback

@@ -746,10 +746,9 @@ class BrandScraperService:
                 media_type = "image"
 
             # Download media
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.get(media_url, follow_redirects=True)
-                response.raise_for_status()
-                content = response.content
+            # Scraped URLs are untrusted: public addresses only, redirects re-checked, size capped
+            from app.core.storage import fetch_public_bytes
+            content = await fetch_public_bytes(media_url, max_bytes=100 * 1024 * 1024, timeout=60.0)
 
             if len(content) < 1000:  # Too small, likely error
                 return None, media_type

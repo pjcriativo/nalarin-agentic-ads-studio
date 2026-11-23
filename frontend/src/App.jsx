@@ -8,6 +8,7 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { OrganizationProvider, TenantBoundary } from './context/OrganizationContext';
 import { BrandProvider } from './context/BrandContext';
 import { CampaignProvider } from './context/CampaignContext';
 import { ToastProvider } from './context/ToastContext';
@@ -51,6 +52,8 @@ function App() {
     <ErrorBoundary>
     <ToastProvider>
       <AuthProvider>
+        <OrganizationProvider>
+        <TenantBoundary>
         <BrandProvider>
           <CampaignProvider>
             <BrowserRouter>
@@ -108,6 +111,8 @@ function App() {
             </BrowserRouter>
           </CampaignProvider>
         </BrandProvider>
+        </TenantBoundary>
+        </OrganizationProvider>
       </AuthProvider>
     </ToastProvider>
     </ErrorBoundary>

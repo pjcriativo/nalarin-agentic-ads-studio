@@ -1,0 +1,81 @@
+{
+  "title": "Spend approval to enable a campaign",
+  "intro": "Enabling a campaign starts real spend. It needs a request, a human approval with a budget cap, and then the enable action. Nothing is sent to Google Ads before that.",
+  "close": "Close",
+  "loading": "Loading…",
+  "pleaseWait": "Please wait…",
+  "current": "Current request",
+  "fields": {
+    "campaign": "Campaign",
+    "account": "Account",
+    "organization": "Organization",
+    "requestedBudget": "Requested daily budget: {{amount}}",
+    "budgetCap": "Approved budget cap: {{amount}}",
+    "requestedByUser": "Requested by a team member",
+    "requestedByBot": "Requested by an automated agent (API key)",
+    "expires": "Expires {{date}}",
+    "requestBudgetLabel": "Daily budget to request (USD)",
+    "requestBudgetHelp": "The approver sets the final cap. The campaign cannot be enabled above it.",
+    "approveCapLabel": "Budget cap you approve (USD)",
+    "approveCapHelp": "Enabling is refused if the campaign's real daily budget is above this cap."
+  },
+  "status": {
+    "none": "No request",
+    "pending": "Pending approval",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "expired": "Expired",
+    "consumed": "Already used"
+  },
+  "hint": {
+    "consumed": "This approval was already used and cannot be reused. Request a new one to enable the campaign again.",
+    "rejected": "This request was rejected. You can request a new approval.",
+    "expired": "This approval expired. Request a new one.",
+    "cannotRequest": "Your role ({{role}}) cannot request spend approvals.",
+    "waitingOwner": "Waiting for an owner to approve this request.",
+    "readyToEnable": "Approved. Enabling will start real spend on this account.",
+    "approvedWaitingOwner": "Approved. An owner must enable the campaign."
+  },
+  "actions": {
+    "request": "Request approval",
+    "approve": "Approve",
+    "reject": "Reject",
+    "enable": "Enable campaign"
+  },
+  "toast": {
+    "requested": "Approval requested",
+    "approved": "Approved",
+    "rejected": "Request rejected",
+    "enabled": "Campaign enabled"
+  },
+  "errors": {
+    "badRequest": "The request was not valid. Check the values and try again.",
+    "unauthorized": "Your session expired. Sign in again.",
+    "forbidden": "Not allowed: your role, the approval, the budget cap or the account does not permit this action.",
+    "notFound": "The account or approval is no longer available for this organization. Reload and reconnect the account if needed.",
+    "conflict": "This approval was already decided or used. Reload to see its current status.",
+    "invalidBudget": "Enter a budget greater than zero (and not below the requested budget).",
+    "killSwitch": "Spend operations are suspended by the kill-switch.",
+    "platform": "Google Ads could not confirm the campaign budget or the change. Nothing was enabled; check the account and try again.",
+    "network": "Network error. Check your connection and try again.",
+    "generic": "Something went wrong. Please try again."
+  },
+  "roles": {
+    "owner": "Owner",
+    "admin": "Admin",
+    "manager": "Manager",
+    "analyst": "Analyst",
+    "viewer": "Viewer"
+  },
+  "panel": {
+    "title": "Spend approvals",
+    "subtitle": "Requests to enable campaigns in this account, and who decided them.",
+    "empty": "No spend approvals yet.",
+    "loadFailed": "Could not load the spend approvals.",
+    "campaign": "Campaign",
+    "status": "Status",
+    "cap": "Budget cap",
+    "created": "Requested",
+    "unknownCampaign": "Campaign not in the current list"
+  }
+}

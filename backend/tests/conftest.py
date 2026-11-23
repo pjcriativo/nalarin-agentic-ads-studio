@@ -73,6 +73,28 @@ engine = create_engine(TEST_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+def _provision_runtime_login_if_requested():
+    """SECURE-MODE HOMOLOGATION: when RUNTIME_DATABASE_URL is set (see
+    scripts/homologate-secure-db.sh and the CI step) the whole API under test
+    connects as a DEDICATED unprivileged LOGIN role -- no SET ROLE, nothing to
+    RESET ROLE to -- exactly like production must. The role is created here, with
+    the same provisioning code operators use, after the migrations."""
+    from urllib.parse import urlparse
+    from sqlalchemy import create_engine as _create_engine
+    from app.scripts.provision_runtime_login import provision
+
+    runtime_url = os.getenv("RUNTIME_DATABASE_URL", "").strip()
+    if not runtime_url:
+        return
+    parsed = urlparse(runtime_url)
+    owner = _create_engine(TEST_DATABASE_URL)
+    try:
+        with owner.begin() as conn:
+            provision(conn, parsed.username, settings.DB_RUNTIME_ROLE, parsed.password)
+    finally:
+        owner.dispose()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _migrated_test_database():
     """Build the schema of the disposable DB with the real Alembic migrations
@@ -84,6 +106,7 @@ def _migrated_test_database():
     cfg = Config(str(backend_dir / "alembic.ini"))
     cfg.set_main_option("script_location", str(backend_dir / "alembic"))
     command.upgrade(cfg, "head")
+    _provision_runtime_login_if_requested()
     yield
 
 

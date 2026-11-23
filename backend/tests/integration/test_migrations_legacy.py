@@ -160,8 +160,8 @@ class TestLegacyData:
     def test_legacy_rows_are_invisible_to_every_organization(self, migrated):
         engine = create_engine(migrated.url)
         from sqlalchemy import event
-        from app.database import _drop_to_runtime_role
-        event.listen(engine, "connect", _drop_to_runtime_role)
+        from app.database import _set_runtime_role
+        event.listen(engine, "connect", _set_runtime_role)
         with engine.connect() as conn:
             org_ids = conn.execute(text("SELECT id FROM organizations")).scalars().all()
         assert len(org_ids) == 2
@@ -192,8 +192,8 @@ class TestLegacyData:
             conn.commit()
         engine = create_engine(migrated.url)
         from sqlalchemy import event
-        from app.database import _drop_to_runtime_role
-        event.listen(engine, "connect", _drop_to_runtime_role)
+        from app.database import _set_runtime_role
+        event.listen(engine, "connect", _set_runtime_role)
         seen = {}
         for label, org in (("a", org_a), ("b", org_b)):
             with engine.begin() as conn:
@@ -223,8 +223,8 @@ class TestLegacyData:
     def test_claim_cannot_run_as_the_unprivileged_runtime_role(self, migrated):
         engine = create_engine(migrated.url)
         from sqlalchemy import event
-        from app.database import _drop_to_runtime_role
-        event.listen(engine, "connect", _drop_to_runtime_role)
+        from app.database import _set_runtime_role
+        event.listen(engine, "connect", _set_runtime_role)
         with engine.connect() as conn:
             with pytest.raises(ClaimError, match="subject to row level security"):
                 assert_privileged(conn)
@@ -303,9 +303,9 @@ class TestLegacyIntegrations:
 
     def test_quarantined_rows_are_invisible_to_every_organization_and_keys_authenticate_nobody(self, migrated):
         from sqlalchemy import event
-        from app.database import _drop_to_runtime_role
+        from app.database import _set_runtime_role
         engine = create_engine(migrated.url)
-        event.listen(engine, "connect", _drop_to_runtime_role)
+        event.listen(engine, "connect", _set_runtime_role)
         with engine.connect() as conn:
             org_ids = conn.execute(text("SELECT id FROM organizations")).scalars().all()
         for org_id in org_ids:
@@ -402,9 +402,9 @@ class TestLegacyIntegrations:
 
     def test_reconcile_cannot_run_as_the_unprivileged_runtime_role(self, migrated):
         from sqlalchemy import event
-        from app.database import _drop_to_runtime_role
+        from app.database import _set_runtime_role
         engine = create_engine(migrated.url)
-        event.listen(engine, "connect", _drop_to_runtime_role)
+        event.listen(engine, "connect", _set_runtime_role)
         with engine.connect() as conn:
             with pytest.raises(recon.ReconcileError, match="subject to row level security"):
                 recon.claim_audits(conn, "x", "y", apply=True)

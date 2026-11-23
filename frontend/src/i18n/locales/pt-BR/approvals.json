@@ -1,0 +1,81 @@
+{
+  "title": "Aprovação de gasto para ativar uma campanha",
+  "intro": "Ativar uma campanha inicia gasto real. É preciso um pedido, a aprovação de uma pessoa com um teto de orçamento e só então a ativação. Nada é enviado ao Google Ads antes disso.",
+  "close": "Fechar",
+  "loading": "Carregando…",
+  "pleaseWait": "Aguarde…",
+  "current": "Pedido atual",
+  "fields": {
+    "campaign": "Campanha",
+    "account": "Conta",
+    "organization": "Organização",
+    "requestedBudget": "Orçamento diário solicitado: {{amount}}",
+    "budgetCap": "Teto de orçamento aprovado: {{amount}}",
+    "requestedByUser": "Solicitado por um membro da equipe",
+    "requestedByBot": "Solicitado por um agente automático (chave de API)",
+    "expires": "Expira em {{date}}",
+    "requestBudgetLabel": "Orçamento diário a solicitar (USD)",
+    "requestBudgetHelp": "Quem aprova define o teto final. A campanha não pode ser ativada acima dele.",
+    "approveCapLabel": "Teto de orçamento que você aprova (USD)",
+    "approveCapHelp": "A ativação é recusada se o orçamento diário real da campanha estiver acima deste teto."
+  },
+  "status": {
+    "none": "Sem pedido",
+    "pending": "Aguardando aprovação",
+    "approved": "Aprovado",
+    "rejected": "Recusado",
+    "expired": "Expirado",
+    "consumed": "Já utilizado"
+  },
+  "hint": {
+    "consumed": "Esta aprovação já foi utilizada e não pode ser reutilizada. Peça uma nova para ativar a campanha de novo.",
+    "rejected": "Este pedido foi recusado. Você pode pedir uma nova aprovação.",
+    "expired": "Esta aprovação expirou. Peça uma nova.",
+    "cannotRequest": "Seu papel ({{role}}) não pode pedir aprovações de gasto.",
+    "waitingOwner": "Aguardando um proprietário aprovar este pedido.",
+    "readyToEnable": "Aprovado. Ativar vai iniciar gasto real nesta conta.",
+    "approvedWaitingOwner": "Aprovado. Um proprietário precisa ativar a campanha."
+  },
+  "actions": {
+    "request": "Pedir aprovação",
+    "approve": "Aprovar",
+    "reject": "Recusar",
+    "enable": "Ativar campanha"
+  },
+  "toast": {
+    "requested": "Aprovação solicitada",
+    "approved": "Aprovado",
+    "rejected": "Pedido recusado",
+    "enabled": "Campanha ativada"
+  },
+  "errors": {
+    "badRequest": "O pedido não era válido. Confira os valores e tente novamente.",
+    "unauthorized": "Sua sessão expirou. Entre novamente.",
+    "forbidden": "Não permitido: seu papel, a aprovação, o teto de orçamento ou a conta não permitem esta ação.",
+    "notFound": "A conta ou a aprovação não está mais disponível nesta organização. Recarregue e reconecte a conta, se necessário.",
+    "conflict": "Esta aprovação já foi decidida ou utilizada. Recarregue para ver o status atual.",
+    "invalidBudget": "Informe um orçamento maior que zero (e não menor que o orçamento solicitado).",
+    "killSwitch": "As operações de gasto estão suspensas pelo kill-switch.",
+    "platform": "O Google Ads não confirmou o orçamento da campanha ou a alteração. Nada foi ativado; confira a conta e tente novamente.",
+    "network": "Erro de rede. Verifique sua conexão e tente novamente.",
+    "generic": "Algo deu errado. Tente novamente."
+  },
+  "roles": {
+    "owner": "Proprietário",
+    "admin": "Administrador",
+    "manager": "Gerente",
+    "analyst": "Analista",
+    "viewer": "Visualizador"
+  },
+  "panel": {
+    "title": "Aprovações de gasto",
+    "subtitle": "Pedidos para ativar campanhas nesta conta e quem os decidiu.",
+    "empty": "Nenhuma aprovação de gasto ainda.",
+    "loadFailed": "Não foi possível carregar as aprovações de gasto.",
+    "campaign": "Campanha",
+    "status": "Status",
+    "cap": "Teto de orçamento",
+    "created": "Solicitado em",
+    "unknownCampaign": "Campanha fora da lista atual"
+  }
+}

@@ -18,7 +18,7 @@ from sqlalchemy.orm import sessionmaker
 import app.database as appdb
 from app.core.config import settings
 from app.database import (
-    SessionLocal, TENANT_TABLES, _drop_to_runtime_role, verify_runtime_role_is_safe,
+    SessionLocal, TENANT_TABLES, _set_runtime_role, verify_runtime_role_is_safe,
 )
 from app.models import Brand, Organization
 
@@ -58,7 +58,16 @@ class TestRuntimeRole:
                 "FROM pg_roles r WHERE r.rolname = current_user")).one()
         finally:
             db.close()
-        assert row[0] == settings.DB_RUNTIME_ROLE
+        # development: the owner login + SET ROLE ads_app; secure mode (RUNTIME_DATABASE_URL): a
+        # dedicated login that is a MEMBER of ads_app. Either way: no superuser, no BYPASSRLS.
+        if settings.RUNTIME_DATABASE_URL:
+            db = SessionLocal()
+            try:
+                assert db.execute(text("SELECT pg_has_role(current_user, :r, 'MEMBER')"), {"r": settings.DB_RUNTIME_ROLE}).scalar()
+            finally:
+                db.close()
+        else:
+            assert row[0] == settings.DB_RUNTIME_ROLE
         assert row[1] is False and row[2] is False
 
     def test_startup_guard_accepts_the_runtime_role(self):
@@ -195,7 +204,7 @@ class TestConnectionReuseAndConcurrency:
     def single_connection_engine(self):
         """A pool of exactly ONE connection, with the same runtime-role setup."""
         eng = create_engine(settings.DATABASE_URL, pool_size=1, max_overflow=0)
-        event.listen(eng, "connect", _drop_to_runtime_role)
+        event.listen(eng, "connect", _set_runtime_role)
         yield eng
         eng.dispose()
 

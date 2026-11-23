@@ -62,8 +62,9 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Content-Security-Policy"] = (
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    # a route may set a stricter policy of its own (private file downloads): never loosen it
+    response.headers.setdefault("Content-Security-Policy", (
         "default-src 'self'; "
         "script-src 'self'; "
         "style-src 'self' 'unsafe-inline'; "
@@ -72,7 +73,7 @@ async def add_security_headers(request: Request, call_next):
         "frame-ancestors 'none'; "
         "object-src 'none'; "
         "base-uri 'self'"
-    )
+    ))
     if request.url.scheme == "https":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
@@ -103,7 +104,7 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-Organization-Id"],
     expose_headers=["X-Total-Count"],
     max_age=600,
 )

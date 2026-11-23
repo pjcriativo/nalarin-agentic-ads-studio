@@ -3,10 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { translateBackendMessage } from '../i18n/backendErrors';
 import { TrendingUp, Plus, Play, Pause } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useOrganization } from '../context/OrganizationContext';
 import { useToast } from '../context/ToastContext';
 import ConnectAccountCard from '../components/ConnectAccountCard';
 import PerformanceTable from '../components/PerformanceTable';
 import ConfirmationModal from '../components/ConfirmationModal';
+import SpendApprovalModal from '../components/SpendApprovalModal';
+import SpendApprovalsPanel from '../components/SpendApprovalsPanel';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
@@ -22,6 +25,7 @@ const buildCampaignColumns = (t) => [
 export default function GoogleAdsCampaigns() {
     const { t } = useTranslation('campaigns');
     const { authFetch } = useAuth();
+    const { can } = useOrganization();
     const { showError, showSuccess } = useToast();
 
     const [connection, setConnection] = useState(null);
@@ -47,12 +51,25 @@ export default function GoogleAdsCampaigns() {
     const [statusChangePreview, setStatusChangePreview] = useState(null); // { campaign, targetAction }
     const [statusChanging, setStatusChanging] = useState(false);
 
+    // Enabling spends real money: it goes through the human spend-approval dialog
+    const [approvalCampaign, setApprovalCampaign] = useState(null);
+    const [approvalsRefresh, setApprovalsRefresh] = useState(0);
+
+    // What the server granted this role (UI hints only: the backend authorizes every call)
+    const canManageConnections = can('connections:manage');
+    const canDraft = can('ads:draft');
+    const canPublish = can('ads:publish');
+    const [connectionDenied, setConnectionDenied] = useState(false);
+
     const loadConnection = useCallback(async () => {
         setConnectionLoading(true);
         try {
             const response = await authFetch(`${API_URL}/google-ads/connection`);
             if (response.ok) {
                 setConnection(await response.json());
+                setConnectionDenied(false);
+            } else if (response.status === 403) {
+                setConnectionDenied(true); // role without connections:read
             }
         } catch (error) {
             console.error('Failed to load Google Ads connection', error);
@@ -230,6 +247,10 @@ export default function GoogleAdsCampaigns() {
 
     const handleRequestStatusChange = (campaign) => {
         const isEnabled = campaign.status === 'ENABLED';
+        if (!isEnabled) {
+            setApprovalCampaign(campaign); // enable = spend: request / approve / execute in the approval dialog
+            return;
+        }
         setStatusChangePreview({
             campaign,
             action: isEnabled ? 'pause' : 'enable',
@@ -274,7 +295,7 @@ export default function GoogleAdsCampaigns() {
                     </h1>
                     <p className="text-gray-600">{t('googleAdsCampaigns.connectAGoogleAdsAccount')}</p>
                 </div>
-                {connection?.connected && (
+                {connection?.connected && canDraft && (
                     <button
                         onClick={() => setShowCreateForm((v) => !v)}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors shadow-sm shrink-0"
@@ -285,9 +306,17 @@ export default function GoogleAdsCampaigns() {
                 )}
             </div>
 
-            {!connectionLoading && (
+            {!connectionLoading && connectionDenied && (
+                <section role="note" data-testid="connection-denied" className="border border-amber-300 bg-amber-50 px-4 py-4 text-amber-950">
+                    <h2 className="font-bold">{t('google.connectionDeniedTitle')}</h2>
+                    <p className="mt-1 text-sm leading-6">{t('google.connectionDeniedBody')}</p>
+                </section>
+            )}
+
+            {!connectionLoading && !connectionDenied && (
                 <div className="space-y-3">
                     <ConnectAccountCard
+                        canManage={canManageConnections}
                         platformName="Google Ads"
                         icon={TrendingUp}
                         connected={!!connection?.connected}
@@ -297,7 +326,10 @@ export default function GoogleAdsCampaigns() {
                         onDisconnect={handleDisconnect}
                         disconnecting={disconnecting}
                     />
-                    {connection?.connected && connections.length > 1 && !selectingAccount && (
+                    {!connection?.connected && (
+                        <p role="note" className="text-xs text-gray-500" data-testid="reconnect-notice">{t('google.reconnectNotice')}</p>
+                    )}
+                    {connection?.connected && canManageConnections && connections.length > 1 && !selectingAccount && (
                         <button
                             type="button"
                             onClick={() => setSelectingAccount(true)}
@@ -309,7 +341,7 @@ export default function GoogleAdsCampaigns() {
                 </div>
             )}
 
-            {selectingAccount && connections.length > 0 && (
+            {selectingAccount && canManageConnections && connections.length > 0 && (
                 <section aria-labelledby="google-account-heading" className="border-y border-gray-200 py-5">
                     <div className="flex items-center justify-between gap-4 mb-3">
                         <h2 id="google-account-heading" className="text-lg font-bold text-gray-900">{t('googleAdsCampaigns.chooseAGoogleAdsAccount')}</h2>
@@ -419,7 +451,8 @@ export default function GoogleAdsCampaigns() {
                     renderActions={(campaign) => (
                         <button
                             onClick={() => handleRequestStatusChange(campaign)}
-                            disabled={!['ENABLED', 'PAUSED'].includes(campaign.status)}
+                            disabled={!['ENABLED', 'PAUSED'].includes(campaign.status) || (campaign.status === 'ENABLED' && !canPublish)}
+                            title={campaign.status === 'ENABLED' && !canPublish ? t('google.needsPublish') : undefined}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 text-gray-700 hover:border-amber-500 hover:text-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         >
                             {campaign.status === 'ENABLED' ? <Pause size={13} /> : <Play size={13} />}
@@ -428,6 +461,24 @@ export default function GoogleAdsCampaigns() {
                     )}
                 />
             )}
+
+            {connection?.connected && !campaignError && (
+                <SpendApprovalsPanel
+                    accountId={connection.customer_id}
+                    campaigns={campaigns}
+                    onOpen={setApprovalCampaign}
+                    refreshKey={approvalsRefresh}
+                />
+            )}
+
+            <SpendApprovalModal
+                isOpen={!!approvalCampaign}
+                campaign={approvalCampaign}
+                accountId={connection?.customer_id}
+                accountLabel={connection?.account_name || (connection?.customer_id && formatCustomerId(connection.customer_id))}
+                onClose={() => { setApprovalCampaign(null); setApprovalsRefresh((n) => n + 1); }}
+                onExecuted={loadCampaigns}
+            />
 
             <ConfirmationModal
                 isOpen={!!createPreview}

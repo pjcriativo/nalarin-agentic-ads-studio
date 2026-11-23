@@ -16,6 +16,7 @@ from app.core.audit import audit_denied, audit_event
 from app.core.deps import get_current_active_user
 from app.core.tenancy import (
     ROLES,
+    ROLE_PERMISSIONS,
     OrgContext,
     bind_org_to_session,
     build_context,
@@ -114,7 +115,20 @@ def list_my_organizations(
         .order_by(Organization.created_at)
         .all()
     )
-    return [{"id": o.id, "name": o.name, "slug": o.slug, "role": m.role} for m, o in rows]
+    # ``permissions`` is what the SERVER grants this role (ROLE_PERMISSIONS): the UI may
+    # use it to hide controls, but every endpoint still enforces it on its own.
+    return [{"id": o.id, "name": o.name, "slug": o.slug, "role": m.role,
+             "permissions": sorted(ROLE_PERMISSIONS.get(m.role, frozenset()))} for m, o in rows]
+
+
+@router.get("/role-matrix")
+def role_matrix(user: User = Depends(get_current_active_user)):
+    """What each organization role is granted (the server's ROLE_PERMISSIONS, verbatim).
+    Informational for the UI; it grants nothing: every endpoint enforces on its own."""
+    return {
+        "roles": list(ROLES),  # owner first
+        "permissions": {role: sorted(ROLE_PERMISSIONS[role]) for role in ROLES},
+    }
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)

@@ -9,6 +9,7 @@ import AdSetStep from '../components/AdSetStep';
 import AdCreativeStep from '../components/AdCreativeStep';
 import BulkAdCreation from '../components/BulkAdCreation';
 import ConnectAccountCard from '../components/ConnectAccountCard';
+import { useOrganization } from '../context/OrganizationContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
@@ -17,6 +18,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 const FacebookCampaignWizard = () => {
     const { t } = useTranslation('campaigns');
     const { authFetch } = useAuth();
+    const { can } = useOrganization(); // UI hints only: the backend authorizes every call
     const { showError, showSuccess } = useToast();
     const [currentStep, setCurrentStep] = useState(1);
     const [connection, setConnection] = useState(null);
@@ -194,6 +196,7 @@ const FacebookCampaignWizard = () => {
                 {!connectionLoading && (
                     <div className="space-y-3">
                         <ConnectAccountCard
+                            canManage={can('connections:manage')}
                             platformName="Meta Ads"
                             icon={Megaphone}
                             connected={!!connection?.connected}

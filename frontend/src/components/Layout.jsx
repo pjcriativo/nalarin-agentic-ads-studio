@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
+import OrganizationSwitcher from './OrganizationSwitcher';
 import { APP_NAME, APP_LOGO, APP_TAGLINE } from '../lib/branding';
 
 export default function Layout() {
@@ -83,7 +84,10 @@ export default function Layout() {
                     <img src={APP_LOGO} alt={APP_NAME} className="w-7 h-7 rounded-lg object-cover flex-shrink-0" />
                     <span className="font-bold text-amber-900 truncate text-sm">{APP_NAME}</span>
                 </div>
-                <LanguageSwitcher />
+                <div className="flex items-center gap-1 flex-shrink-0">
+                    <OrganizationSwitcher />
+                    <LanguageSwitcher />
+                </div>
             </header>
 
             {/* Mobile drawer backdrop */}
@@ -269,7 +273,8 @@ export default function Layout() {
                 {/* Language switcher: top-right of the header area (desktop; the
                     mobile top bar hosts its own copy). Absolutely positioned inside
                     the scroll container so it never shifts the page layout. */}
-                <div className="hidden md:block absolute top-1 right-4 z-30">
+                <div className="hidden md:flex items-center gap-2 absolute top-1 right-4 z-30">
+                    <OrganizationSwitcher />
                     <LanguageSwitcher />
                 </div>
                 <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto">

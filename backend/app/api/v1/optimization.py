@@ -237,6 +237,7 @@ class ApprovalDecision(BaseModel):
 def _approval_out(a: SpendApproval) -> Dict[str, Any]:
     return {
         "id": a.id, "provider": a.provider, "account_id": a.account_id, "action": a.action,
+        "payload_hash": a.payload_hash,
         "status": a.status, "requested_budget_micros": a.requested_budget_micros,
         "max_budget_micros": a.max_budget_micros, "expires_at": a.expires_at, "created_at": a.created_at,
         "requested_by_user_id": a.requested_by_user_id, "requested_by_api_key_id": a.requested_by_api_key_id,

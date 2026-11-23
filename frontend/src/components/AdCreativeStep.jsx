@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronRight, Upload, X, Loader, Trash2, Film, Image } from 'lucide-react';
 import { useCampaign } from '../context/CampaignContext';
 import { getPages } from '../lib/facebookApi';
+import { tenantStorage } from '../lib/tenant';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
@@ -95,7 +96,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
 
     // Load last used page ID on mount
     useEffect(() => {
-        const lastUsedPageId = localStorage.getItem('lastUsedPageId');
+        const lastUsedPageId = tenantStorage.getItem('lastUsedPageId');
         if (lastUsedPageId && !creativeData.pageId) {
             handleInputChange('pageId', lastUsedPageId);
         }
@@ -104,7 +105,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
     // Load default URL from local storage for this ad account
     useEffect(() => {
         if (selectedAdAccount && !creativeData.websiteUrl) {
-            const savedUrl = localStorage.getItem(`defaultUrl_${selectedAdAccount.id}`);
+            const savedUrl = tenantStorage.getItem(`defaultUrl_${selectedAdAccount.id}`);
             if (savedUrl) {
                 handleInputChange('websiteUrl', savedUrl);
             }
@@ -126,7 +127,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
 
             // If no page is selected and we have pages, select the first one (or the last used one if it exists in the list)
             if (fetchedPages.length > 0 && !creativeData.pageId) {
-                const lastUsedPageId = localStorage.getItem('lastUsedPageId');
+                const lastUsedPageId = tenantStorage.getItem('lastUsedPageId');
                 const pageToSelect = fetchedPages.find(p => p.id === lastUsedPageId) || fetchedPages[0];
                 handlePageSelection(pageToSelect.id, fetchedPages);
             } else if (fetchedPages.length === 0) {
@@ -149,16 +150,16 @@ const AdCreativeStep = ({ onNext, onBack }) => {
             pageId,
             instagramId: selectedPage ? selectedPage.instagramId : null
         }));
-        localStorage.setItem('lastUsedPageId', pageId);
+        tenantStorage.setItem('lastUsedPageId', pageId);
     };
 
     // Load saved creative fields from local storage for this ad account
     useEffect(() => {
         if (selectedAdAccount) {
-            const savedHeadlines = localStorage.getItem(`defaultHeadlines_${selectedAdAccount.id}`);
-            const savedBodies = localStorage.getItem(`defaultBodies_${selectedAdAccount.id}`);
-            const savedDescription = localStorage.getItem(`defaultDescription_${selectedAdAccount.id}`);
-            const savedCta = localStorage.getItem(`defaultCta_${selectedAdAccount.id}`);
+            const savedHeadlines = tenantStorage.getItem(`defaultHeadlines_${selectedAdAccount.id}`);
+            const savedBodies = tenantStorage.getItem(`defaultBodies_${selectedAdAccount.id}`);
+            const savedDescription = tenantStorage.getItem(`defaultDescription_${selectedAdAccount.id}`);
+            const savedCta = tenantStorage.getItem(`defaultCta_${selectedAdAccount.id}`);
 
             if (savedHeadlines && !creativeData.headlines[0]) {
                 try {
@@ -198,17 +199,17 @@ const AdCreativeStep = ({ onNext, onBack }) => {
 
         // Persist page ID
         if (field === 'pageId') {
-            localStorage.setItem('lastUsedPageId', value);
+            tenantStorage.setItem('lastUsedPageId', value);
         }
 
         // Persist description
         if (field === 'description' && selectedAdAccount) {
-            localStorage.setItem(`defaultDescription_${selectedAdAccount.id}`, value);
+            tenantStorage.setItem(`defaultDescription_${selectedAdAccount.id}`, value);
         }
 
         // Persist CTA
         if (field === 'cta' && selectedAdAccount) {
-            localStorage.setItem(`defaultCta_${selectedAdAccount.id}`, value);
+            tenantStorage.setItem(`defaultCta_${selectedAdAccount.id}`, value);
         }
     };
 
@@ -221,7 +222,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
         }));
 
         if (selectedAdAccount) {
-            localStorage.setItem(`defaultBodies_${selectedAdAccount.id}`, JSON.stringify(newBodies));
+            tenantStorage.setItem(`defaultBodies_${selectedAdAccount.id}`, JSON.stringify(newBodies));
         }
     };
 
@@ -234,7 +235,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
         }));
 
         if (selectedAdAccount) {
-            localStorage.setItem(`defaultHeadlines_${selectedAdAccount.id}`, JSON.stringify(newHeadlines));
+            tenantStorage.setItem(`defaultHeadlines_${selectedAdAccount.id}`, JSON.stringify(newHeadlines));
         }
     };
 
@@ -351,7 +352,7 @@ const AdCreativeStep = ({ onNext, onBack }) => {
 
         // Save URL to local storage for this ad account
         if (selectedAdAccount && creativeData.websiteUrl) {
-            localStorage.setItem(`defaultUrl_${selectedAdAccount.id}`, creativeData.websiteUrl);
+            tenantStorage.setItem(`defaultUrl_${selectedAdAccount.id}`, creativeData.websiteUrl);
         }
 
         onNext();

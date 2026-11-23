@@ -1,5 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- context modules intentionally export the provider and its hook together */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { bindUser, clearTenant, dropStaleResponse, getEpoch, isAccessLostMessage, reportAccessLost, tenantHeaders } from '../lib/tenant';
+import { registerAuthBridge } from '../lib/http';
 
 const AuthContext = createContext();
 
@@ -64,10 +66,11 @@ export const AuthProvider = ({ children }) => {
         return () => clearInterval(refreshInterval);
     }, [refreshToken]);
 
-    const fetchUser = async () => {
+    // `token` matters after a refresh: the closure's `accessToken` is still the EXPIRED one
+    const fetchUser = async (token = accessToken) => {
         const response = await fetch(`${API_URL}/auth/me`, {
             headers: {
-                'Authorization': `Bearer ${accessToken}`,
+                'Authorization': `Bearer ${token}`,
             },
         });
 
@@ -76,6 +79,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         const userData = await response.json();
+        bindUser(userData.id); // loads THIS user's persisted organization selection (never another user's)
         setUser(userData);
         return userData;
     };
@@ -97,6 +101,9 @@ export const AuthProvider = ({ children }) => {
             }
 
             const data = await response.json();
+            // A new session: forget the previous user's organization BEFORE the new token is
+            // in place, so no request can pair the new identity with the old tenant.
+            clearTenant();
             setAccessToken(data.access_token);
             setRefreshToken(data.refresh_token);
             localStorage.setItem('accessToken', data.access_token);
@@ -111,6 +118,7 @@ export const AuthProvider = ({ children }) => {
 
             if (userResponse.ok) {
                 const userData = await userResponse.json();
+                bindUser(userData.id);
                 setUser(userData);
             }
 
@@ -171,6 +179,7 @@ export const AuthProvider = ({ children }) => {
         setRefreshToken(null);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        clearTenant(); // selection + tenant-scoped preferences die with the session
     }, [accessToken, refreshToken]);
 
     // Shared in-flight refresh promise: when several concurrent requests hit
@@ -215,8 +224,8 @@ export const AuthProvider = ({ children }) => {
                 localStorage.setItem('refreshToken', data.refresh_token);
             }
 
-            // Re-fetch user data with new token
-            await fetchUser();
+            // Re-fetch user data with the NEW token
+            await fetchUser(data.access_token);
 
             return data.access_token;
         })();
@@ -230,7 +239,10 @@ export const AuthProvider = ({ children }) => {
     };
 
     // Helper to make authenticated API calls
+    // `options.tenant === false` marks a request that is not organization-scoped
+    // (the organization list itself): no X-Organization-Id, no stale-tenant guard.
     const authFetch = useCallback(async (url, options = {}) => {
+        const { tenant = true, ...fetchOptions } = options;
         const currentToken = localStorage.getItem('accessToken');
         const currentRefreshToken = localStorage.getItem('refreshToken');
 
@@ -238,9 +250,10 @@ export const AuthProvider = ({ children }) => {
             throw new Error('No access token available');
         }
 
+        const startEpoch = getEpoch();
         const makeRequest = async (authToken) => {
             const response = await fetch(url, {
-                ...options,
+                ...fetchOptions,
                 // Needed so the browser stores/sends the oauth_state cookie
                 // (Sprint 0's OAuth CSRF mechanism) across the cross-origin
                 // fetch between the frontend (5173) and backend (8010) — the
@@ -248,7 +261,9 @@ export const AuthProvider = ({ children }) => {
                 // drops Set-Cookie on cross-origin responses.
                 credentials: 'include',
                 headers: {
-                    ...options.headers,
+                    // read at call time: after a token refresh the retry carries the CURRENT organization
+                    ...(tenant ? tenantHeaders() : {}),
+                    ...fetchOptions.headers,
                     'Authorization': `Bearer ${authToken}`,
                 },
             });
@@ -273,8 +288,26 @@ export const AuthProvider = ({ children }) => {
             }
         }
 
+        if (tenant) {
+            // The organization (or user) changed while this request was in flight:
+            // the answer belongs to the PREVIOUS tenant and must never reach the UI.
+            if (getEpoch() !== startEpoch) return dropStaleResponse();
+            if (response.status === 403 || response.status === 400) {
+                try {
+                    const body = await response.clone().json();
+                    if (isAccessLostMessage(body?.detail)) reportAccessLost();
+                } catch { /* not JSON: nothing to learn */ }
+            }
+        }
+
         return response;
     }, [refreshAccessToken, logout]);
+
+    // axios callers (src/api/*.js) share this refresh through the bridge in lib/http.js
+    useEffect(() => {
+        registerAuthBridge({ refresh: refreshAccessToken });
+        return () => registerAuthBridge(null);
+    });
 
     // Check if user has a specific role
     const hasRole = useCallback((roleName) => {

@@ -24,6 +24,9 @@ class TestFacebookServiceVideo:
             mock_response = MagicMock()
             mock_response.iter_content.return_value = [b"fake video content"]
             mock_response.raise_for_status = MagicMock()
+            mock_response.is_redirect = False            # the SSRF guard follows redirects by hand
+            mock_response.is_permanent_redirect = False
+            mock_response.headers = {"Content-Type": "video/mp4"}
 
             # Mock AdVideo
             mock_video = MagicMock()

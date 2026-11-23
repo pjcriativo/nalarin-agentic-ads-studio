@@ -882,6 +882,8 @@ class TestAuditsAndReports:
 class TestSecureDatabaseMode:
     def test_production_without_a_runtime_login_url_refuses_to_start(self, monkeypatch):
         from app.core.config import settings
+        if settings.RUNTIME_DATABASE_URL:
+            pytest.skip("this run already uses RUNTIME_DATABASE_URL (secure-mode homologation)")
         from app.database import verify_runtime_role_is_safe
         monkeypatch.setattr(settings, "APP_ENV", "production")
         assert settings.secure_db_mode_required is True
@@ -895,6 +897,8 @@ class TestSecureDatabaseMode:
 
     def test_development_default_does_not_force_it(self):
         from app.core.config import settings
+        if settings.is_production:
+            pytest.skip("APP_ENV=production in this run (secure-mode homologation)")
         assert settings.APP_ENV == "development" and settings.secure_db_mode_required is False
 
     def test_provisioned_login_role_has_no_privilege_and_cannot_reset_role(self, db_session, monkeypatch):

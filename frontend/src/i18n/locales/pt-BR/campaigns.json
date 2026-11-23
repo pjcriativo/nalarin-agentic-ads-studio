@@ -102,7 +102,11 @@
     "enableFailed": "Falha ao ativar a campanha",
     "accountFallback": "Conta {{id}}",
     "budgetPlaceholder": "ex.: 25",
-    "pleaseWait": "Aguarde…"
+    "pleaseWait": "Aguarde…",
+    "reconnectNotice": "Contas conectadas antes da introdução das organizações não são compartilhadas com esta organização. Reconecte a conta aqui ou peça a um administrador para atribuir a conexão anterior.",
+    "connectionDeniedTitle": "Você não pode ver as conexões de contas de anúncios",
+    "connectionDeniedBody": "Seu papel nesta organização não inclui ver contas de anúncios conectadas. Peça a um administrador se precisar de acesso.",
+    "needsPublish": "Pausar uma campanha ativa exige o papel de Administrador ou Proprietário."
   },
   "steps": {
     "adAccount": "Conta de anúncios",
@@ -124,7 +128,8 @@
     "since": "Desde {{date}}",
     "disconnecting": "Desconectando…",
     "disconnect": "Desconectar",
-    "connect": "Conectar"
+    "connect": "Conectar",
+    "needsAdmin": "Somente administradores e proprietários da organização podem conectar ou desconectar contas de anúncios."
   },
   "adAccountStep": {
     "selectAdAccount": "Selecionar conta de anúncios",

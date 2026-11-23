@@ -22,6 +22,16 @@ vi.mock('axios', () => {
 vi.mock('../context/AuthContext', () => {
     const authFetch = vi.fn(async (url) => {
         const u = String(url);
+        if (/\/organizations\/role-matrix/.test(u)) {
+            const perms = ['ads:read', 'ads:draft', 'ads:publish', 'ads:spend', 'brands:read', 'connections:manage'];
+            return { ok: true, status: 200, json: async () => ({ roles: ['owner', 'viewer'], permissions: { owner: perms, viewer: ['ads:read', 'brands:read'] } }) };
+        }
+        if (/\/organizations(\?|$)/.test(u)) {
+            return { ok: true, status: 200, json: async () => [{ id: 'org-1', name: 'Acme Org', slug: 'acme', role: 'owner', permissions: ['ads:read', 'ads:draft', 'ads:publish', 'ads:spend', 'brands:read', 'connections:read', 'connections:manage'] }] };
+        }
+        if (/\/optimization\/approvals/.test(u)) {
+            return { ok: true, status: 200, json: async () => [] };
+        }
         if (/\/optimization\/status/.test(u)) {
             return { ok: true, status: 200, json: async () => ({ kill_switch_active: false, auto_enabled: true, allowed_actions: ['pause_campaign'], max_budget_micros: 0, max_daily_spend_micros: 5000000, engine_active: false, operating_hours: { start: null, end: null, timezone: 'America/Sao_Paulo' } }) };
         }

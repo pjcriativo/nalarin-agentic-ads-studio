@@ -154,7 +154,13 @@ def serve_private_upload(org_id: str, filename: str):
     path = local_path(org_id, filename)
     if path is None or not path.is_file():
         raise HTTPException(status_code=404, detail="Not found")
-    return FileResponse(path, headers={"Cache-Control": "private, max-age=3600"})
+    # Served as passive media only: sandboxed, no sniffing, URL not leaked through Referer.
+    return FileResponse(path, headers={
+        "Cache-Control": "private, max-age=3600",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+    })
 
 
 @files_router.get("/uploads/{filename}", include_in_schema=False)

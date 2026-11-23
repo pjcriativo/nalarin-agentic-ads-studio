@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { translateBackendMessage } from '../i18n/backendErrors';
 import { Music2, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useOrganization } from '../context/OrganizationContext';
 import { useToast } from '../context/ToastContext';
 import ConnectAccountCard from '../components/ConnectAccountCard';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -21,6 +22,7 @@ const buildCampaignColumns = (t) => [
 export default function TikTokAdsCampaigns() {
     const { t } = useTranslation('campaigns');
     const { authFetch } = useAuth();
+    const { can } = useOrganization(); // UI hints only: the backend authorizes every call
     const { showError, showSuccess } = useToast();
     const [connection, setConnection] = useState(null);
     const [connections, setConnections] = useState([]);
@@ -192,12 +194,12 @@ export default function TikTokAdsCampaigns() {
                     </h1>
                     <p className="text-sm sm:text-base text-gray-600">{t('tikTokAdsCampaigns.connectATiktokAdvertiserTo')}</p>
                 </div>
-                {connection?.connected && <button onClick={() => setShowCreateForm((visible) => !visible)} className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700"><Plus size={18} />{t('tikTokAdsCampaigns.createCampaign')}</button>}
+                {connection?.connected && can('ads:draft') && <button onClick={() => setShowCreateForm((visible) => !visible)} className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700"><Plus size={18} />{t('tikTokAdsCampaigns.createCampaign')}</button>}
             </div>
 
             {!loadingConnection && (
                 <div className="space-y-3">
-                    <ConnectAccountCard platformName="TikTok Ads" icon={Music2} connected={!!connection?.connected} accountLabel={connection?.account_name || connection?.advertiser_id} connectedAt={connection?.connected_at} onConnect={connect} onDisconnect={disconnect} />
+                    <ConnectAccountCard canManage={can('connections:manage')} platformName="TikTok Ads" icon={Music2} connected={!!connection?.connected} accountLabel={connection?.account_name || connection?.advertiser_id} connectedAt={connection?.connected_at} onConnect={connect} onDisconnect={disconnect} />
                     {connection?.connected && connections.length > 1 && !selectingAccount && (
                         <button type="button" onClick={() => setSelectingAccount(true)} className="text-sm font-medium text-amber-700 hover:text-amber-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600">
                             {t('tikTokAdsCampaigns.changeTiktokAdvertiser')}

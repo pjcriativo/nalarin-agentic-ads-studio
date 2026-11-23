@@ -1,5 +1,7 @@
 import i18n from '../i18n';
 import { translateBackendMessage } from '../i18n/backendErrors';
+import { dropStaleResponse, getEpoch, tenantHeaders } from './tenant';
+import { authBridge } from './http';
 
 // Facebook Marketing API Integration Service
 // Now proxies through our backend with authentication
@@ -12,15 +14,26 @@ const getAuthHeaders = () => {
     return token ? { 'Authorization': `Bearer ${token}` } : {};
 };
 
-// Authenticated fetch wrapper
+// Authenticated fetch wrapper: bearer + the CURRENT organization, one refresh
+// retry on 401 (shared with AuthContext) and no answer for a previous tenant.
 const authFetch = async (url, options = {}) => {
-    const response = await fetch(url, {
+    const startEpoch = getEpoch();
+    const send = () => fetch(url, {
         ...options,
         headers: {
+            ...tenantHeaders(),
             ...options.headers,
             ...getAuthHeaders(),
         },
     });
+    let response = await send();
+    if (response.status === 401 && authBridge.refresh) {
+        try {
+            await authBridge.refresh();
+            response = await send();
+        } catch { /* keep the 401: the caller reports it */ }
+    }
+    if (getEpoch() !== startEpoch) return dropStaleResponse();
     return response;
 };
 

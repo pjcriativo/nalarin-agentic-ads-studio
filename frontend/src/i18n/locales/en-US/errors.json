@@ -62,7 +62,16 @@
     "googleApiError": "Google Ads API error.",
     "tiktokRefreshFailed": "TikTok token refresh did not return an access token.",
     "tiktokRequestFailed": "TikTok Ads API request failed: {{message}}",
-    "tiktokInvalidResponse": "TikTok Ads returned an invalid response (HTTP {{status}})."
+    "tiktokInvalidResponse": "TikTok Ads returned an invalid response (HTTP {{status}}).",
+    "insufficientPermission": "Your role in this organization does not allow this action.",
+    "noOrgAccess": "You do not have access to this organization.",
+    "noOrgMembership": "You are not an active member of any organization.",
+    "adAccountNotLinked": "That ad account is not linked to this organization.",
+    "oauthStateInvalid": "The connection link is invalid, expired or was already used. Start the connection again.",
+    "oauthAccessLost": "You no longer have access to connect accounts in this organization.",
+    "platformAdminRequired": "Only the platform administrator can change this.",
+    "approvalRequired": "This action can spend money and needs a human-approved spend approval.",
+    "severalOrganizations": "You belong to several organizations: pick one in the header."
   },
   "api": {
     "failedToFetchAdAccounts": "Failed to fetch ad accounts",

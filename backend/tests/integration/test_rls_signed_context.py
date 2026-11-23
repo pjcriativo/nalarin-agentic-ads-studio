@@ -189,6 +189,8 @@ class TestRunningAsALoginRole:
             db.close()
 
     def test_strict_mode_accepts_a_login_role_and_rejects_the_owner(self, login_engine, db_session, monkeypatch):
+        if settings.RUNTIME_DATABASE_URL:
+            pytest.skip("the whole suite already runs on the dedicated login role (secure-mode homologation)")
         monkeypatch.setattr(settings, "REQUIRE_LOGIN_RUNTIME_ROLE", True)
         verify_runtime_role_is_safe(login_engine)  # unprivileged login: fine
         from app.database import engine

@@ -82,9 +82,17 @@ def _runtime_role() -> str:
 
 @event.listens_for(engine, "connect")
 def _drop_to_runtime_role(dbapi_connection, _record):
-    role = _runtime_role()
-    if not role or settings.RUNTIME_DATABASE_URL:
+    if settings.RUNTIME_DATABASE_URL:
         return  # a dedicated login role needs no SET ROLE (and cannot escape it)
+    _set_runtime_role(dbapi_connection, _record)
+
+
+def _set_runtime_role(dbapi_connection, _record=None):
+    """Unconditionally ``SET ROLE`` to the runtime role (development mode; also used by
+    tests that build their own engines on a privileged login)."""
+    role = _runtime_role()
+    if not role:
+        return
     cursor = dbapi_connection.cursor()
     try:
         cursor.execute(f'SET ROLE "{role}"')  # identifier validated by _ROLE_RE

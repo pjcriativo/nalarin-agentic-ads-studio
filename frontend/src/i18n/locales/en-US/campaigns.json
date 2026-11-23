@@ -102,7 +102,11 @@
     "enableFailed": "Failed to enable campaign",
     "accountFallback": "Account {{id}}",
     "budgetPlaceholder": "e.g. 25",
-    "pleaseWait": "Please wait…"
+    "pleaseWait": "Please wait…",
+    "reconnectNotice": "Accounts connected before organizations were introduced are not shared with this organization. Reconnect the account here, or ask an administrator to assign the earlier connection.",
+    "connectionDeniedTitle": "You cannot view ad-account connections",
+    "connectionDeniedBody": "Your role in this organization does not include viewing connected ad accounts. Ask an administrator if you need access.",
+    "needsPublish": "Pausing a live campaign requires the Admin or Owner role."
   },
   "steps": {
     "adAccount": "Ad Account",
@@ -124,7 +128,8 @@
     "since": "Since {{date}}",
     "disconnecting": "Disconnecting…",
     "disconnect": "Disconnect",
-    "connect": "Connect"
+    "connect": "Connect",
+    "needsAdmin": "Only organization admins and owners can connect or disconnect ad accounts."
   },
   "adAccountStep": {
     "selectAdAccount": "Select Ad Account",

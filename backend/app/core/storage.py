@@ -164,3 +164,73 @@ def assert_public_http_url(url: str) -> None:
             raise HTTPException(status_code=400, detail="Invalid media reference")
         if not ip.is_global or ip.is_multicast:
             raise HTTPException(status_code=400, detail="Invalid media reference")
+
+
+MAX_FETCH_REDIRECTS = 3
+
+
+def fetch_public_to_file(url: str, dest, max_bytes: int, timeout: int = 30) -> str:
+    """Download ``url`` into the binary file object ``dest`` (streaming, size capped).
+
+    Every hop (the URL and each redirect, followed MANUALLY, at most 3) goes
+    through :func:`assert_public_http_url`, so a public URL cannot bounce the
+    server to an internal address. Returns the Content-Type. Raises ValueError on
+    any refusal. RESIDUAL RISK: DNS rebinding between the check and the connect.
+    """
+    import requests
+
+    current = url
+    for _hop in range(MAX_FETCH_REDIRECTS + 1):
+        try:
+            assert_public_http_url(current)
+        except HTTPException:
+            raise ValueError("Refused to fetch a non-public address")
+        response = requests.get(current, timeout=timeout, stream=True, allow_redirects=False)
+        try:
+            if response.is_redirect or response.is_permanent_redirect:
+                location = response.headers.get("Location")
+                if not location:
+                    raise ValueError("Redirect without a location")
+                from urllib.parse import urljoin
+                current = urljoin(current, location)
+                continue
+            response.raise_for_status()
+            total = 0
+            for chunk in response.iter_content(chunk_size=65536):
+                total += len(chunk)
+                if total > max_bytes:
+                    raise ValueError("Remote file is too large")
+                dest.write(chunk)
+            return response.headers.get("Content-Type", "")
+        finally:
+            response.close()
+    raise ValueError("Too many redirects")
+
+
+async def fetch_public_bytes(url: str, max_bytes: int, timeout: float = 30.0) -> bytes:
+    """Async variant for in-memory downloads (same guard, manual redirects, size cap)."""
+    import httpx
+    from urllib.parse import urljoin
+
+    current = url
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+        for _hop in range(MAX_FETCH_REDIRECTS + 1):
+            try:
+                assert_public_http_url(current)
+            except HTTPException:
+                raise ValueError("Refused to fetch a non-public address")
+            async with client.stream("GET", current) as response:
+                if response.is_redirect:
+                    location = response.headers.get("location")
+                    if not location:
+                        raise ValueError("Redirect without a location")
+                    current = urljoin(current, location)
+                    continue
+                response.raise_for_status()
+                data = bytearray()
+                async for chunk in response.aiter_bytes():
+                    data.extend(chunk)
+                    if len(data) > max_bytes:
+                        raise ValueError("Remote file is too large")
+                return bytes(data)
+    raise ValueError("Too many redirects")

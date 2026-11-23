@@ -65,6 +65,21 @@ jobs:
         run: |
           pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing:skip-covered
 
+      # SECURE DATABASE MODE (what production must use): the API connects as a dedicated,
+      # unprivileged LOGIN role (RUNTIME_DATABASE_URL) with APP_ENV=production -- no SET ROLE,
+      # nothing to RESET ROLE to. The role is provisioned by the suite itself with the same code
+      # operators use (app/scripts/provision_runtime_login.py); credentials are CI-only.
+      - name: Homologate secure database mode (tenant isolation on the dedicated login role)
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgresql://ads_studio_test:ads_studio_test@localhost:5432/ads_studio_test
+          RUNTIME_DATABASE_URL: postgresql://ads_homolog_login:homolog-only-password-0123@localhost:5432/ads_studio_test
+          APP_ENV: production
+          SECRET_KEY: ci-only-secret-key-not-used-anywhere-else-0123456789
+          OAUTH_TOKEN_ENCRYPTION_KEY: 'PPq4rM9mxZ-0N0vXn3t2-k9RxFWyDo2AyaJISOO29Co='
+        run: |
+          pytest tests/integration tests/unit/test_multitenancy_api.py tests/unit/test_tenant_isolation_complete.py                  tests/unit/test_tenant_integrations.py tests/unit/test_homologation_0104.py -q --tb=short
+
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:

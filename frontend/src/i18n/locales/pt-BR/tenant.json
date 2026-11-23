@@ -1,0 +1,90 @@
+{
+  "switcher": {
+    "label": "Organização: {{name}}. Trocar de organização",
+    "heading": "Organização",
+    "single": "Você pertence a uma única organização.",
+    "viewPermissions": "Ver permissões por papel"
+  },
+  "toast": {
+    "accessLost": "Você não tem mais acesso à organização selecionada. Trocamos para outra."
+  },
+  "boundary": {
+    "loading": "Carregando organização",
+    "noneTitle": "Sem acesso a nenhuma organização",
+    "noneBody": "Sua conta não é membro ativo de nenhuma organização. Peça a um administrador para adicioná-lo e entre novamente.",
+    "errorTitle": "Não foi possível carregar suas organizações",
+    "errorBody": "Não conseguimos verificar seu acesso às organizações. Verifique sua conexão e tente novamente.",
+    "retry": "Tentar novamente",
+    "logout": "Sair"
+  },
+  "permissions": {
+    "title": "Permissões por papel",
+    "yourRole": "Em {{organization}} você é {{role}}.",
+    "disclaimer": "Esta tabela mostra o que o servidor concede a cada papel. A interface apenas esconde o que você não pode fazer; o servidor confere cada ação.",
+    "close": "Fechar",
+    "loading": "Carregando permissões…",
+    "loadFailed": "Não foi possível carregar as permissões. Tente novamente mais tarde.",
+    "capability": "Permissão",
+    "allowed": "Permitido",
+    "denied": "Não permitido"
+  },
+  "roles": {
+    "owner": "Proprietário",
+    "admin": "Administrador",
+    "manager": "Gerente",
+    "analyst": "Analista",
+    "viewer": "Visualizador"
+  },
+  "perm": {
+    "group": {
+      "org": "Organização",
+      "members": "Membros",
+      "brands": "Marcas",
+      "products": "Produtos",
+      "profiles": "Perfis de cliente",
+      "ads": "Anúncios",
+      "templates": "Templates",
+      "campaigns": "Campanhas",
+      "research": "Pesquisa",
+      "uploads": "Arquivos",
+      "reports": "Relatórios",
+      "connections": "Contas de anúncios",
+      "apikeys": "Chaves de API",
+      "audit": "Auditoria"
+    },
+    "org_read": "Ver a organização",
+    "org_manage": "Gerenciar a organização",
+    "members_read": "Ver membros",
+    "members_manage": "Adicionar, alterar e remover membros",
+    "brands_read": "Ver marcas",
+    "brands_write": "Criar e editar marcas",
+    "brands_delete": "Excluir marcas",
+    "products_read": "Ver produtos",
+    "products_write": "Criar e editar produtos",
+    "products_delete": "Excluir produtos",
+    "profiles_read": "Ver perfis de cliente",
+    "profiles_write": "Criar e editar perfis de cliente",
+    "profiles_delete": "Excluir perfis de cliente",
+    "ads_read": "Ver anúncios e dados das plataformas",
+    "ads_write": "Criar e salvar criativos",
+    "ads_delete": "Excluir criativos",
+    "ads_draft": "Preparar anúncios e pedir aprovação de gasto",
+    "ads_publish": "Pausar ou alterar campanhas ativas",
+    "ads_spend": "Aprovar e ativar gastos",
+    "templates_read": "Ver templates",
+    "templates_write": "Enviar e analisar templates",
+    "templates_delete": "Excluir templates",
+    "campaigns_read": "Ver campanhas salvas",
+    "campaigns_write": "Salvar campanhas",
+    "campaigns_delete": "Excluir campanhas salvas",
+    "research_read": "Ver pesquisas",
+    "research_write": "Fazer pesquisas e editar listas de bloqueio",
+    "research_delete": "Excluir dados de pesquisa",
+    "uploads_write": "Enviar arquivos",
+    "reports_read": "Ver relatórios e visão geral",
+    "connections_read": "Ver contas de anúncios conectadas",
+    "connections_manage": "Conectar e gerenciar contas de anúncios",
+    "apikeys_manage": "Gerenciar chaves de API",
+    "audit_read": "Ver o log de auditoria"
+  }
+}

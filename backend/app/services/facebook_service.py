@@ -322,18 +322,24 @@ class FacebookService:
 
         # Check if it's a URL or local file path
         if image_path_or_url.startswith('http://') or image_path_or_url.startswith('https://'):
-            # Download the image to a temp file
-            response = requests.get(image_path_or_url, timeout=30)
-            response.raise_for_status()
-
-            # Get file extension from URL or default to .jpg
+            # Get file extension from URL or default to .jpg (allow-list: never trust the URL)
             ext = '.jpg'
             if '.' in image_path_or_url.split('/')[-1]:
-                ext = '.' + image_path_or_url.split('.')[-1].split('?')[0]
+                url_ext = image_path_or_url.split('.')[-1].split('?')[0].lower()
+                if url_ext in ('jpg', 'jpeg', 'png', 'gif', 'webp'):
+                    ext = '.' + url_ext
 
+            # Download to a temp file through the SSRF guard (public hosts only,
+            # redirects re-checked, 10 MB cap)
+            from app.core.storage import fetch_public_to_file
             with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
-                tmp.write(response.content)
                 local_path = tmp.name
+                try:
+                    fetch_public_to_file(image_path_or_url, tmp, max_bytes=10 * 1024 * 1024, timeout=30)
+                except Exception:
+                    tmp.close()
+                    os.remove(local_path)
+                    raise
 
             image = AdImage(parent_id=account.get_id_assured())
             image[AdImage.Field.filename] = local_path
@@ -374,9 +380,6 @@ class FacebookService:
         if video_path_or_url.startswith('http://') or video_path_or_url.startswith('https://'):
             # Download the video to a temp file
             print(f"Downloading video from URL: {video_path_or_url[:100]}...")
-            response = requests.get(video_path_or_url, timeout=120, stream=True)
-            response.raise_for_status()
-
             # Get file extension from URL or default to .mp4
             ext = '.mp4'
             if '.' in video_path_or_url.split('/')[-1]:
@@ -384,10 +387,15 @@ class FacebookService:
                 if url_ext in ['mp4', 'mov', 'avi', 'webm']:
                     ext = '.' + url_ext
 
+            from app.core.storage import fetch_public_to_file
             with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
-                for chunk in response.iter_content(chunk_size=8192):
-                    tmp.write(chunk)
                 local_path = tmp.name
+                try:
+                    fetch_public_to_file(video_path_or_url, tmp, max_bytes=500 * 1024 * 1024, timeout=120)
+                except Exception:
+                    tmp.close()
+                    os.remove(local_path)
+                    raise
 
             print(f"Video downloaded to temp file: {local_path}")
         else:

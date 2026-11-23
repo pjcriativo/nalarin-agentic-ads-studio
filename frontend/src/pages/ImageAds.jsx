@@ -10,6 +10,7 @@ import BrandSelectionStep from '../components/steps/BrandSelectionStep';
 import ProductSelectionStep from '../components/steps/ProductSelectionStep';
 import ProfileSelectionStep from '../components/steps/ProfileSelectionStep';
 import StyleSelector from '../components/StyleSelector';
+import { tenantStorage } from '../lib/tenant';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
@@ -28,7 +29,7 @@ export default function ImageAds() {
 
     // Load saved campaign details from localStorage on mount
     const [wizardData, setWizardData] = useState(() => {
-        const savedCampaignDetails = localStorage.getItem('imageAds_campaignDetails');
+        const savedCampaignDetails = tenantStorage.getItem('imageAds_campaignDetails');
         const defaultCampaignDetails = {
             offer: '',
             urgency: '',
@@ -59,7 +60,7 @@ export default function ImageAds() {
     // Save campaign details to localStorage whenever they change
     useEffect(() => {
         if (wizardData.campaignDetails) {
-            localStorage.setItem('imageAds_campaignDetails', JSON.stringify(wizardData.campaignDetails));
+            tenantStorage.setItem('imageAds_campaignDetails', JSON.stringify(wizardData.campaignDetails));
         }
     }, [wizardData.campaignDetails]);
 
