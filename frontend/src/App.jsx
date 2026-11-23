@@ -41,6 +41,7 @@ const Overview = lazy(() => import('./pages/Overview'));
 const TikTokAdsCampaigns = lazy(() => import('./pages/TikTokAdsCampaigns'));
 const PublicInfoPage = lazy(() => import('./pages/PublicInfoPage'));
 const AIControlCenter = lazy(() => import('./pages/AIControlCenter'));
+const AIAgents = lazy(() => import('./pages/AIAgents'));
 
 const LoadingFallback = () => (
     <div className="flex h-screen w-full items-center justify-center bg-gray-50">
@@ -99,6 +100,7 @@ function App() {
                     <Route path="reporting" element={<Reporting />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="ai" element={<AIControlCenter />} />
+                    <Route path="agents" element={<AIAgents />} />
                     <Route
                       path="users"
                       element={

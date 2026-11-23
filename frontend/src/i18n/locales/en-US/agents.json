@@ -1,0 +1,497 @@
+{
+  "page": {
+    "title": "AI Agents",
+    "subtitle": "Specialist agents that research, plan and analyze for {{organization}}.",
+    "safety": "Agents only read data and propose. Nothing is published, created or spent in any ad account from this screen.",
+    "noAccessTitle": "You don't have access to AI Agents",
+    "noAccessBody": "Ask an administrator of this organization to give your role the agents:read permission.",
+    "sections": "AI Agents sections",
+    "tab": {
+      "agents": "Agents",
+      "tasks": "Tasks"
+    },
+    "readOnly": "You can view agents, tasks and results, but your role cannot start or cancel tasks."
+  },
+  "state": {
+    "loading": "Loading",
+    "unavailableTitle": "AI Agents is unavailable right now",
+    "unavailableBody": "The server did not answer. Nothing is shown instead of guessing. Try again in a moment.",
+    "retry": "Try again"
+  },
+  "alerts": {
+    "workerOffline": {
+      "title": "No agent worker is running",
+      "body_one": "Tasks wait in the queue until a worker comes online. {{count}} task is waiting right now.",
+      "body_other": "Tasks wait in the queue until a worker comes online. {{count}} tasks are waiting right now."
+    },
+    "noCredential": {
+      "title": "No AI provider key is configured",
+      "body": "Agents need a provider key of this organization to call a model.",
+      "link": "Open AI Control Center"
+    },
+    "noModel": {
+      "title": "No AI model is enabled",
+      "body": "Add and enable a model so agents can run.",
+      "link": "Open AI Control Center"
+    },
+    "noRoute": {
+      "title": "Some agents have no model route",
+      "body": "Choose a model for the agents that show \"No AI model\", or set a default route.",
+      "link": "Open AI Control Center"
+    },
+    "budgetReached": {
+      "title": "AI spending limit reached",
+      "body": "The {{period}} limit of this organization is used up, so new model calls are blocked until it resets or is raised.",
+      "link": "Open AI Control Center"
+    },
+    "googleMissing": {
+      "title": "No Google Ads account is connected",
+      "body": "Agents that read account data will answer that it is unavailable, and their results stay hypotheses until an account is connected.",
+      "link": "Connect Google Ads"
+    },
+    "period": {
+      "daily": "daily",
+      "monthly": "monthly"
+    }
+  },
+  "availability": {
+    "ready": "Available",
+    "limited": "Limited: no Google Ads account",
+    "disabled": "Disabled",
+    "noModel": "No AI model",
+    "noCredential": "No provider key"
+  },
+  "catalog": {
+    "title": "Supervisor and specialists",
+    "subtitle": "The supervisor splits a request into steps and delegates to the specialists. Each specialist only has the read-only tools listed on its card.",
+    "supervisorNote": "The supervisor cannot be disabled; choose its model through its route in the AI Control Center.",
+    "agent": {
+      "product_analyst": {
+        "name": "Product and sales-page analyst",
+        "description": "Analyzes a product and its sales page: value propositions, audience hypotheses, objections and claims to verify.",
+        "readiness": "operational: real model + catalog + deterministic analysis of the public sales page (what it states, what is missing)"
+      },
+      "market_researcher": {
+        "name": "Market and keyword researcher",
+        "description": "Proposes themes, keyword candidates (hypotheses, or Keyword Planner estimates when available) and negative keywords.",
+        "readiness": "operational with a connected Google Ads account (Keyword Planner estimates + real search terms); hypotheses only without one"
+      },
+      "search_ads_strategist": {
+        "name": "Google Search Ads strategist",
+        "description": "Designs a Search campaign structure (campaigns, ad groups, themes), bidding approach and measurement plan.",
+        "readiness": "operational for planning, grounded on the connected account's real structure/performance and Keyword Planner estimates when available; creates nothing in Google Ads"
+      },
+      "ad_copywriter": {
+        "name": "Ad copywriter (responsive search ads)",
+        "description": "Writes Responsive Search Ad headlines (30 chars) and descriptions (90 chars) per ad group.",
+        "readiness": "operational: real model + deterministic validation of limits and editorial rules"
+      },
+      "policy_reviewer": {
+        "name": "Policy and compliance reviewer",
+        "description": "Reviews ad text and claims for policy/compliance risks and recommends changes.",
+        "readiness": "operational as an advisory reviewer (static rules + model judgment); not an official Google Ads policy decision"
+      },
+      "performance_analyst": {
+        "name": "Optimization and performance analyst",
+        "description": "Analyzes measured Google Ads performance (and data supplied with the task) and proposes hypotheses and experiments.",
+        "readiness": "operational with a connected Google Ads account (real measured metrics); otherwise analyzes only data supplied by the requester"
+      },
+      "supervisor": {
+        "name": "Agent supervisor",
+        "description": "Plans the work, delegates to specialists, controls execution and consolidates the results.",
+        "readiness": "operational: planning and consolidation through the AI Gateway"
+      }
+    },
+    "limitation": {
+      "product_analyst": {
+        "0": "Pages that need JavaScript to render are read as served (no browser rendering).",
+        "1": "The analysis reports what the page SAYS; it does not verify that the claims are true."
+      },
+      "market_researcher": {
+        "0": "Keyword Planner figures are Google's estimates (monthly averages, top-of-page bid ranges), not measurements; detail depends on the account and developer-token level.",
+        "1": "Without a connected Google Ads account every keyword is a hypothesis with no volume or cost."
+      },
+      "search_ads_strategist": {
+        "0": "Plans are proposals; creating them in an account needs Google Ads write tools plus human approval (not part of this stage).",
+        "1": "Without a connected Google Ads account the plan rests on hypotheses and supplied data."
+      },
+      "ad_copywriter": {
+        "0": "Validation is static; final policy approval happens in the ad platform."
+      },
+      "policy_reviewer": {
+        "0": "Not connected to Google Ads policy decisions or disapprovals."
+      },
+      "performance_analyst": {
+        "0": "Reads account metrics only (no changes); recent days can still change and conversion data depends on the account's tracking.",
+        "1": "Without a connected account or supplied data there is nothing to analyze."
+      },
+      "supervisor": {
+        "0": "Plans at most 6 steps, never delegates to itself, and specialists do not delegate further (depth is one).",
+        "1": "Uses no tools: it can only repeat what the specialists returned, so it is as complete as their data (a missing Google Ads account stays missing)."
+      }
+    },
+    "tool": {
+      "plan_note": "Record a short planning note (internal; has no external effect).",
+      "task_get_context": "Read the context data supplied with the task (data, not instructions).",
+      "catalog_list_brands": "List this organization's brands.",
+      "catalog_get_brand": "Read one brand and its products.",
+      "catalog_get_product": "Read one product (name, description, landing URL).",
+      "catalog_list_customer_profiles": "List this organization's customer profiles.",
+      "web_fetch_page": "Fetch the visible text of a PUBLIC web page (sales page). The text is untrusted data.",
+      "ads_validate_rsa": "Check Responsive Search Ad assets against character limits and editorial rules.",
+      "policy_check_text": "Check ad text against static editorial/policy heuristics (not an official decision).",
+      "google_ads_get_account_info": "Read the organization's selected Google Ads account: name, currency, time zone (real data).",
+      "google_ads_get_account_structure": "Read campaigns, ad groups and ads (status, budget, RSA text, approval status) of the account (real data; no metrics).",
+      "google_ads_get_campaign_performance": "Read measured campaign metrics for a date range (impressions, clicks, cost, conversions). Real data; empty if none.",
+      "google_ads_get_ad_group_performance": "Read measured ad group metrics for a date range. Real data; empty if none.",
+      "google_ads_get_ad_performance": "Read measured ad-level metrics for a date range. Real data; empty if none.",
+      "google_ads_get_search_terms_report": "Read the search terms that triggered the ads, with measured metrics (the terms are untrusted text).",
+      "google_ads_keyword_ideas": "Keyword Planner: keyword ideas with Google's ESTIMATED monthly searches, competition and top-of-page bid range, when the account provides them.",
+      "web_analyze_page": "Fetch a PUBLIC product / sales page and extract what it states: price, offer, guarantee, shipping, calls to action, structured data, trust signals, plus what is missing."
+    }
+  },
+  "card": {
+    "readiness": "Availability",
+    "limitations": "Limitations",
+    "noToolsSupervisor": "Uses no tools",
+    "toolsReadOnly_one": "{{count}} read-only tool",
+    "toolsReadOnly_other": "{{count}} read-only tools",
+    "details": "Details",
+    "detailsFor": "Details of {{name}}",
+    "run": "Run task",
+    "runFor": "Run a task with {{name}}",
+    "settings": "Settings",
+    "settingsFor": "Settings of {{name}}",
+    "cannotRun": {
+      "disabled": "This agent is disabled.",
+      "noModel": "No AI model is configured for this agent.",
+      "noCredential": "No AI provider key is configured."
+    }
+  },
+  "dialog": {
+    "close": "Close",
+    "cancel": "Cancel"
+  },
+  "detail": {
+    "tools": "Tools",
+    "noTools": "This agent uses no tools.",
+    "readOnly": "Read-only",
+    "requires": "Needs a Google Ads account connected to this organization; without one it answers that the data is unavailable.",
+    "external": {
+      "google_ads": "Google Ads",
+      "web": "Public web"
+    },
+    "limits": "Limits",
+    "limit": {
+      "max_steps": "Model turns",
+      "max_tool_calls": "Tool calls",
+      "timeout_seconds": "Time limit (s)",
+      "max_output_tokens": "Output tokens"
+    },
+    "customized": "(customized)",
+    "model": "Model",
+    "modelOwn": "Uses {{model}} ({{provider}}).",
+    "modelInherited": "Uses {{model}} ({{provider}}) from the default route.",
+    "modelNone": "No model route: choose one in the AI Control Center.",
+    "fallbacks_one": "{{count}} fallback model.",
+    "fallbacks_other": "{{count}} fallback models.",
+    "operation": "Route name",
+    "version": "Instructions version {{version}} (hash {{hash}})",
+    "notFoundTitle": "Task not found",
+    "notFoundBody": "It does not exist in this organization (it may belong to another one).",
+    "back": "Back to the list",
+    "created": "Created {{date}}",
+    "duration": "ran {{time}}",
+    "waitingWorker": "No worker is running, so this task cannot start. It stays queued until a worker comes online.",
+    "queued": "Queued: a worker will pick it up shortly.",
+    "retryScheduled": "A temporary failure happened. Attempt {{attempt}} of {{max}} is scheduled for {{date}}; finished steps are not repeated.",
+    "progress": "Progress",
+    "stepsOf": "{{done}} of {{total}} steps",
+    "planning": "Planning…",
+    "runs": "Agents involved",
+    "noRuns": "No agent has started yet.",
+    "runMeta_one": "{{count}} step · {{cost}}",
+    "runMeta_other": "{{count}} steps · {{cost}}",
+    "result": "Result",
+    "resultPending": "The result appears here when the task finishes.",
+    "steps_one": "Execution step ({{count}})",
+    "steps_other": "Execution steps ({{count}})",
+    "select": "Select a task to follow its progress and read its result."
+  },
+  "settings": {
+    "title": "Settings: {{name}}",
+    "subtitle": "Changes apply to new tasks of this organization.",
+    "enabled": "Agent enabled",
+    "enabledHint": "A disabled agent cannot start tasks, and the supervisor will not delegate to it.",
+    "maxSteps": "Model turns per run",
+    "timeout": "Time limit per run (seconds)",
+    "defaultHint": "Empty = default ({{value}})",
+    "stepsInvalid": "Use a whole number from {{min}} to {{max}}.",
+    "timeoutInvalid": "Use a whole number from {{min}} to {{max}}.",
+    "save": "Save settings",
+    "saved": "Agent settings saved",
+    "modelTitle": "Model",
+    "modelHint": "Each agent runs on the model route named after it in the AI Control Center (keys, budgets and fallbacks are managed there).",
+    "modelNoAccess": "Your role cannot see AI models.",
+    "modelLoadFailed": "Could not load the models.",
+    "modelLoading": "Loading models",
+    "modelNone": "No model is registered yet. Add one in the AI Control Center."
+  },
+  "form": {
+    "title": "Start a task",
+    "subtitle": "Describe what you need. The task runs on a worker and you can follow it live.",
+    "agent": "Agent",
+    "agentAuto": "Automatic: the supervisor plans the work",
+    "agentAutoHint": "The supervisor picks the specialists and consolidates their results.",
+    "objective": "Objective",
+    "objectiveHint": "{{count}} / {{max}} characters",
+    "objectivePlaceholder": "e.g. Plan a Google Search campaign for our running shoes",
+    "objectiveShort": "Describe the objective with at least {{min}} characters.",
+    "objectiveLong": "The objective is limited to {{max}} characters.",
+    "contextLabel": "Context (optional)",
+    "contextHint": "A JSON object with data the agents may use, such as an export of results. It is treated as data, not instructions.",
+    "contextPlaceholder": "{\"period\": \"last 30 days\", \"clicks\": 120}",
+    "context": {
+      "tooLong": "The context is too large.",
+      "notObject": "The context must be a JSON object.",
+      "invalidJson": "This is not valid JSON."
+    },
+    "costLabel": "Cost limit (optional)",
+    "costHint": "Maximum spend on AI for this task, in US dollars. Empty = the server default.",
+    "costPlaceholder": "default",
+    "costInvalid": "Enter an amount greater than zero.",
+    "submit": "Start task",
+    "started": "Task queued",
+    "noPermission": "Your role can view tasks but cannot start them.",
+    "warning": {
+      "agentDisabled": "This agent is disabled for the organization.",
+      "noModel": "No AI model is configured for this agent, so the task would fail.",
+      "noGoogle": "No Google Ads account is connected: this agent will report the account data as unavailable and its findings will be hypotheses.",
+      "noGoogleSupervised": "No Google Ads account is connected: specialists that read account data will report it as unavailable.",
+      "noWorker": "No worker is running: the task will wait in the queue until one comes online."
+    }
+  },
+  "list": {
+    "title": "Task history",
+    "filterLabel": "Filter by status",
+    "filter": {
+      "all": "All",
+      "pending": "Pending",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "empty": "No tasks yet. Start one above.",
+    "emptyFiltered": "No tasks with this status.",
+    "supervised": "Supervisor (automatic plan)",
+    "limitNote": "Showing the latest {{count}} tasks.",
+    "refreshFailed": "Could not refresh the list. Showing the last data received."
+  },
+  "status": {
+    "pending": "Pending",
+    "running": "Running",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "usage": {
+    "inputTokens": "Input tokens",
+    "outputTokens": "Output tokens",
+    "cost": "Cost (US$)",
+    "cap": "Cost limit",
+    "capUsed": "{{percent}}% of the cost limit used",
+    "attempts": "Attempt {{attempt}} of {{max}}"
+  },
+  "cancel": {
+    "button": "Cancel task",
+    "confirmTitle": "Cancel this task?",
+    "confirmPending": "The task has not started and will be cancelled right away.",
+    "confirmRunning": "The task stops before its next model call. A call already in progress finishes and is still charged.",
+    "confirm": "Cancel task",
+    "keep": "Keep running",
+    "done": "Task cancelled",
+    "requested": "Cancellation requested",
+    "pending": "Cancellation requested"
+  },
+  "errors": {
+    "kind": {
+      "cancelled": "The task was cancelled.",
+      "timeout": "The task ran out of time.",
+      "step_limit": "The agent used all its model turns without finishing.",
+      "tool_limit": "The agent used more tool calls than allowed.",
+      "loop_detected": "The agent kept repeating the same call and was stopped.",
+      "invalid_output": "The agent could not produce a valid, verifiable answer. Nothing unverified was saved.",
+      "invalid_plan": "The supervisor could not produce a valid plan.",
+      "subtask_failed": "A specialist failed, so the task stopped. Finished steps are kept as partial results.",
+      "cost_limit": "The task reached its cost limit.",
+      "authorization": "The person who started this task can no longer run agents in this organization.",
+      "agent_disabled": "An agent needed by this task is disabled.",
+      "interrupted": "The task was interrupted too many times.",
+      "internal": "An internal error stopped the task.",
+      "ai_authentication": "The AI provider rejected the organization's key.",
+      "ai_permission": "The AI provider key is not allowed to use this model.",
+      "ai_quota": "The AI provider account has no credit or quota left.",
+      "ai_rate_limit": "The AI provider is rate-limiting requests.",
+      "ai_timeout": "The AI provider took too long to answer.",
+      "ai_unavailable": "The AI provider is unavailable.",
+      "ai_invalid_request": "The AI provider refused the request.",
+      "ai_not_found": "The configured AI model was not found.",
+      "ai_content_blocked": "The AI provider blocked the content.",
+      "ai_invalid_response": "The AI provider returned an unusable answer.",
+      "ai_budget_exceeded": "The organization's AI spending limit was reached.",
+      "ai_not_configured": "No AI model or key is configured for this agent.",
+      "ai_unknown": "The AI provider failed in an unexpected way.",
+      "unknown": "The task failed."
+    },
+    "next": {
+      "aiSettings": "Check the provider key and the model route in the AI Control Center.",
+      "aiLimits": "Check the credit and spending limits in the AI Control Center.",
+      "raiseCostCap": "Start a new task with a higher cost limit.",
+      "enableAgent": "Enable the agent in its settings.",
+      "askAdmin": "Ask an administrator to review your role.",
+      "openAi": "Open AI Control Center"
+    },
+    "serverMessage": "Server message",
+    "partialHint": "Steps finished before the failure appear below as partial results.",
+    "api": {
+      "network": "Could not reach the server. Check your connection and try again.",
+      "unauthorized": "Your session expired. Sign in again.",
+      "forbidden": "Your role is not allowed to do this.",
+      "notFound": "Not found in this organization.",
+      "agentDisabled": "This agent is disabled for the organization.",
+      "conflict": "This action is no longer possible (the task may have already finished).",
+      "invalid": "The server rejected the data. Check the fields and try again.",
+      "tooManyTasks": "This organization already has the maximum number of active tasks. Wait for one to finish.",
+      "unavailable": "The service is unavailable right now. Try again in a moment.",
+      "unknown": "Something went wrong. Try again."
+    }
+  },
+  "steps": {
+    "empty": "No steps recorded yet.",
+    "kind": {
+      "llm": "Model",
+      "tool": "Tool",
+      "system": "System"
+    },
+    "outcome": {
+      "ok": "Data returned",
+      "noData": "No data",
+      "unavailable": "Unavailable",
+      "error": "Error"
+    },
+    "failed": "Failed",
+    "injection": "Suspicious content flagged",
+    "input": "Input (redacted)",
+    "output": "Output (redacted)",
+    "privacy": "Prompts are never stored. Inputs and outputs are redacted and truncated before being saved."
+  },
+  "dataKind": {
+    "real": "Real data",
+    "estimate": "Estimate",
+    "hypothesis": "Hypothesis"
+  },
+  "result": {
+    "disclaimer": "Results are model-generated proposals for human review. Nothing was published or spent.",
+    "emptyCompleted": "The task finished without a stored result.",
+    "noneStored": "No result was stored for this task.",
+    "partialNotice": "This task did not finish. Only the steps completed before it stopped are shown.",
+    "report": "Consolidated report",
+    "specialists": "Specialist results",
+    "stepNoOutput": "This step has no output.",
+    "partial": "Partial results",
+    "partialStep": "Step {{id}}",
+    "rawJson": "Show raw JSON",
+    "provenance": {
+      "title": "What the figures in this result are",
+      "none": "No item carries a data label: treat everything below as the model's proposal, not as measurement.",
+      "real": "returned by a tool in this run (Google Ads account, product page) or supplied by you.",
+      "estimate": "Google Keyword Planner's own estimates, not measurements of your account.",
+      "hypothesis": "the model's idea; it carries no measured number."
+    },
+    "source": {
+      "google_ads_api": "Google Ads account",
+      "google_keyword_planner": "Google Keyword Planner",
+      "product_page": "Product page",
+      "supplied_context": "Data you supplied",
+      "model_knowledge": "Model knowledge (unverified)"
+    },
+    "enum": {
+      "informational": "informational",
+      "commercial": "commercial",
+      "transactional": "transactional",
+      "navigational": "navigational",
+      "exact": "exact match",
+      "phrase": "phrase match",
+      "broad": "broad match",
+      "approved": "approved",
+      "needs_changes": "needs changes",
+      "blocked": "blocked",
+      "info": "info",
+      "warning": "warning",
+      "blocker": "blocker",
+      "model_hypotheses": "model hypotheses",
+      "provided_context": "supplied context",
+      "fetched_pages": "fetched pages",
+      "keyword_planner": "Keyword Planner",
+      "account_data": "account data",
+      "mixed": "mixed",
+      "low": "low",
+      "medium": "medium",
+      "high": "high"
+    },
+    "field": {
+      "summary": "Summary",
+      "value_propositions": "Value propositions",
+      "audience_hypotheses": "Audience hypotheses",
+      "objections": "Objections",
+      "claims_to_verify": "Claims to verify",
+      "missing_information": "Missing information",
+      "sources": "Sources",
+      "data_basis": "What this rests on",
+      "themes": "Themes",
+      "keyword_candidates": "Keyword candidates",
+      "negative_keyword_candidates": "Negative keyword candidates",
+      "alternatives_or_competitors": "Alternatives and competitors",
+      "evidence": "Evidence",
+      "verification_notice": "Verification notice",
+      "objective": "Objective",
+      "campaigns": "Campaigns",
+      "bidding_recommendation": "Bidding recommendation",
+      "measurement_plan": "Measurement plan",
+      "risks": "Risks",
+      "assumptions": "Assumptions",
+      "name": "Name",
+      "goal": "Goal",
+      "ad_groups": "Ad groups",
+      "keyword_themes": "Keyword themes",
+      "landing_page": "Landing page",
+      "notes": "Notes",
+      "ad_group": "Ad group",
+      "headlines": "Headlines",
+      "descriptions": "Descriptions",
+      "verdict": "Verdict",
+      "findings": "Findings",
+      "severity": "Severity",
+      "item": "Item",
+      "rule": "Rule",
+      "suggestion": "Suggestion",
+      "recommended_experiments": "Recommended experiments",
+      "hypotheses": "Hypotheses",
+      "data_limitations": "Data limitations",
+      "key_results": "Key results",
+      "recommendations": "Recommendations",
+      "open_questions": "Open questions",
+      "keyword": "Keyword",
+      "intent": "Intent",
+      "match_type_suggestion": "Match type",
+      "rationale": "Rationale",
+      "data_kind": "Data type",
+      "source": "Source",
+      "metrics": "Metrics",
+      "statement": "Statement",
+      "entity": "Entity",
+      "value": "Value"
+    }
+  }
+}

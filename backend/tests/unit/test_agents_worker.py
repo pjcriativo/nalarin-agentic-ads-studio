@@ -668,8 +668,9 @@ class TestArchitecture:
         cfg = Config(str(backend / "alembic.ini"))
         cfg.set_main_option("script_location", str(backend / "alembic"))
         script = ScriptDirectory.from_config(cfg)
-        assert script.get_heads() == ["f2a3b4c5d6e7"]
+        assert script.get_heads() == ["a3b4c5d6e7f8"]
         assert script.get_revision("f2a3b4c5d6e7").down_revision == "e1f2a3b4c5d6"
+        assert script.get_revision("a3b4c5d6e7f8").down_revision == "f2a3b4c5d6e7"
 
     def test_agent_tasks_has_the_queue_columns_and_the_claim_index(self, db_session):
         cols = {r[0] for r in db_session.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'agent_tasks'"))}

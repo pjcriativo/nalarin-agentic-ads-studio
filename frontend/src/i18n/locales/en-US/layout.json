@@ -16,7 +16,8 @@
     "tiktokAds": "TikTok Ads",
     "userManagement": "User Management",
     "logout": "Logout",
-    "aiControlCenter": "AI Control Center"
+    "aiControlCenter": "AI Control Center",
+    "aiAgents": "AI Agents"
   },
   "nav": {
     "open": "Open navigation menu",

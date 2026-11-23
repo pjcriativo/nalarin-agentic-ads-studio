@@ -12,15 +12,17 @@ worker running a task simply stays ``pending``.
 """
 import json
 import re
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.agents import executor
 from app.agents.future_tools import FUTURE_TOOL_CONTRACTS
-from app.agents.registry import AGENTS, HARD_MAX_STEPS, HARD_MAX_TIMEOUT_SECONDS, delegatable_agents
+from app.agents.registry import AGENTS, HARD_MAX_STEPS, HARD_MAX_TIMEOUT_SECONDS, SUPERVISOR, delegatable_agents
 from app.agents.security import redact_secrets, safe_json
 from app.agents.supervisor import effective_limits
 from app.agents.tools import TOOLS
@@ -49,22 +51,46 @@ def _route_view(db: Session, org_id: str, operation: str) -> Dict[str, Any]:
             "fallbacks": len(route.fallback_model_ids or []) if route else 0}
 
 
+def _agent_card(db: Session, org_id: str, key: str, defn, cfg) -> Dict[str, Any]:
+    limits = effective_limits(defn, getattr(cfg, "max_steps", None), getattr(cfg, "timeout_seconds", None))
+    return {
+        "key": key, "name": defn.name, "description": defn.description, "version": defn.version,
+        "instructions_hash": defn.instructions_hash, "enabled": cfg.enabled if cfg else True,
+        "allowed_tools": list(defn.allowed_tools), "readiness": defn.readiness, "limitations": list(defn.limitations),
+        "limits": {"defaults": defn.limits.__dict__, "effective": limits.__dict__},
+        "routing": _route_view(db, org_id, defn.operation),
+        "output_schema": defn.output_model.model_json_schema() if defn.output_model else None,
+    }
+
+
 @router.get("")
 def list_agents(db: Session = Depends(get_db), ctx: OrgContext = Depends(require_org_permission("agents:read"))):
     settings_by_key = executor.organization_settings(db, ctx.org.id)
-    out = []
-    for key, defn in delegatable_agents().items():
-        cfg = settings_by_key.get(key)
-        limits = effective_limits(defn, getattr(cfg, "max_steps", None), getattr(cfg, "timeout_seconds", None))
-        out.append({
-            "key": key, "name": defn.name, "description": defn.description, "version": defn.version,
-            "instructions_hash": defn.instructions_hash, "enabled": cfg.enabled if cfg else True,
-            "allowed_tools": list(defn.allowed_tools), "readiness": defn.readiness, "limitations": list(defn.limitations),
-            "limits": {"defaults": defn.limits.__dict__, "effective": limits.__dict__},
-            "routing": _route_view(db, ctx.org.id, defn.operation),
-            "output_schema": defn.output_model.model_json_schema(),
-        })
-    return out
+    return [_agent_card(db, ctx.org.id, key, defn, settings_by_key.get(key)) for key, defn in delegatable_agents().items()]
+
+
+@router.get("/supervisor")
+def get_supervisor(db: Session = Depends(get_db), ctx: OrgContext = Depends(require_org_permission("agents:read"))):
+    """The supervisor (plans, delegates, consolidates). Same card as a specialist, but it has no tools, cannot be disabled
+    (it is not a delegation target) and has no per-agent limit overrides; its model is chosen via the ``agent.supervisor``
+    route of the AI Control Center."""
+    card = _agent_card(db, ctx.org.id, SUPERVISOR.key, SUPERVISOR, None)
+    card["role"] = "supervisor"
+    return card
+
+
+@router.get("/worker/status")
+def worker_status(db: Session = Depends(get_db), ctx: OrgContext = Depends(require_org_permission("agents:read"))):
+    """Is anything going to execute the tasks? ``online`` = at least one worker reported in within
+    ``AGENT_WORKER_ONLINE_SECONDS`` (global fact, no worker identity is exposed); ``queue`` counts THIS organization's tasks only."""
+    from app.agents import liveness
+    rows = dict(db.query(AgentTask.status, func.count(AgentTask.id)).filter(
+        AgentTask.organization_id == ctx.org.id, AgentTask.status.in_(("pending", "running"))).group_by(AgentTask.status).all())
+    oldest = db.query(func.min(AgentTask.created_at)).filter(AgentTask.organization_id == ctx.org.id, AgentTask.status == "pending").scalar()
+    workers = liveness.online_workers()
+    return {"online": workers > 0, "workers": workers, "online_window_seconds": settings.AGENT_WORKER_ONLINE_SECONDS,
+            "queue": {"pending": int(rows.get("pending", 0)), "running": int(rows.get("running", 0)),
+                      "oldest_pending_seconds": int((datetime.now(timezone.utc) - oldest).total_seconds()) if oldest else None}}
 
 
 @router.get("/tools")

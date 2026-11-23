@@ -51,7 +51,8 @@
       "connections": "Contas de anúncios",
       "apikeys": "Chaves de API",
       "audit": "Auditoria",
-      "ai": "IA"
+      "ai": "IA",
+      "agents": "Agentes de IA"
     },
     "org_read": "Ver a organização",
     "org_manage": "Gerenciar a organização",
@@ -89,6 +90,9 @@
     "audit_read": "Ver o log de auditoria",
     "ai_read": "Ver configurações, modelos e consumo de IA",
     "ai_use": "Usar IA dentro das funcionalidades",
-    "ai_manage": "Gerenciar chaves, modelos, roteamento e limites de IA"
+    "ai_manage": "Gerenciar chaves, modelos, roteamento e limites de IA",
+    "agents_read": "Ver agentes de IA, tarefas e resultados",
+    "agents_run": "Iniciar e cancelar tarefas dos agentes de IA",
+    "agents_manage": "Habilitar agentes e ajustar seus limites"
   }
 }

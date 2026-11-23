@@ -29,7 +29,7 @@ import urllib.request
 import uuid
 from typing import Dict, List, Optional
 
-from app.agents import executor, queue
+from app.agents import executor, liveness, queue
 from app.core.audit import audit_event
 from app.core.config import settings
 from app.worker.logs import configure_logging, log_event
@@ -89,12 +89,16 @@ class AgentWorker:
         log_event(logger, "worker.started", worker=self.worker_id, concurrency=self.concurrency, once=self.once,
                   global_max=settings.AGENT_GLOBAL_MAX_RUNNING, org_max=settings.AGENT_ORG_MAX_RUNNING)
         next_recovery = 0.0
+        next_beat = 0.0
         try:
             while not self.stopping.is_set():
                 self.last_poll = time.monotonic()
                 if self.last_poll >= next_recovery:
                     await self._recover()
                     next_recovery = time.monotonic() + self.recovery_interval
+                if self.last_poll >= next_beat:
+                    await self._beat("running")
+                    next_beat = time.monotonic() + settings.AGENT_WORKER_BEAT_SECONDS
                 claimed = await self._fill()
                 if self.once and not self.active and not claimed:
                     break
@@ -167,6 +171,14 @@ class AgentWorker:
                 db.close()
         return released
 
+    async def _beat(self, status: str) -> None:
+        """Tell the API this worker is alive (or has stopped). A failure only shows up in health; it never stops the loop."""
+        try:
+            await asyncio.to_thread(liveness.beat, self.worker_id, active=len(self.active), concurrency=self.concurrency, status=status)
+        except Exception as exc:  # noqa: BLE001
+            self.db_ok = False
+            log_event(logger, "worker.beat_error", logging.ERROR, worker=self.worker_id, error_type=type(exc).__name__)
+
     async def _recover(self) -> None:
         try:
             outcome = await asyncio.to_thread(executor.recover_interrupted_tasks)
@@ -191,6 +203,7 @@ class AgentWorker:
         if self._server is not None:
             self._server.close()
             await self._server.wait_closed()
+        await self._beat("stopped")
         log_event(logger, "worker.stopped", worker=self.worker_id, processed=json.dumps(self.processed, sort_keys=True))
 
     # ------------------------------------------------------------------ health

@@ -27,7 +27,7 @@ there is no runtime/automatic translation and no external service.
 `brands` (brands, products, customer profiles + forms) · `creatives` (image/video ads, wizards, selectors) ·
 `campaigns` (Facebook/Google/TikTok campaign flows and wizard steps) · `research` ·
 `library` (winning ads, generated ads, ad remix) · `settings` (settings, user management) ·
-`errors` (error boundary, backend error messages) · `validation` · `catalog`.
+`errors` (error boundary, backend error messages) · `validation` · `catalog` · `ai` (AI Control Center) · `tenant` (organizations, role matrix) · `approvals` · `agents` (AI Agents dashboard).
 
 ## Adding / changing text
 
@@ -45,6 +45,14 @@ t('research.uniqueAds', { count })      // plurals: keys `uniqueAds_one` / `uniq
   `{{placeholder}}` mismatches between languages.
 * `npm run test:i18n` also renders every route in both languages and fails on missing keys, raw keys,
   un-interpolated placeholders or leftover English in pt-BR.
+
+## Backend-owned text of the AI Agents screen
+
+Agent names, descriptions, readiness and limitations, and tool descriptions are versioned in the backend (English). `agents.json`
+holds `catalog.*` translations of the CURRENT texts; the UI (`lib/useBackendText.js`) uses a translation only while the en-US catalogue
+still equals the text the backend sent, otherwise it shows the backend text as received. The snapshot used by the tests
+(`src/__tests__/agentsCatalog.json`) is compared with the real registry in `backend/tests/unit/test_agents_frontend_contract.py`:
+when an agent's text changes, that test fails until the snapshot and the translations are updated.
 
 ## What is deliberately NOT translated
 

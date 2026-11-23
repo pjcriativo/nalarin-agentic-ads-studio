@@ -10,11 +10,12 @@
  */
 import { enablePayloadHash } from '../lib/spendApprovals.js';
 import { aiSeed, createAiState, handleAi } from './fakeAiBackend.js';
+import { agentsSeed, createAgentsState, handleAgents } from './fakeAgentsBackend.js';
 
 const VIEWER = ['org:read', 'members:read', 'brands:read', 'products:read', 'profiles:read', 'ads:read', 'templates:read', 'campaigns:read', 'research:read'];
-const ANALYST = [...VIEWER, 'reports:read', 'research:write', 'connections:read', 'ai:read'];
-const MANAGER = [...ANALYST, 'brands:write', 'brands:delete', 'products:write', 'products:delete', 'profiles:write', 'profiles:delete', 'ads:write', 'ads:delete', 'templates:write', 'templates:delete', 'campaigns:write', 'campaigns:delete', 'research:delete', 'uploads:write', 'ads:draft', 'ai:use'];
-const ADMIN = [...MANAGER, 'members:manage', 'audit:read', 'connections:manage', 'apikeys:manage', 'ads:publish', 'ai:manage'];
+const ANALYST = [...VIEWER, 'reports:read', 'research:write', 'connections:read', 'ai:read', 'agents:read'];
+const MANAGER = [...ANALYST, 'brands:write', 'brands:delete', 'products:write', 'products:delete', 'profiles:write', 'profiles:delete', 'ads:write', 'ads:delete', 'templates:write', 'templates:delete', 'campaigns:write', 'campaigns:delete', 'research:delete', 'uploads:write', 'ads:draft', 'ai:use', 'agents:run'];
+const ADMIN = [...MANAGER, 'members:manage', 'audit:read', 'connections:manage', 'apikeys:manage', 'ads:publish', 'ai:manage', 'agents:manage'];
 const OWNER = [...ADMIN, 'org:manage', 'ads:spend'];
 export const ROLE_PERMISSIONS = { owner: OWNER, admin: ADMIN, manager: MANAGER, analyst: ANALYST, viewer: VIEWER };
 export const ROLES = ['owner', 'admin', 'manager', 'analyst', 'viewer'];
@@ -60,6 +61,8 @@ export function createFakeBackend() {
         refreshTokens: {},
         calls: [],
         ai: createAiState(),
+        agents: createAgentsState(),
+        googleConnected: true,
         deferred: [],
         enabledCampaigns: [],
         seq: 0,
@@ -158,6 +161,7 @@ export function createFakeBackend() {
         // ---- Google Ads
         if (path === '/google-ads/connection') {
             const t = tenant(userId, headers, 'connections:read');
+            if (!t.error && state.googleConnected === false) return json(200, { connected: false });
             return t.error || json(200, { connected: true, customer_id: '1111111111', account_name: `Account of ${t.org}`, connected_at: '2026-01-01T00:00:00Z' });
         }
         if (path === '/google-ads/connections') {
@@ -220,6 +224,10 @@ export function createFakeBackend() {
             return json(200, approval);
         }
 
+        // ---- AI Agents (/api/v1/agents)
+        if (path.startsWith('/agents')) {
+            return respond(handleAgents({ state: state.agents, aiState: state.ai, path, method, body, headers, query: url.searchParams, userId, tenant, json }));
+        }
         // ---- AI Control Center (/api/v1/ai)
         if (path.startsWith('/ai/')) {
             return respond(handleAi({ state: state.ai, path, method, body, headers, query: url.searchParams, userId, tenant, json }));
@@ -259,7 +267,9 @@ export function createFakeBackend() {
             state.members.find((x) => x.user === userId && x.org === orgId).role = role;
         },
         loginTokens: (userKey) => issue(state.users[userKey].id),
+        setGoogleConnected(value) { state.googleConnected = value; },
         ai: { state: state.ai, seed: aiSeed },
+        agents: { state: state.agents, seed: agentsSeed },
     };
 }
 

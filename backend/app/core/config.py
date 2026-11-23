@@ -101,6 +101,8 @@ class Settings:
     AGENT_SHUTDOWN_GRACE_SECONDS: float = max(float(os.getenv("AGENT_SHUTDOWN_GRACE_SECONDS", "30")), 0.0)
     AGENT_RETRY_BASE_SECONDS: float = max(float(os.getenv("AGENT_RETRY_BASE_SECONDS", "5")), 0.0)    # back-off: base * 2^(attempt-1)
     AGENT_RETRY_MAX_SECONDS: float = max(float(os.getenv("AGENT_RETRY_MAX_SECONDS", "300")), 0.0)
+    AGENT_WORKER_BEAT_SECONDS: float = max(float(os.getenv("AGENT_WORKER_BEAT_SECONDS", "10")), 0.05)       # liveness row refresh
+    AGENT_WORKER_ONLINE_SECONDS: float = max(float(os.getenv("AGENT_WORKER_ONLINE_SECONDS", "45")), 1.0)    # a worker is "online" if seen this recently
     AGENT_WORKER_HEALTH_HOST: str = os.getenv("AGENT_WORKER_HEALTH_HOST", "127.0.0.1")
     AGENT_WORKER_HEALTH_PORT: int = int(os.getenv("AGENT_WORKER_HEALTH_PORT", "8081"))               # 0 disables the endpoint
     AGENT_WORKER_STALE_SECONDS: float = max(float(os.getenv("AGENT_WORKER_STALE_SECONDS", "60")), 1.0)  # unhealthy if no poll for this long

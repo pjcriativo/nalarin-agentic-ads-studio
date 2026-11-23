@@ -8,7 +8,7 @@ import { Badge, CARD, INPUT_CLASS, OPERATION_KEY, PRIMARY_BUTTON, SECONDARY_BUTT
 const sameList = (a, b) => a.length === b.length && a.every((value, index) => value === b[index]);
 const ICON_BUTTON = 'inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600';
 
-function RouteRow({ api, operation, route, models, canManage, onChanged }) {
+export function RouteRow({ api, operation, route, models, canManage, onChanged, label }) {
     const { t } = useTranslation('ai');
     const { showSuccess, showError } = useToast();
     const savedPrimary = route?.primary_model_id || '';
@@ -29,7 +29,7 @@ function RouteRow({ api, operation, route, models, canManage, onChanged }) {
     const taken = new Set([primary, ...fallbacks]);
     const addable = models.filter((model) => !taken.has(model.id));
     const id = `ai-route-${operation.replace(/[^a-z0-9]/gi, '-')}`;
-    const operationLabel = OPERATION_KEY[operation] ? t(`routing.operation.${OPERATION_KEY[operation]}`) : operation; // other API operation names are shown as-is
+    const operationLabel = label || (OPERATION_KEY[operation] ? t(`routing.operation.${OPERATION_KEY[operation]}`) : operation); // other API operation names are shown as-is
 
     const move = (index, delta) => {
         const next = [...fallbacks];

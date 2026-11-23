@@ -23,11 +23,23 @@ vi.mock('../context/AuthContext', () => {
     const authFetch = vi.fn(async (url) => {
         const u = String(url);
         if (/\/organizations\/role-matrix/.test(u)) {
-            const perms = ['ads:read', 'ads:draft', 'ads:publish', 'ads:spend', 'brands:read', 'connections:manage', 'ai:read', 'ai:use', 'ai:manage'];
+            const perms = ['ads:read', 'ads:draft', 'ads:publish', 'ads:spend', 'brands:read', 'connections:manage', 'ai:read', 'ai:use', 'ai:manage', 'agents:read', 'agents:run', 'agents:manage'];
             return { ok: true, status: 200, json: async () => ({ roles: ['owner', 'viewer'], permissions: { owner: perms, viewer: ['ads:read', 'brands:read'] } }) };
         }
         if (/\/organizations(\?|$)/.test(u)) {
-            return { ok: true, status: 200, json: async () => [{ id: 'org-1', name: 'Acme Org', slug: 'acme', role: 'owner', permissions: ['ads:read', 'ads:draft', 'ads:publish', 'ads:spend', 'brands:read', 'connections:read', 'connections:manage', 'ai:read', 'ai:use', 'ai:manage'] }] };
+            return { ok: true, status: 200, json: async () => [{ id: 'org-1', name: 'Acme Org', slug: 'acme', role: 'owner', permissions: ['ads:read', 'ads:draft', 'ads:publish', 'ads:spend', 'brands:read', 'connections:read', 'connections:manage', 'ai:read', 'ai:use', 'ai:manage', 'agents:read', 'agents:run', 'agents:manage'] }] };
+        }
+        if (/\/agents(\/|\?|$)/.test(u)) {
+            const card = (a) => ({ ...a, enabled: true, limits: { defaults: a.limits_defaults, effective: a.limits_defaults }, routing: { operation: `agent.${a.key}`, has_route: true, inherited_from_default: true, primary_model: { provider: 'openai', model_id: 'gpt-test' }, fallbacks: 0 }, output_schema: null });
+            const task = { id: 't1', status: 'completed', agent_key: 'product_analyst', kind: 'single', objective: 'Plano da campanha de tênis', created_at: '2026-01-01T10:00:00Z', started_at: '2026-01-01T10:00:01Z', finished_at: '2026-01-01T10:01:00Z', attempts: 1, max_attempts: 3, cancel_requested: false, step_count: 2, next_attempt_at: null, usage: { input_tokens: 120, output_tokens: 60, cost_usd: 0.002, max_cost_usd: 2 }, error: null, plan: null, created_by_user_id: 1 };
+            if (/\/agents\/supervisor/.test(u)) return { ok: true, status: 200, json: async () => card({ ...agentsCatalog.supervisor }) };
+            if (/\/agents\/tools/.test(u)) return { ok: true, status: 200, json: async () => ({ available: agentsCatalog.tools, planned: agentsCatalog.planned }) };
+            if (/\/agents\/worker\/status/.test(u)) return { ok: true, status: 200, json: async () => ({ online: true, workers: 1, online_window_seconds: 45, queue: { pending: 0, running: 0, oldest_pending_seconds: null } }) };
+            if (/\/agents\/tasks\/t1\/steps/.test(u)) return { ok: true, status: 200, json: async () => [{ sequence: 1, run_id: 'r1', kind: 'tool', name: 'web.analyze_page', status: 'ok', error_kind: null, input: null, output: { preview: '{"analyzed": true}' }, injection_suspected: false, provider: null, model_id: null, input_tokens: 0, output_tokens: 0, cost_usd: 0, latency_ms: 300, created_at: '2026-01-01T10:00:10Z' }] };
+            if (/\/agents\/tasks\/t1\/result/.test(u)) return { ok: true, status: 200, json: async () => ({ id: 't1', status: 'completed', result: { kind: 'single', agent: 'product_analyst', output: { summary: 'Resumo do produto.', data_basis: [{ statement: 'Preço na página', data_kind: 'real', source: 'product_page', metrics: [{ entity: 'page:x', name: 'price', value: 197 }] }] } }, error: null, disclaimer: 'Results are model-generated proposals for human review. Nothing was published or spent.' }) };
+            if (/\/agents\/tasks\/t1/.test(u)) return { ok: true, status: 200, json: async () => ({ ...task, runs: [{ id: 'r1', sequence: 1, plan_step_id: null, agent_key: 'product_analyst', agent_version: '1.1.0', status: 'completed', step_count: 2, cost_usd: 0.002, error: null, started_at: null, finished_at: null }], progress: { completed_steps: 1, total_steps: 1, final: true } }) };
+            if (/\/agents\/tasks/.test(u)) return { ok: true, status: 200, json: async () => [task] };
+            return { ok: true, status: 200, json: async () => agentsCatalog.agents.map(card) };
         }
         if (/\/optimization\/approvals/.test(u)) {
             return { ok: true, status: 200, json: async () => [] };
@@ -61,26 +73,29 @@ vi.mock('../context/AuthContext', () => {
 });
 
 import App from '../App';
+import agentsCatalog from '../__tests__/agentsCatalog.json';
 
 const ROUTES = [
     '/login', '/about', '/privacy', '/terms',
     '/', '/dashboard', '/research', '/research/brand-scrapes', '/research/settings',
     '/build-creatives', '/image-ads', '/video-ads', '/facebook-campaigns', '/google-ads', '/tiktok-ads',
     '/winning-ads', '/generated-ads', '/brands', '/products', '/profiles', '/ad-remix', '/reporting',
-    '/settings', '/users', '/ai',
+    '/settings', '/users', '/ai', '/agents', '/agents?tab=tasks&task=t1',
 ];
 const PUBLIC = new Set(['/login', '/about', '/privacy', '/terms']);
 
 const RAW_KEY = /^[a-z][A-Za-z0-9]*(\.[A-Za-z0-9_]+)+$/;
 const ENGLISH_UI = /\b(Loading|Save|Cancel|Delete|Search|Create|Select|Settings|Back|Next|Edit|Add|Remove|Upload|Download|Generate|Failed|Please|Error|Click|Choose|Enter|Brands?|Products?|Campaigns?|Templates?|Profiles?|Overview|Dashboard|Welcome|Account|Retry)\b/;
 
-const textNodes = (root) => {
+const textNodes = (root, skipCode = false) => {
     const out = [];
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     let n;
     while ((n = walker.nextNode())) {
         const parent = n.parentElement;
         if (parent && /^(SCRIPT|STYLE)$/.test(parent.tagName)) continue;
+        // technical identifiers (tool names, route names, API enum values) are shown in <code>/<pre> on purpose and never translated
+        if (parent && skipCode && parent.closest('code, pre')) continue;
         const text = n.nodeValue.replace(/\s+/g, ' ').trim();
         if (text) out.push(text);
     }
@@ -103,7 +118,7 @@ const assertTranslated = (lng, label, missing) => {
     const texts = textNodes(document.body);
     const all = [...texts, ...attrTexts(document.body)];
     expect(all.filter((t) => t.includes('{{')), 'un-interpolated placeholders').toEqual([]);
-    expect(texts.filter((t) => RAW_KEY.test(t)), 'raw keys visible').toEqual([]);
+    expect(textNodes(document.body, true).filter((t) => RAW_KEY.test(t)), 'raw keys visible').toEqual([]);
     if (lng === 'pt-BR') {
         expect(all.filter((t) => ENGLISH_UI.test(t)), `English UI left on ${label}`).toEqual([]);
         expect(document.documentElement.lang).toBe('pt-BR');
@@ -158,6 +173,9 @@ describe.each(['en-US', 'pt-BR'])('route sweep (%s)', (lng) => {
         ['/settings', /Add Style|Adicionar estilo/],
         ['/settings', /Generate with AI|Gerar com IA/],
         ['/image-ads', /Start Creating|Começar a criar|Image|Imagem/],
+        ['/agents', /Details of|Detalhes de/],
+        ['/agents', /Settings of|Configurações de/],
+        ['/agents?tab=tasks&task=t1', /Cancel task|Cancelar tarefa/],
     ])('%s after clicking %s', async (route, control) => {
         window.history.pushState({}, '', route);
         const { container } = render(<App />);

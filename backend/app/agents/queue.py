@@ -96,3 +96,4 @@ def depth() -> dict:
         return {status: n for status, n in rows}
     finally:
         db.close()
+

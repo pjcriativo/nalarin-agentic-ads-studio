@@ -1,0 +1,497 @@
+{
+  "page": {
+    "title": "Agentes de IA",
+    "subtitle": "Agentes especialistas que pesquisam, planejam e analisam para {{organization}}.",
+    "safety": "Os agentes apenas leem dados e propõem. Nada é publicado, criado ou gasto em nenhuma conta de anúncios a partir desta tela.",
+    "noAccessTitle": "Você não tem acesso aos Agentes de IA",
+    "noAccessBody": "Peça a um administrador desta organização para conceder a permissão agents:read ao seu papel.",
+    "sections": "Seções de Agentes de IA",
+    "tab": {
+      "agents": "Agentes",
+      "tasks": "Tarefas"
+    },
+    "readOnly": "Você pode ver agentes, tarefas e resultados, mas seu papel não pode iniciar nem cancelar tarefas."
+  },
+  "state": {
+    "loading": "Carregando",
+    "unavailableTitle": "Agentes de IA indisponíveis no momento",
+    "unavailableBody": "O servidor não respondeu. Em vez de adivinhar, nada é exibido. Tente novamente em instantes.",
+    "retry": "Tentar novamente"
+  },
+  "alerts": {
+    "workerOffline": {
+      "title": "Nenhum worker de agentes está em execução",
+      "body_one": "As tarefas ficam na fila até um worker ficar online. {{count}} tarefa está aguardando agora.",
+      "body_other": "As tarefas ficam na fila até um worker ficar online. {{count}} tarefas estão aguardando agora."
+    },
+    "noCredential": {
+      "title": "Nenhuma chave de provedor de IA configurada",
+      "body": "Os agentes precisam de uma chave de provedor desta organização para chamar um modelo.",
+      "link": "Abrir Central de IA"
+    },
+    "noModel": {
+      "title": "Nenhum modelo de IA habilitado",
+      "body": "Cadastre e habilite um modelo para os agentes poderem rodar.",
+      "link": "Abrir Central de IA"
+    },
+    "noRoute": {
+      "title": "Alguns agentes não têm rota de modelo",
+      "body": "Escolha um modelo para os agentes que mostram \"Sem modelo de IA\" ou defina uma rota padrão.",
+      "link": "Abrir Central de IA"
+    },
+    "budgetReached": {
+      "title": "Limite de gasto com IA atingido",
+      "body": "O limite {{period}} desta organização foi consumido, então novas chamadas a modelos ficam bloqueadas até ele reiniciar ou ser aumentado.",
+      "link": "Abrir Central de IA"
+    },
+    "googleMissing": {
+      "title": "Nenhuma conta Google Ads conectada",
+      "body": "Os agentes que leem dados da conta responderão que eles estão indisponíveis, e seus resultados continuam sendo hipóteses até uma conta ser conectada.",
+      "link": "Conectar Google Ads"
+    },
+    "period": {
+      "daily": "diário",
+      "monthly": "mensal"
+    }
+  },
+  "availability": {
+    "ready": "Disponível",
+    "limited": "Limitado: sem conta Google Ads",
+    "disabled": "Desabilitado",
+    "noModel": "Sem modelo de IA",
+    "noCredential": "Sem chave de provedor"
+  },
+  "catalog": {
+    "title": "Supervisor e especialistas",
+    "subtitle": "O supervisor divide um pedido em etapas e delega aos especialistas. Cada especialista só tem as ferramentas de leitura listadas no seu cartão.",
+    "supervisorNote": "O supervisor não pode ser desabilitado; escolha o modelo dele pela rota na Central de IA.",
+    "agent": {
+      "product_analyst": {
+        "name": "Analista de produto e página de vendas",
+        "description": "Analisa um produto e sua página de vendas: propostas de valor, hipóteses de público, objeções e alegações a verificar.",
+        "readiness": "operacional: modelo real + catálogo + análise determinística da página de vendas pública (o que ela declara e o que falta)"
+      },
+      "market_researcher": {
+        "name": "Pesquisador de mercado e palavras-chave",
+        "description": "Propõe temas, palavras-chave candidatas (hipóteses, ou estimativas do Planejador de Palavras-chave quando disponíveis) e palavras negativas.",
+        "readiness": "operacional com uma conta Google Ads conectada (estimativas do Planejador + termos de pesquisa reais); só hipóteses sem ela"
+      },
+      "search_ads_strategist": {
+        "name": "Estrategista de anúncios na Rede de Pesquisa do Google",
+        "description": "Desenha a estrutura de uma campanha na Rede de Pesquisa (campanhas, grupos, temas), a abordagem de lances e o plano de medição.",
+        "readiness": "operacional para planejar, apoiado na estrutura/desempenho reais da conta conectada e em estimativas do Planejador quando disponíveis; não cria nada no Google Ads"
+      },
+      "ad_copywriter": {
+        "name": "Redator de anúncios (anúncios responsivos de pesquisa)",
+        "description": "Escreve títulos (30 caracteres) e descrições (90 caracteres) de Anúncios Responsivos de Pesquisa por grupo de anúncios.",
+        "readiness": "operacional: modelo real + validação determinística de limites e regras editoriais"
+      },
+      "policy_reviewer": {
+        "name": "Revisor de políticas e conformidade",
+        "description": "Revisa textos e alegações de anúncios quanto a riscos de política/conformidade e recomenda mudanças.",
+        "readiness": "operacional como revisor consultivo (regras estáticas + julgamento do modelo); não é uma decisão oficial de políticas do Google Ads"
+      },
+      "performance_analyst": {
+        "name": "Analista de otimização e desempenho",
+        "description": "Analisa o desempenho medido do Google Ads (e os dados enviados com a tarefa) e propõe hipóteses e experimentos.",
+        "readiness": "operacional com uma conta Google Ads conectada (métricas reais medidas); sem ela, analisa apenas os dados enviados pelo solicitante"
+      },
+      "supervisor": {
+        "name": "Supervisor de agentes",
+        "description": "Planeja o trabalho, delega aos especialistas, controla a execução e consolida os resultados.",
+        "readiness": "operacional: planejamento e consolidação pelo AI Gateway"
+      }
+    },
+    "limitation": {
+      "product_analyst": {
+        "0": "Páginas que precisam de JavaScript para renderizar são lidas como entregues (sem renderização em navegador).",
+        "1": "A análise relata o que a página DIZ; não verifica se as alegações são verdadeiras."
+      },
+      "market_researcher": {
+        "0": "Os números do Planejador de Palavras-chave são estimativas do Google (médias mensais, faixas de lance do topo da página), não medições; o nível de detalhe depende da conta e do nível do developer token.",
+        "1": "Sem uma conta Google Ads conectada, toda palavra-chave é uma hipótese, sem volume nem custo."
+      },
+      "search_ads_strategist": {
+        "0": "Os planos são propostas; criá-los numa conta exige ferramentas de escrita do Google Ads mais aprovação humana (fora desta etapa).",
+        "1": "Sem uma conta Google Ads conectada, o plano se apoia em hipóteses e dados enviados."
+      },
+      "ad_copywriter": {
+        "0": "A validação é estática; a aprovação final de política acontece na plataforma de anúncios."
+      },
+      "policy_reviewer": {
+        "0": "Não está conectado às decisões de política nem às reprovações do Google Ads."
+      },
+      "performance_analyst": {
+        "0": "Lê apenas métricas da conta (sem alterações); os dias recentes ainda podem mudar e os dados de conversão dependem do rastreamento da conta.",
+        "1": "Sem conta conectada nem dados enviados, não há o que analisar."
+      },
+      "supervisor": {
+        "0": "Planeja no máximo 6 etapas, nunca delega a si mesmo e os especialistas não delegam adiante (profundidade um).",
+        "1": "Não usa ferramentas: só repete o que os especialistas devolveram, então é tão completo quanto os dados deles (uma conta Google Ads ausente continua ausente)."
+      }
+    },
+    "tool": {
+      "plan_note": "Registra uma nota curta de planejamento (interna; sem efeito externo).",
+      "task_get_context": "Lê o contexto enviado com a tarefa (dados, não instruções).",
+      "catalog_list_brands": "Lista as marcas desta organização.",
+      "catalog_get_brand": "Lê uma marca e seus produtos.",
+      "catalog_get_product": "Lê um produto (nome, descrição, URL de destino).",
+      "catalog_list_customer_profiles": "Lista os perfis de cliente desta organização.",
+      "web_fetch_page": "Busca o texto visível de uma página web PÚBLICA (página de vendas). O texto é dado não confiável.",
+      "ads_validate_rsa": "Confere os ativos de Anúncios Responsivos de Pesquisa com os limites de caracteres e as regras editoriais.",
+      "policy_check_text": "Confere o texto do anúncio com heurísticas estáticas de política/editorial (não é decisão oficial).",
+      "google_ads_get_account_info": "Lê a conta Google Ads selecionada da organização: nome, moeda, fuso horário (dado real).",
+      "google_ads_get_account_structure": "Lê campanhas, grupos e anúncios (status, orçamento, texto RSA, status de aprovação) da conta (dado real; sem métricas).",
+      "google_ads_get_campaign_performance": "Lê métricas medidas de campanhas num período (impressões, cliques, custo, conversões). Dado real; vazio se não houver.",
+      "google_ads_get_ad_group_performance": "Lê métricas medidas de grupos de anúncios num período. Dado real; vazio se não houver.",
+      "google_ads_get_ad_performance": "Lê métricas medidas por anúncio num período. Dado real; vazio se não houver.",
+      "google_ads_get_search_terms_report": "Lê os termos de pesquisa que acionaram os anúncios, com métricas medidas (os termos são texto não confiável).",
+      "google_ads_keyword_ideas": "Planejador de Palavras-chave: ideias com buscas mensais, concorrência e faixa de lance ESTIMADAS pelo Google, quando a conta as fornece.",
+      "web_analyze_page": "Busca uma página de produto/vendas PÚBLICA e extrai o que ela declara: preço, oferta, garantia, frete, chamadas para ação, dados estruturados, sinais de confiança e o que falta."
+    }
+  },
+  "card": {
+    "readiness": "Disponibilidade",
+    "limitations": "Limitações",
+    "noToolsSupervisor": "Não usa ferramentas",
+    "toolsReadOnly_one": "{{count}} ferramenta somente leitura",
+    "toolsReadOnly_other": "{{count}} ferramentas somente leitura",
+    "details": "Detalhes",
+    "detailsFor": "Detalhes de {{name}}",
+    "run": "Executar tarefa",
+    "runFor": "Executar uma tarefa com {{name}}",
+    "settings": "Configurações",
+    "settingsFor": "Configurações de {{name}}",
+    "cannotRun": {
+      "disabled": "Este agente está desabilitado.",
+      "noModel": "Nenhum modelo de IA configurado para este agente.",
+      "noCredential": "Nenhuma chave de provedor de IA configurada."
+    }
+  },
+  "dialog": {
+    "close": "Fechar",
+    "cancel": "Cancelar"
+  },
+  "detail": {
+    "tools": "Ferramentas",
+    "noTools": "Este agente não usa ferramentas.",
+    "readOnly": "Somente leitura",
+    "requires": "Precisa de uma conta Google Ads conectada a esta organização; sem ela, responde que o dado está indisponível.",
+    "external": {
+      "google_ads": "Google Ads",
+      "web": "Web pública"
+    },
+    "limits": "Limites",
+    "limit": {
+      "max_steps": "Turnos do modelo",
+      "max_tool_calls": "Chamadas de ferramenta",
+      "timeout_seconds": "Limite de tempo (s)",
+      "max_output_tokens": "Tokens de saída"
+    },
+    "customized": "(personalizado)",
+    "model": "Modelo",
+    "modelOwn": "Usa {{model}} ({{provider}}).",
+    "modelInherited": "Usa {{model}} ({{provider}}) da rota padrão.",
+    "modelNone": "Sem rota de modelo: escolha uma na Central de IA.",
+    "fallbacks_one": "{{count}} modelo de contingência.",
+    "fallbacks_other": "{{count}} modelos de contingência.",
+    "operation": "Nome da rota",
+    "version": "Versão das instruções {{version}} (hash {{hash}})",
+    "notFoundTitle": "Tarefa não encontrada",
+    "notFoundBody": "Ela não existe nesta organização (pode pertencer a outra).",
+    "back": "Voltar à lista",
+    "created": "Criada em {{date}}",
+    "duration": "executou por {{time}}",
+    "waitingWorker": "Nenhum worker está em execução, então esta tarefa não pode começar. Ela fica na fila até um worker ficar online.",
+    "queued": "Na fila: um worker vai pegá-la em instantes.",
+    "retryScheduled": "Houve uma falha temporária. A tentativa {{attempt}} de {{max}} está agendada para {{date}}; etapas já concluídas não são repetidas.",
+    "progress": "Progresso",
+    "stepsOf": "{{done}} de {{total}} etapas",
+    "planning": "Planejando…",
+    "runs": "Agentes envolvidos",
+    "noRuns": "Nenhum agente começou ainda.",
+    "runMeta_one": "{{count}} etapa · {{cost}}",
+    "runMeta_other": "{{count}} etapas · {{cost}}",
+    "result": "Resultado",
+    "resultPending": "O resultado aparece aqui quando a tarefa terminar.",
+    "steps_one": "Etapa de execução ({{count}})",
+    "steps_other": "Etapas de execução ({{count}})",
+    "select": "Selecione uma tarefa para acompanhar o progresso e ler o resultado."
+  },
+  "settings": {
+    "title": "Configurações: {{name}}",
+    "subtitle": "As alterações valem para as novas tarefas desta organização.",
+    "enabled": "Agente habilitado",
+    "enabledHint": "Um agente desabilitado não pode iniciar tarefas e o supervisor não delega a ele.",
+    "maxSteps": "Turnos do modelo por execução",
+    "timeout": "Limite de tempo por execução (segundos)",
+    "defaultHint": "Vazio = padrão ({{value}})",
+    "stepsInvalid": "Use um número inteiro de {{min}} a {{max}}.",
+    "timeoutInvalid": "Use um número inteiro de {{min}} a {{max}}.",
+    "save": "Salvar configurações",
+    "saved": "Configurações do agente salvas",
+    "modelTitle": "Modelo",
+    "modelHint": "Cada agente roda na rota de modelo com o nome dele na Central de IA (chaves, orçamentos e contingências são gerenciados lá).",
+    "modelNoAccess": "Seu papel não pode ver os modelos de IA.",
+    "modelLoadFailed": "Não foi possível carregar os modelos.",
+    "modelLoading": "Carregando modelos",
+    "modelNone": "Nenhum modelo cadastrado ainda. Cadastre um na Central de IA."
+  },
+  "form": {
+    "title": "Iniciar uma tarefa",
+    "subtitle": "Descreva o que você precisa. A tarefa roda em um worker e você acompanha ao vivo.",
+    "agent": "Agente",
+    "agentAuto": "Automático: o supervisor planeja o trabalho",
+    "agentAutoHint": "O supervisor escolhe os especialistas e consolida os resultados.",
+    "objective": "Objetivo",
+    "objectiveHint": "{{count}} / {{max}} caracteres",
+    "objectivePlaceholder": "ex.: Planejar uma campanha de Pesquisa do Google para nossos tênis de corrida",
+    "objectiveShort": "Descreva o objetivo com pelo menos {{min}} caracteres.",
+    "objectiveLong": "O objetivo é limitado a {{max}} caracteres.",
+    "contextLabel": "Contexto (opcional)",
+    "contextHint": "Um objeto JSON com dados que os agentes podem usar, como uma exportação de resultados. É tratado como dado, não como instrução.",
+    "contextPlaceholder": "{\"periodo\": \"últimos 30 dias\", \"cliques\": 120}",
+    "context": {
+      "tooLong": "O contexto é grande demais.",
+      "notObject": "O contexto precisa ser um objeto JSON.",
+      "invalidJson": "Isto não é um JSON válido."
+    },
+    "costLabel": "Limite de custo (opcional)",
+    "costHint": "Gasto máximo com IA nesta tarefa, em dólares americanos. Vazio = o padrão do servidor.",
+    "costPlaceholder": "padrão",
+    "costInvalid": "Informe um valor maior que zero.",
+    "submit": "Iniciar tarefa",
+    "started": "Tarefa na fila",
+    "noPermission": "Seu papel pode ver tarefas, mas não iniciá-las.",
+    "warning": {
+      "agentDisabled": "Este agente está desabilitado para a organização.",
+      "noModel": "Nenhum modelo de IA configurado para este agente, então a tarefa falharia.",
+      "noGoogle": "Nenhuma conta Google Ads conectada: este agente informará que os dados da conta estão indisponíveis e suas conclusões serão hipóteses.",
+      "noGoogleSupervised": "Nenhuma conta Google Ads conectada: os especialistas que leem dados da conta informarão que eles estão indisponíveis.",
+      "noWorker": "Nenhum worker está em execução: a tarefa ficará na fila até um ficar online."
+    }
+  },
+  "list": {
+    "title": "Histórico de tarefas",
+    "filterLabel": "Filtrar por status",
+    "filter": {
+      "all": "Todas",
+      "pending": "Pendentes",
+      "running": "Em andamento",
+      "completed": "Concluídas",
+      "failed": "Com erro",
+      "cancelled": "Canceladas"
+    },
+    "empty": "Nenhuma tarefa ainda. Inicie uma acima.",
+    "emptyFiltered": "Nenhuma tarefa com este status.",
+    "supervised": "Supervisor (plano automático)",
+    "limitNote": "Mostrando as {{count}} tarefas mais recentes.",
+    "refreshFailed": "Não foi possível atualizar a lista. Mostrando os últimos dados recebidos."
+  },
+  "status": {
+    "pending": "Pendente",
+    "running": "Em andamento",
+    "completed": "Concluída",
+    "failed": "Com erro",
+    "cancelled": "Cancelada"
+  },
+  "usage": {
+    "inputTokens": "Tokens de entrada",
+    "outputTokens": "Tokens de saída",
+    "cost": "Custo (US$)",
+    "cap": "Limite de custo",
+    "capUsed": "{{percent}}% do limite de custo usado",
+    "attempts": "Tentativa {{attempt}} de {{max}}"
+  },
+  "cancel": {
+    "button": "Cancelar tarefa",
+    "confirmTitle": "Cancelar esta tarefa?",
+    "confirmPending": "A tarefa ainda não começou e será cancelada imediatamente.",
+    "confirmRunning": "A tarefa para antes da próxima chamada ao modelo. Uma chamada já em andamento termina e ainda é cobrada.",
+    "confirm": "Cancelar tarefa",
+    "keep": "Continuar executando",
+    "done": "Tarefa cancelada",
+    "requested": "Cancelamento solicitado",
+    "pending": "Cancelamento solicitado"
+  },
+  "errors": {
+    "kind": {
+      "cancelled": "A tarefa foi cancelada.",
+      "timeout": "A tarefa estourou o tempo.",
+      "step_limit": "O agente usou todos os turnos do modelo sem terminar.",
+      "tool_limit": "O agente usou mais chamadas de ferramenta do que o permitido.",
+      "loop_detected": "O agente ficou repetindo a mesma chamada e foi interrompido.",
+      "invalid_output": "O agente não conseguiu produzir uma resposta válida e verificável. Nada não verificado foi salvo.",
+      "invalid_plan": "O supervisor não conseguiu produzir um plano válido.",
+      "subtask_failed": "Um especialista falhou, então a tarefa parou. As etapas concluídas ficam como resultados parciais.",
+      "cost_limit": "A tarefa atingiu o limite de custo.",
+      "authorization": "Quem iniciou esta tarefa não pode mais executar agentes nesta organização.",
+      "agent_disabled": "Um agente necessário para esta tarefa está desabilitado.",
+      "interrupted": "A tarefa foi interrompida vezes demais.",
+      "internal": "Um erro interno interrompeu a tarefa.",
+      "ai_authentication": "O provedor de IA recusou a chave da organização.",
+      "ai_permission": "A chave do provedor de IA não tem permissão para usar este modelo.",
+      "ai_quota": "A conta do provedor de IA está sem crédito ou cota.",
+      "ai_rate_limit": "O provedor de IA está limitando as requisições.",
+      "ai_timeout": "O provedor de IA demorou demais para responder.",
+      "ai_unavailable": "O provedor de IA está indisponível.",
+      "ai_invalid_request": "O provedor de IA recusou a requisição.",
+      "ai_not_found": "O modelo de IA configurado não foi encontrado.",
+      "ai_content_blocked": "O provedor de IA bloqueou o conteúdo.",
+      "ai_invalid_response": "O provedor de IA devolveu uma resposta inutilizável.",
+      "ai_budget_exceeded": "O limite de gasto com IA da organização foi atingido.",
+      "ai_not_configured": "Nenhum modelo ou chave de IA configurado para este agente.",
+      "ai_unknown": "O provedor de IA falhou de forma inesperada.",
+      "unknown": "A tarefa falhou."
+    },
+    "next": {
+      "aiSettings": "Confira a chave do provedor e a rota do modelo na Central de IA.",
+      "aiLimits": "Confira o crédito e os limites de gasto na Central de IA.",
+      "raiseCostCap": "Inicie uma nova tarefa com um limite de custo maior.",
+      "enableAgent": "Habilite o agente nas configurações dele.",
+      "askAdmin": "Peça a um administrador para revisar o seu papel.",
+      "openAi": "Abrir Central de IA"
+    },
+    "serverMessage": "Mensagem do servidor",
+    "partialHint": "As etapas concluídas antes da falha aparecem abaixo como resultados parciais.",
+    "api": {
+      "network": "Não foi possível falar com o servidor. Verifique sua conexão e tente novamente.",
+      "unauthorized": "Sua sessão expirou. Entre novamente.",
+      "forbidden": "Seu papel não tem permissão para isso.",
+      "notFound": "Não encontrado nesta organização.",
+      "agentDisabled": "Este agente está desabilitado para a organização.",
+      "conflict": "Esta ação não é mais possível (a tarefa pode já ter terminado).",
+      "invalid": "O servidor recusou os dados. Confira os campos e tente novamente.",
+      "tooManyTasks": "Esta organização já tem o número máximo de tarefas ativas. Aguarde uma terminar.",
+      "unavailable": "O serviço está indisponível no momento. Tente novamente em instantes.",
+      "unknown": "Algo deu errado. Tente novamente."
+    }
+  },
+  "steps": {
+    "empty": "Nenhuma etapa registrada ainda.",
+    "kind": {
+      "llm": "Modelo",
+      "tool": "Ferramenta",
+      "system": "Sistema"
+    },
+    "outcome": {
+      "ok": "Dados retornados",
+      "noData": "Sem dados",
+      "unavailable": "Indisponível",
+      "error": "Erro"
+    },
+    "failed": "Falhou",
+    "injection": "Conteúdo suspeito sinalizado",
+    "input": "Entrada (ocultada)",
+    "output": "Saída (ocultada)",
+    "privacy": "Prompts nunca são armazenados. Entradas e saídas são ocultadas e truncadas antes de serem salvas."
+  },
+  "dataKind": {
+    "real": "Dado real",
+    "estimate": "Estimativa",
+    "hypothesis": "Hipótese"
+  },
+  "result": {
+    "disclaimer": "Os resultados são propostas geradas por modelo para revisão humana. Nada foi publicado nem gasto.",
+    "emptyCompleted": "A tarefa terminou sem um resultado armazenado.",
+    "noneStored": "Nenhum resultado foi armazenado para esta tarefa.",
+    "partialNotice": "Esta tarefa não terminou. Só aparecem as etapas concluídas antes de ela parar.",
+    "report": "Relatório consolidado",
+    "specialists": "Resultados dos especialistas",
+    "stepNoOutput": "Esta etapa não tem saída.",
+    "partial": "Resultados parciais",
+    "partialStep": "Etapa {{id}}",
+    "rawJson": "Mostrar JSON bruto",
+    "provenance": {
+      "title": "O que são os números deste resultado",
+      "none": "Nenhum item tem rótulo de dado: trate tudo abaixo como proposta do modelo, não como medição.",
+      "real": "devolvido por uma ferramenta nesta execução (conta Google Ads, página do produto) ou enviado por você.",
+      "estimate": "estimativas do próprio Planejador de Palavras-chave do Google, não medições da sua conta.",
+      "hypothesis": "ideia do modelo; não traz nenhum número medido."
+    },
+    "source": {
+      "google_ads_api": "Conta Google Ads",
+      "google_keyword_planner": "Planejador de Palavras-chave do Google",
+      "product_page": "Página do produto",
+      "supplied_context": "Dados enviados por você",
+      "model_knowledge": "Conhecimento do modelo (não verificado)"
+    },
+    "enum": {
+      "informational": "informacional",
+      "commercial": "comercial",
+      "transactional": "transacional",
+      "navigational": "navegacional",
+      "exact": "correspondência exata",
+      "phrase": "correspondência de frase",
+      "broad": "correspondência ampla",
+      "approved": "aprovado",
+      "needs_changes": "precisa de ajustes",
+      "blocked": "bloqueado",
+      "info": "informação",
+      "warning": "aviso",
+      "blocker": "impeditivo",
+      "model_hypotheses": "hipóteses do modelo",
+      "provided_context": "contexto enviado",
+      "fetched_pages": "páginas lidas",
+      "keyword_planner": "Planejador de Palavras-chave",
+      "account_data": "dados da conta",
+      "mixed": "misto",
+      "low": "baixa",
+      "medium": "média",
+      "high": "alta"
+    },
+    "field": {
+      "summary": "Resumo",
+      "value_propositions": "Propostas de valor",
+      "audience_hypotheses": "Hipóteses de público",
+      "objections": "Objeções",
+      "claims_to_verify": "Alegações a verificar",
+      "missing_information": "Informações ausentes",
+      "sources": "Fontes",
+      "data_basis": "No que isto se apoia",
+      "themes": "Temas",
+      "keyword_candidates": "Palavras-chave candidatas",
+      "negative_keyword_candidates": "Palavras-chave negativas candidatas",
+      "alternatives_or_competitors": "Alternativas e concorrentes",
+      "evidence": "Evidência",
+      "verification_notice": "Aviso de verificação",
+      "objective": "Objetivo",
+      "campaigns": "Campanhas",
+      "bidding_recommendation": "Recomendação de lances",
+      "measurement_plan": "Plano de medição",
+      "risks": "Riscos",
+      "assumptions": "Premissas",
+      "name": "Nome",
+      "goal": "Meta",
+      "ad_groups": "Grupos de anúncios",
+      "keyword_themes": "Temas de palavras-chave",
+      "landing_page": "Página de destino",
+      "notes": "Observações",
+      "ad_group": "Grupo de anúncios",
+      "headlines": "Títulos",
+      "descriptions": "Descrições",
+      "verdict": "Veredito",
+      "findings": "Achados",
+      "severity": "Gravidade",
+      "item": "Item",
+      "rule": "Regra",
+      "suggestion": "Sugestão",
+      "recommended_experiments": "Experimentos recomendados",
+      "hypotheses": "Hipóteses",
+      "data_limitations": "Limitações dos dados",
+      "key_results": "Principais resultados",
+      "recommendations": "Recomendações",
+      "open_questions": "Perguntas em aberto",
+      "keyword": "Palavra-chave",
+      "intent": "Intenção",
+      "match_type_suggestion": "Tipo de correspondência",
+      "rationale": "Justificativa",
+      "data_kind": "Tipo de dado",
+      "source": "Fonte",
+      "metrics": "Métricas",
+      "statement": "Afirmação",
+      "entity": "Entidade",
+      "value": "Valor"
+    }
+  }
+}

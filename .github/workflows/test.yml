@@ -83,6 +83,8 @@ jobs:
           pytest tests/unit/test_agents_worker.py tests/unit/test_agents_worker_processes.py -q --tb=short
           # Agent real-data tools (etapa 02.5): Google Ads reads under RLS on the dedicated login role, evidence rules, interrupted AI calls
           pytest tests/unit/test_agents_google_tools.py tests/unit/test_agents_data_honesty.py tests/unit/test_agents_page_analysis.py tests/unit/test_ai_interrupted_calls.py -q --tb=short
+          # Agents dashboard (etapa 02.6): supervisor card, worker liveness/queue status, contract with the frontend
+          pytest tests/unit/test_agents_dashboard_api.py tests/unit/test_agents_frontend_contract.py -q --tb=short
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4

@@ -5,7 +5,7 @@ the environment, so no provider is ever contacted. Test-only: nothing in ``app``
 
 Environment:
   WORKER_SCRIPT  JSON list replayed in order, shared by every task of this process. Items: "plan" | "product" | "copy" |
-                 "report" | {"sleep": seconds, "then": <item>} | {"error": "<ai error kind>"}.
+                 "report" | {"json": <answer>} | {"tools": [[name, args]]} | {"sleep": seconds, "then": <item>} | {"error": "<ai error kind>"}.
   ECHO_DELAY     without a script: answer every ``agent.<key>`` call with that agent's valid output after this many seconds.
   CALLS_FILE     every model call writes ``<org>|<operation>`` to its own ``<CALLS_FILE>.<ns>-<n>-<pid>`` file (one file per
                  call: concurrent appends from several processes are not atomic on every OS). Read with ``calls()`` in the tests.
@@ -18,13 +18,17 @@ import time
 
 from app.agents import executor
 from app.worker.worker import cli
-from tests.unit.agents_support import (COPY, OUTPUT_FOR, PLAN, PRODUCT, REPORT, Delay, ScriptedGateway, ai_error, say_json)
+from tests.unit.agents_support import (COPY, OUTPUT_FOR, PLAN, PRODUCT, REPORT, Delay, ScriptedGateway, UseTools, ai_error, say_json)
 
 _COUNTER = itertools.count()
 _NAMED = {"plan": PLAN, "product": PRODUCT, "copy": COPY, "report": REPORT}
 
 
 def _item(spec):
+    if isinstance(spec, dict) and "json" in spec:               # an exact model answer
+        return say_json(spec["json"])
+    if isinstance(spec, dict) and "tools" in spec:              # a model turn that calls tools: [[name, args], ...]
+        return UseTools([(name, args) for name, args in spec["tools"]])
     if isinstance(spec, dict) and "sleep" in spec:
         return Delay(float(spec["sleep"]), _item(spec["then"]))
     if isinstance(spec, dict) and "error" in spec:

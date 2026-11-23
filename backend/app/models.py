@@ -1223,3 +1223,19 @@ class AgentSetting(Base):
     timeout_seconds = Column(Integer, nullable=True)
     updated_by_user_id = Column(String, nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class AgentWorker(Base):
+    """Liveness of one agent worker process (etapa 02.6). NOT tenant data: no organization, no task content."""
+    __tablename__ = "agent_workers"
+    __table_args__ = (
+        CheckConstraint("status IN ('running','stopped')", name='ck_agent_workers_status'),
+        Index('ix_agent_workers_last_seen', 'last_seen_at'),
+    )
+
+    worker_id = Column(String, primary_key=True)
+    status = Column(String, nullable=False, default="running")
+    started_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_seen_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    active_tasks = Column(Integer, nullable=False, default=0)
+    concurrency = Column(Integer, nullable=False, default=1)

@@ -51,7 +51,8 @@
       "connections": "Ad accounts",
       "apikeys": "API keys",
       "audit": "Audit",
-      "ai": "AI"
+      "ai": "AI",
+      "agents": "AI agents"
     },
     "org_read": "View the organization",
     "org_manage": "Manage the organization",
@@ -89,6 +90,9 @@
     "audit_read": "View the audit log",
     "ai_read": "View AI settings, models and usage",
     "ai_use": "Use AI inside features",
-    "ai_manage": "Manage AI keys, models, routing and limits"
+    "ai_manage": "Manage AI keys, models, routing and limits",
+    "agents_read": "View AI agents, tasks and results",
+    "agents_run": "Start and cancel AI agent tasks",
+    "agents_manage": "Enable agents and tune their limits"
   }
 }

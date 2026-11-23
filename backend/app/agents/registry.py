@@ -198,6 +198,8 @@ Prefer the smallest plan that answers the objective. Report rules: use only what
 never present hypotheses as measurements, and list open questions.""" % S.MAX_PLAN_STEPS,
     limits=AgentLimits(max_steps=2, max_tool_calls=0, timeout_seconds=180, max_output_tokens=2048),
     readiness="operational: planning and consolidation through the AI Gateway",
+    limitations=("Plans at most %d steps, never delegates to itself, and specialists do not delegate further (depth is one)." % S.MAX_PLAN_STEPS,
+                 "Uses no tools: it can only repeat what the specialists returned, so it is as complete as their data (a missing Google Ads account stays missing)."),
 )
 
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, BarChart3, Package, Users, Video, Wand2, Settings, LogOut, Image, ShoppingBag, Target, ChevronLeft, ChevronRight, FileImage, Search, ChevronDown, UserCog, TrendingUp, Music2, Menu, X, Sparkles } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Package, Users, Video, Wand2, Settings, LogOut, Image, ShoppingBag, Target, ChevronLeft, ChevronRight, FileImage, Search, ChevronDown, UserCog, TrendingUp, Music2, Menu, X, Sparkles, Bot } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useOrganization } from '../context/OrganizationContext';
@@ -62,7 +62,9 @@ export default function Layout() {
         { icon: Target, id: 'fb', label: t('menu.facebookCampaigns'), path: '/facebook-campaigns' },
         { icon: TrendingUp, id: 'google', label: t('menu.googleAds'), path: '/google-ads' },
         { icon: Music2, id: 'tiktok', label: t('menu.tiktokAds'), path: '/tiktok-ads' },
-    ];
+        // AI Agents: shown to roles that hold agents:read (the server authorizes every call)
+        { icon: Bot, id: 'agents', label: t('menu.aiAgents'), path: '/agents', permission: 'agents:read' },
+    ].filter((item) => !item.permission || can(item.permission));
 
     const toggleMenu = (label) => {
         setExpandedMenus(prev => ({

@@ -1,0 +1,18 @@
+{
+  "_comment": "Fields the AI Agents dashboard READS from /api/v1/agents. Verified against the REAL backend (backend/tests/unit/test_agents_frontend_contract.py) and against the in-memory fake the UI tests use (src/__tests__/agentsContract.test.js), so neither side can drift without a red test. 'forbidden' keys must never appear in any answer.",
+  "agent": ["key", "name", "description", "version", "enabled", "allowed_tools", "readiness", "limitations", "limits", "routing"],
+  "agentLimits": ["max_steps", "max_tool_calls", "timeout_seconds", "max_output_tokens", "max_repeated_calls"],
+  "agentRouting": ["operation", "has_route", "inherited_from_default", "primary_model", "fallbacks"],
+  "tool": ["name", "description", "side_effect", "required_permission", "external_system", "requires", "status"],
+  "plannedTool": ["name", "description", "status", "side_effect", "requires_human_approval", "agent_may_hold"],
+  "task": ["id", "status", "agent_key", "kind", "objective", "created_at", "started_at", "finished_at", "attempts", "max_attempts", "cancel_requested", "step_count", "next_attempt_at", "usage", "error", "plan"],
+  "taskUsage": ["input_tokens", "output_tokens", "cost_usd", "max_cost_usd"],
+  "taskDetail": ["runs", "progress"],
+  "progress": ["completed_steps", "total_steps", "final"],
+  "run": ["id", "sequence", "plan_step_id", "agent_key", "agent_version", "status", "step_count", "cost_usd", "error", "started_at", "finished_at"],
+  "step": ["sequence", "run_id", "kind", "name", "status", "error_kind", "input", "output", "injection_suspected", "provider", "model_id", "input_tokens", "output_tokens", "cost_usd", "latency_ms", "created_at"],
+  "result": ["id", "status", "result", "error", "disclaimer"],
+  "workerStatus": ["online", "workers", "online_window_seconds", "queue"],
+  "workerQueue": ["pending", "running", "oldest_pending_seconds"],
+  "forbidden": ["instructions", "system_prompt", "prompt", "api_key", "encrypted_key", "refresh_token", "access_token", "lease_owner", "worker_id", "idempotency_key"]
+}
