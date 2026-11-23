@@ -302,6 +302,15 @@ SECRET_KEY=...  # Generate with: python -c "import secrets; print(secrets.token_
   - Functions/Variables: `camelCase`
   - Constants: `UPPER_SNAKE_CASE`
 
+## Multi-tenancy (MANDATORY for new endpoints)
+
+Private business data belongs to an **organization**. A new tenant-scoped table needs `organization_id`
+(+ composite FKs where it links to other tenant tables) and a `tenant_isolation` RLS policy in a NEW migration;
+a new endpoint must depend on `require_org_permission("<entity>:<read|write|delete>")` from `app/core/tenancy.py`
+and filter by `ctx.org.id`. Never trust an `organization_id` from the request body. Global roles / `is_superuser`
+do **not** grant tenant data access. The app connects through the non-bypass role `DB_RUNTIME_ROLE` (default `ads_app`).
+What is still not isolated is listed in `docs/etapa-01-01-multitenant-core.md` (section 7).
+
 ## Security Notes
 
 - CORS restricted to specific origins (configure via ALLOWED_ORIGINS env var)

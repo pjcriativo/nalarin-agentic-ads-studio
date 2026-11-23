@@ -1,4 +1,7 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Text, JSON, Table, Boolean
+from sqlalchemy import (
+    Column, String, Integer, ForeignKey, DateTime, Text, JSON, Table, Boolean,
+    UniqueConstraint, ForeignKeyConstraint, CheckConstraint, Index,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -26,12 +29,21 @@ role_permissions = Table(
 )
 
 # Many-to-Many relationship table for Brand <-> CustomerProfile
+# organization_id is filled by a BEFORE INSERT trigger from the brand and checked
+# by composite foreign keys, so a link between a brand and a profile of two
+# different organizations is impossible at the database level.
 brand_profiles = Table(
     'brand_profiles',
     Base.metadata,
     Column('brand_id', String, ForeignKey('brands.id', ondelete='CASCADE'), primary_key=True),
     Column('profile_id', String, ForeignKey('customer_profiles.id', ondelete='CASCADE'), primary_key=True),
-    Column('created_at', DateTime(timezone=True), server_default=func.now())
+    Column('created_at', DateTime(timezone=True), server_default=func.now()),
+    Column('organization_id', String, ForeignKey('organizations.id', ondelete='RESTRICT'), nullable=True),
+    ForeignKeyConstraint(['brand_id', 'organization_id'], ['brands.id', 'brands.organization_id'],
+                         name='fk_brand_profiles_brand_org', ondelete='CASCADE'),
+    ForeignKeyConstraint(['profile_id', 'organization_id'], ['customer_profiles.id', 'customer_profiles.organization_id'],
+                         name='fk_brand_profiles_profile_org', ondelete='CASCADE'),
+    Index('ix_brand_profiles_organization_id', 'organization_id'),
 )
 
 class User(Base):
@@ -99,10 +111,58 @@ class RefreshToken(Base):
 
     user = relationship("User", back_populates="refresh_tokens")
 
-class Brand(Base):
-    __tablename__ = "brands"
+class Organization(Base):
+    """A tenant. All private business data hangs off an organization."""
+    __tablename__ = "organizations"
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    name = Column(String, nullable=False)
+    slug = Column(String, nullable=False, unique=True)
+    is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    members = relationship("OrganizationMember", back_populates="organization", cascade="all, delete-orphan")
+
+
+class OrganizationMember(Base):
+    """A user's membership (and RBAC role) inside one organization.
+
+    A membership is never deleted when access is withdrawn: it is revoked
+    (status='revoked') so there is an audit trail and re-adding is explicit.
+    """
+    __tablename__ = "organization_members"
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'user_id', name='uq_org_members_org_user'),
+        CheckConstraint("role IN ('owner','admin','manager','analyst','viewer')", name='ck_org_members_role'),
+        CheckConstraint("status IN ('active','revoked')", name='ck_org_members_status'),
+        Index('ix_org_members_user_id', 'user_id'),
+    )
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    role = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="active", server_default="active")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+    organization = relationship("Organization", back_populates="members")
+    user = relationship("User")
+
+
+class Brand(Base):
+    __tablename__ = "brands"
+    __table_args__ = (
+        UniqueConstraint('id', 'organization_id', name='uq_brands_id_org'),
+        Index('ix_brands_organization_id', 'organization_id'),
+    )
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    # Tenant owner. NULL only for LEGACY rows created before multi-tenancy:
+    # they are invisible to every organization (RLS) until an operator claims
+    # them explicitly (app/scripts/claim_legacy_data.py).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     name = Column(String, nullable=False)
     logo = Column(String, nullable=True)
     primary_color = Column(String, default='#3B82F6')
@@ -112,8 +172,13 @@ class Brand(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    products = relationship("Product", back_populates="brand", cascade="all, delete-orphan")
-    profiles = relationship("CustomerProfile", secondary=brand_profiles, back_populates="brands")
+    # The composite (brand_id, organization_id) foreign keys add a second FK
+    # path between these tables, so every join is spelled out explicitly.
+    products = relationship("Product", back_populates="brand", cascade="all, delete-orphan",
+                            primaryjoin="Brand.id == Product.brand_id", foreign_keys="Product.brand_id")
+    profiles = relationship("CustomerProfile", secondary=brand_profiles, back_populates="brands",
+                            primaryjoin="Brand.id == brand_profiles.c.brand_id",
+                            secondaryjoin="CustomerProfile.id == brand_profiles.c.profile_id")
     generated_ads = relationship("GeneratedAd", back_populates="brand")
 
     @property
@@ -130,8 +195,14 @@ class Brand(Base):
 
 class Product(Base):
     __tablename__ = "products"
+    __table_args__ = (
+        ForeignKeyConstraint(['brand_id', 'organization_id'], ['brands.id', 'brands.organization_id'],
+                             name='fk_products_brand_org', ondelete='CASCADE'),
+        Index('ix_products_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     brand_id = Column(String, ForeignKey("brands.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
@@ -139,19 +210,27 @@ class Product(Base):
     default_url = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    brand = relationship("Brand", back_populates="products")
+    brand = relationship("Brand", back_populates="products",
+                         primaryjoin="Brand.id == Product.brand_id", foreign_keys="Product.brand_id")
 
 class CustomerProfile(Base):
     __tablename__ = "customer_profiles"
+    __table_args__ = (
+        UniqueConstraint('id', 'organization_id', name='uq_customer_profiles_id_org'),
+        Index('ix_customer_profiles_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     name = Column(String, nullable=False)
     demographics = Column(Text, nullable=True)
     pain_points = Column(Text, nullable=True)
     goals = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    brands = relationship("Brand", secondary=brand_profiles, back_populates="profiles")
+    brands = relationship("Brand", secondary=brand_profiles, back_populates="profiles",
+                          primaryjoin="CustomerProfile.id == brand_profiles.c.profile_id",
+                          secondaryjoin="Brand.id == brand_profiles.c.brand_id")
 
 class FacebookCampaign(Base):
     __tablename__ = "facebook_campaigns"

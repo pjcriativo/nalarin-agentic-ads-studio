@@ -53,10 +53,12 @@ class DeconstructRequest(BaseModel):
 
 class ReconstructRequest(BaseModel):
     """Request to reconstruct an ad from blueprint + brand data"""
-    template_id: int  # Template with blueprint
-    brand_id: int
-    product_id: int
-    profile_id: int
+    # All entity ids are UUID strings (they were declared int, which made this
+    # endpoint reject every real request with HTTP 422).
+    template_id: str  # Template with blueprint
+    brand_id: str
+    product_id: str
+    profile_id: str
     campaign_offer: str
     campaign_urgency: Optional[str] = None
     campaign_messaging: str

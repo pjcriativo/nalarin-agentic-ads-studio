@@ -24,7 +24,7 @@ from app.core import token_encryption  # noqa: F401
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Validate the PostgreSQL connection on startup (fail fast)."""
-    from app.database import engine
+    from app.database import engine, verify_runtime_role_is_safe
     from sqlalchemy import text
 
     try:
@@ -32,6 +32,9 @@ async def lifespan(_app: FastAPI):
             version = conn.execute(text("SELECT version()")).scalar()
             print("Connected to PostgreSQL")
             print(f"   Version: {version}")
+        # Refuse to serve if row level security could be bypassed (superuser /
+        # BYPASSRLS runtime role) or the tenant tables are not protected.
+        verify_runtime_role_is_safe()
     except Exception as e:
         # Sanitize DATABASE_URL - hide password
         sanitized_url = re.sub(r'://[^:]+:[^@]+@', '://***:***@', settings.DATABASE_URL)
@@ -115,10 +118,11 @@ async def health_check():
     return {"status": "healthy"}
 
 # Include Routers
-from app.api.v1 import brands, products, research, generated_ads, templates, facebook, uploads, dashboard, copy_generation, profiles, ad_remix, prompts, ad_styles, auth, users, google_ads, overview, tiktok_ads, bot, optimization
+from app.api.v1 import brands, products, research, generated_ads, templates, facebook, uploads, dashboard, copy_generation, profiles, ad_remix, prompts, ad_styles, auth, users, google_ads, overview, tiktok_ads, bot, optimization, organizations
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+app.include_router(organizations.router, prefix="/api/v1/organizations", tags=["organizations"])
 app.include_router(brands.router, prefix="/api/v1/brands", tags=["brands"])
 app.include_router(products.router, prefix="/api/v1/products", tags=["products"])
 app.include_router(research.router, prefix="/api/v1/research", tags=["research"])

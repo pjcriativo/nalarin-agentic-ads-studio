@@ -13,6 +13,7 @@ from app.core.security import (
     hash_refresh_token,
 )
 from app.core.deps import get_current_active_user
+from app.core.tenancy import create_personal_organization
 from app.schemas.auth import (
     Token,
     TokenRefresh,
@@ -62,6 +63,10 @@ async def register(
         new_user.roles.append(viewer_role)
 
     db.add(new_user)
+    db.flush()
+    # Every user starts with a personal organization they own; nothing else is
+    # shared with them until an owner/admin of another organization adds them.
+    create_personal_organization(db, new_user)
     db.commit()
     db.refresh(new_user)
 

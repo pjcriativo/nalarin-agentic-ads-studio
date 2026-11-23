@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.database import get_db
-from app.models import CustomerProfile as ProfileModel, User
-from app.core.deps import get_current_active_user, require_permission
+from app.models import CustomerProfile as ProfileModel
+from app.core.tenancy import OrgContext, client_or_new_id, require_org_permission
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -17,7 +18,7 @@ class CustomerProfileBase(BaseModel):
     goals: str = ""
 
 class CustomerProfileCreate(CustomerProfileBase):
-    id: str = None
+    id: Optional[str] = None
 
 class CustomerProfile(CustomerProfileBase):
     id: str
@@ -26,57 +27,74 @@ class CustomerProfile(CustomerProfileBase):
     class Config:
         from_attributes = True
 
-@router.get("", response_model=List[CustomerProfile])
-def read_profiles(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    profiles = db.query(ProfileModel).offset(skip).limit(limit).all()
+
+def _own_profile(db: Session, ctx: OrgContext, profile_id: str):
+    return (
+        db.query(ProfileModel)
+        .filter(ProfileModel.id == profile_id, ProfileModel.organization_id == ctx.org.id)
+        .first()
+    )
+
+
+def _serialize(p: ProfileModel) -> dict:
     # Convert snake_case to camelCase for frontend
-    return [{
+    return {
         "id": p.id,
         "name": p.name,
         "demographics": p.demographics or "",
         "painPoints": p.pain_points or "",
         "goals": p.goals or "",
-        "created_at": p.created_at
-    } for p in profiles]
+        "created_at": p.created_at,
+    }
+
+
+@router.get("", response_model=List[CustomerProfile])
+def read_profiles(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    ctx: OrgContext = Depends(require_org_permission("profiles:read")),
+):
+    profiles = (
+        db.query(ProfileModel)
+        .filter(ProfileModel.organization_id == ctx.org.id)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return [_serialize(p) for p in profiles]
 
 @router.post("/", response_model=CustomerProfile)
 def create_profile(
     profile: CustomerProfileCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("brands:write"))
+    ctx: OrgContext = Depends(require_org_permission("profiles:write")),
 ):
     db_profile = ProfileModel(
-        id=profile.id,
+        id=client_or_new_id(profile.id),
+        organization_id=ctx.org.id,
         name=profile.name,
         demographics=profile.demographics,
         pain_points=profile.painPoints,
         goals=profile.goals
     )
     db.add(db_profile)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Resource id already in use")
     db.refresh(db_profile)
-    return {
-        "id": db_profile.id,
-        "name": db_profile.name,
-        "demographics": db_profile.demographics or "",
-        "painPoints": db_profile.pain_points or "",
-        "goals": db_profile.goals or "",
-        "created_at": db_profile.created_at
-    }
+    return _serialize(db_profile)
 
 @router.put("/{profile_id}")
 def update_profile(
     profile_id: str,
     profile: CustomerProfileBase,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("brands:write"))
+    ctx: OrgContext = Depends(require_org_permission("profiles:write")),
 ):
-    db_profile = db.query(ProfileModel).filter(ProfileModel.id == profile_id).first()
+    db_profile = _own_profile(db, ctx, profile_id)
     if not db_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
@@ -93,9 +111,9 @@ def update_profile(
 def delete_profile(
     profile_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("brands:delete"))
+    ctx: OrgContext = Depends(require_org_permission("profiles:delete")),
 ):
-    db_profile = db.query(ProfileModel).filter(ProfileModel.id == profile_id).first()
+    db_profile = _own_profile(db, ctx, profile_id)
     if not db_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     db.delete(db_profile)

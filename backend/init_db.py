@@ -1,11 +1,25 @@
 from app.database import engine, Base, SessionLocal
 from app.models import *
 from app.core.security import get_password_hash
+from app.core.tenancy import create_personal_organization
 
 def init_db():
-    print("Creating database tables...")
-    Base.metadata.create_all(bind=engine)
-    print("Tables created successfully!")
+    """Bring the schema to the latest Alembic revision.
+
+    Deliberately NOT Base.metadata.create_all(): the tenant tables also need
+    their row level security policies, triggers and the runtime role, which only
+    the migrations create.
+    """
+    import os
+    from alembic import command
+    from alembic.config import Config
+
+    print("Applying database migrations...")
+    here = os.path.dirname(os.path.abspath(__file__))
+    cfg = Config(os.path.join(here, "alembic.ini"))
+    cfg.set_main_option("script_location", os.path.join(here, "alembic"))
+    command.upgrade(cfg, "head")
+    print("Database is up to date!")
 
 def seed_roles_and_permissions():
     """Seed default roles and permissions"""
@@ -130,6 +144,8 @@ def create_superuser(email: str, password: str, name: str = "Admin"):
             user.roles.append(admin_role)
 
         db.add(user)
+        db.flush()
+        create_personal_organization(db, user)
         db.commit()
         print(f"Superuser {email} created successfully!")
 

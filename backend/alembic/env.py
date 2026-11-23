@@ -19,7 +19,9 @@ from app import models  # Import models to register them with Base
 config = context.config
 
 # Set sqlalchemy.url from environment
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# ALEMBIC_DATABASE_URL lets tooling/tests migrate a different (throw-away) database
+# without touching the application settings.
+config.set_main_option("sqlalchemy.url", os.getenv("ALEMBIC_DATABASE_URL") or settings.DATABASE_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

@@ -123,11 +123,18 @@ def db_session():
     finally:
         # Clean up test data (don't drop tables in production DB)
         # Delete test user if it exists
+        from sqlalchemy import text
         from app.models import (
             User, RefreshToken, MutationAudit, GoogleAdsConnection,
             MetaAdsConnection, TikTokAdsConnection, ApiKey,
+            Organization,
         )
         session.rollback()
+        # This session is the (superuser) seeding connection, so it bypasses RLS
+        # and can wipe the tenant tables of the disposable test database.
+        for table in ("brand_profiles", "products", "brands", "customer_profiles"):
+            session.execute(text(f"DELETE FROM {table}"))
+        session.commit()
         test_user = session.query(User).filter(User.email == "test@example.com").first()
         for u in session.query(User).filter(User.email.like("%@example.com")).all():
             for model in (MutationAudit, GoogleAdsConnection, MetaAdsConnection, TikTokAdsConnection):
@@ -141,19 +148,19 @@ def db_session():
             session.query(RefreshToken).filter(RefreshToken.user_id == test_user.id).delete()
             session.delete(test_user)
             session.commit()
+        session.query(Organization).delete()
+        session.commit()
         session.close()
 
 
 @pytest.fixture(scope="function")
 def client(db_session):
-    """Create test client with database override."""
-    def override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
+    """Test client over the REAL application database layer.
 
-    app.dependency_overrides[get_db] = override_get_db
+    No get_db override: requests use app.database.engine, i.e. the unprivileged
+    runtime role with row level security in force -- exactly like production.
+    ``db_session`` (superuser, RLS bypass) is only for seeding / assertions.
+    """
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -223,9 +230,74 @@ def test_user(db_session):
     )
     user.roles.append(admin_role)
     db_session.add(user)
+    db_session.flush()
+    from app.core.tenancy import create_personal_organization
+    create_personal_organization(db_session, user)
     db_session.commit()
     db_session.refresh(user)
     return user
+
+
+# ---- multi-tenant helpers ----------------------------------------------------
+@pytest.fixture
+def make_user(db_session):
+    """Create an active user (email must end in @example.com for cleanup)."""
+    def _make(email, password="testpassword", name=None, superuser=False, personal_org=False):
+        assert email.endswith("@example.com")
+        user = User(email=email, hashed_password=get_password_hash(password),
+                    name=name or email.split("@")[0], is_active=True, is_superuser=superuser)
+        db_session.add(user)
+        db_session.flush()
+        if personal_org:
+            from app.core.tenancy import create_personal_organization
+            create_personal_organization(db_session, user)
+        db_session.commit()
+        db_session.refresh(user)
+        return user
+    return _make
+
+
+@pytest.fixture
+def make_org(db_session):
+    """Create an organization; ``owner`` (optional) becomes its owner."""
+    def _make(name, owner=None):
+        from app.models import Organization, OrganizationMember
+        import uuid
+        org = Organization(name=name, slug=f"{name.lower().replace(' ', '-')}-{uuid.uuid4().hex[:6]}")
+        db_session.add(org)
+        db_session.flush()
+        if owner is not None:
+            db_session.add(OrganizationMember(organization_id=org.id, user_id=owner.id, role="owner", status="active"))
+        db_session.commit()
+        db_session.refresh(org)
+        return org
+    return _make
+
+
+@pytest.fixture
+def add_member(db_session):
+    def _add(org, user, role="viewer", status="active"):
+        from app.models import OrganizationMember
+        m = OrganizationMember(organization_id=org.id, user_id=user.id, role=role, status=status)
+        db_session.add(m)
+        db_session.commit()
+        return m
+    return _add
+
+
+@pytest.fixture
+def login_headers(client):
+    """Return auth headers for a user; optionally pinned to an organization."""
+    from app.core.security import create_access_token
+
+    def _login(user, org=None):
+        # Mint the JWT directly (the login endpoint is rate limited to 5/min and
+        # these tests need many users); login itself is covered in test_auth.
+        headers = {"Authorization": f"Bearer {create_access_token({'sub': user.id})}"}
+        if org is not None:
+            headers["X-Organization-Id"] = org.id
+        return headers
+    return _login
 
 
 @pytest.fixture

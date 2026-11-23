@@ -32,6 +32,12 @@ class Settings:
             "SQLite is no longer supported. Please use PostgreSQL."
         )
     
+    # Role the application drops to on every database connection (SET ROLE).
+    # It must NOT be a superuser / BYPASSRLS role, otherwise row level security
+    # does not apply. Set to an empty string only when the DATABASE_URL login
+    # role is itself such a restricted role. See app/database.py.
+    DB_RUNTIME_ROLE: str = os.getenv("DB_RUNTIME_ROLE", "ads_app")
+
     # External APIs
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     FAL_AI_API_KEY: str = os.getenv("FAL_AI_API_KEY", "")

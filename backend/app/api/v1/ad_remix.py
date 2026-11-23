@@ -8,6 +8,7 @@ from typing import List
 import json
 
 from app.database import get_db
+from app.core.tenancy import OrgContext, require_org_permission
 from app.models import WinningAd, Brand, Product, CustomerProfile
 from app.schemas.ad_blueprint import (
     AdBlueprint,
@@ -65,6 +66,7 @@ async def reconstruct_ad_from_blueprint(
     request: ReconstructRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    ctx: OrgContext = Depends(require_org_permission("brands:read")),
 ):
     """
     Reconstruct an ad by applying brand data to a blueprint
@@ -84,15 +86,15 @@ async def reconstruct_ad_from_blueprint(
         )
     
     # Get brand, product, and profile data
-    brand = db.query(Brand).filter(Brand.id == request.brand_id).first()
+    brand = db.query(Brand).filter(Brand.id == request.brand_id, Brand.organization_id == ctx.org.id).first()
     if not brand:
         raise HTTPException(status_code=404, detail="Brand not found")
     
-    product = db.query(Product).filter(Product.id == request.product_id).first()
+    product = db.query(Product).filter(Product.id == request.product_id, Product.organization_id == ctx.org.id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     
-    profile = db.query(CustomerProfile).filter(CustomerProfile.id == request.profile_id).first()
+    profile = db.query(CustomerProfile).filter(CustomerProfile.id == request.profile_id, CustomerProfile.organization_id == ctx.org.id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Customer profile not found")
     
