@@ -56,6 +56,8 @@ TENANT_TABLES = (
     "ad_account_links", "spend_approvals", "mutation_audits",
     # etapa 02.1: AI Gateway (BYOK credentials, catalog, routing, budgets, usage)
     "ai_credentials", "ai_models", "ai_routing", "ai_budgets", "ai_usage_logs", "ai_budget_reservations",
+    # etapa 02.3: agent orchestration (tasks, runs, steps, per-organization settings)
+    "agent_tasks", "agent_runs", "agent_steps", "agent_settings",
 )
 
 # api_keys: tenant policy + "the one row whose hash you present" (authentication

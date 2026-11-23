@@ -40,6 +40,18 @@ async def lifespan(_app: FastAPI):
         print(f"Failed to connect to database: {e}")
         print(f"   DATABASE_URL: {sanitized_url}")
         raise RuntimeError("Database connection failed") from e
+    if settings.AGENT_RECOVER_ON_STARTUP:
+        # Tasks left running by a process that died are re-queued (or failed after too many attempts) and pending
+        # ones are started. Background and best-effort: it must never stop the API from starting.
+        import asyncio
+        from app.agents.executor import recover_and_resume
+
+        async def _recover():
+            try:
+                await recover_and_resume()
+            except Exception as exc:  # noqa: BLE001
+                print(f"Agent recovery skipped: {type(exc).__name__}")
+        asyncio.get_running_loop().create_task(_recover())
     yield
 
 
@@ -118,12 +130,13 @@ async def health_check():
     return {"status": "healthy"}
 
 # Include Routers
-from app.api.v1 import ai, brands, products, research, generated_ads, templates, facebook, uploads, dashboard, copy_generation, profiles, ad_remix, prompts, ad_styles, auth, users, google_ads, overview, tiktok_ads, bot, optimization, organizations
+from app.api.v1 import agents, ai, brands, products, research, generated_ads, templates, facebook, uploads, dashboard, copy_generation, profiles, ad_remix, prompts, ad_styles, auth, users, google_ads, overview, tiktok_ads, bot, optimization, organizations
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(organizations.router, prefix="/api/v1/organizations", tags=["organizations"])
 app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai"])
+app.include_router(agents.router, prefix="/api/v1/agents", tags=["agents"])
 app.include_router(brands.router, prefix="/api/v1/brands", tags=["brands"])
 app.include_router(products.router, prefix="/api/v1/products", tags=["products"])
 app.include_router(research.router, prefix="/api/v1/research", tags=["research"])

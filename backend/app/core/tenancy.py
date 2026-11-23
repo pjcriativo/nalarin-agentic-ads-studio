@@ -49,7 +49,9 @@ _VIEWER = frozenset({
 #   ads:spend   approve/execute operations that can spend money (human approval)
 # AI Gateway: ai:read = see models/usage/budgets; ai:use = (indirectly) run AI operations
 # through features; ai:manage = credentials (BYOK), models, routing and budgets.
-_ANALYST = _VIEWER | {"reports:read", "research:write", "connections:read", "ai:read"}
+# AI agents (etapa 02.3): agents:read = list agents/tasks/results; agents:run = start and cancel tasks;
+# agents:manage = enable/disable agents and tune their (capped) limits. Agents only READ and plan in this stage.
+_ANALYST = _VIEWER | {"reports:read", "research:write", "connections:read", "ai:read", "agents:read"}
 _MANAGER = _ANALYST | {
     "brands:write", "brands:delete",
     "products:write", "products:delete",
@@ -61,8 +63,9 @@ _MANAGER = _ANALYST | {
     "uploads:write",
     "ads:draft",
     "ai:use",
+    "agents:run",
 }
-_ADMIN = _MANAGER | {"members:manage", "audit:read", "connections:manage", "apikeys:manage", "ads:publish", "ai:manage"}
+_ADMIN = _MANAGER | {"members:manage", "audit:read", "connections:manage", "apikeys:manage", "ads:publish", "ai:manage", "agents:manage"}
 _OWNER = _ADMIN | {"org:manage", "ads:spend"}
 
 ROLE_PERMISSIONS = {

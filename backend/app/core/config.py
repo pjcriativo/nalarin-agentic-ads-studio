@@ -78,6 +78,15 @@ class Settings:
     AI_TIMEOUT_SECONDS: float = float(os.getenv("AI_TIMEOUT_SECONDS", "60"))
     # A budget reservation older than this belongs to a process that died before settling it.
     # It MUST be well above the longest possible call (timeout) or live calls would be recovered.
+    # AI agents (etapa 02.3)
+    AGENT_LEASE_SECONDS: int = max(int(os.getenv("AGENT_LEASE_SECONDS", "240")), int(float(os.getenv("AI_TIMEOUT_SECONDS", "60")) * 3) + 30)
+    AGENT_HEARTBEAT_SECONDS: int = int(os.getenv("AGENT_HEARTBEAT_SECONDS", "30"))
+    AGENT_TASK_TIMEOUT_SECONDS: int = int(os.getenv("AGENT_TASK_TIMEOUT_SECONDS", "900"))
+    AGENT_MAX_ATTEMPTS: int = int(os.getenv("AGENT_MAX_ATTEMPTS", "3"))
+    AGENT_MAX_ACTIVE_TASKS_PER_ORG: int = int(os.getenv("AGENT_MAX_ACTIVE_TASKS_PER_ORG", "3"))
+    AGENT_DEFAULT_MAX_COST_USD: float = float(os.getenv("AGENT_DEFAULT_MAX_COST_USD", "2.0"))
+    AGENT_MAX_OBJECTIVE_CHARS: int = int(os.getenv("AGENT_MAX_OBJECTIVE_CHARS", "4000"))
+    AGENT_RECOVER_ON_STARTUP: bool = os.getenv("AGENT_RECOVER_ON_STARTUP", "true").lower() == "true"
     AI_RESERVATION_TTL_SECONDS: int = max(int(os.getenv("AI_RESERVATION_TTL_SECONDS", "900")),
                                           int(float(os.getenv("AI_TIMEOUT_SECONDS", "60")) * 5))
     FAL_AI_API_KEY: str = os.getenv("FAL_AI_API_KEY", "")

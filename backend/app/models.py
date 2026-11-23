@@ -1083,3 +1083,140 @@ class AiBudgetReservation(Base):
     amount_micros = Column(BigInteger, nullable=False)
     request_id = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+# ----------------------------------------------------------------------------- AI agents (etapa 02.3)
+class AgentTask(Base):
+    """One request for the agent system: a supervised multi-agent plan, or one specialist (``agent_key``).
+
+    ``lease_owner`` / ``lease_expires_at`` are a FENCING lease: only the executor holding the lease may
+    change the task; a task whose lease expired belongs to a dead process and is re-queued (or failed
+    after ``max_attempts``). See app.agents.executor."""
+    __tablename__ = "agent_tasks"
+    __table_args__ = (
+        UniqueConstraint('id', 'organization_id', name='uq_agent_tasks_id_org'),
+        CheckConstraint("status IN ('pending','running','completed','failed','cancelled')", name='ck_agent_tasks_status'),
+        Index('ix_agent_tasks_org_status', 'organization_id', 'status'),
+        Index('ix_agent_tasks_org_created', 'organization_id', 'created_at'),
+        Index('uq_agent_tasks_idempotency', 'organization_id', 'idempotency_key', unique=True,
+              postgresql_where=text("idempotency_key IS NOT NULL")),
+        Index('ix_agent_tasks_running_lease', 'lease_expires_at', postgresql_where=text("status = 'running'")),
+    )
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False)
+    created_by_user_id = Column(String, nullable=True)
+    agent_key = Column(String, nullable=True)           # NULL = supervised plan
+    objective = Column(Text, nullable=False)
+    input_context = Column(JSON, nullable=True)
+    status = Column(String, nullable=False, default="pending")
+    plan = Column(JSON, nullable=True)
+    result = Column(JSON, nullable=True)
+    error_kind = Column(String, nullable=True)
+    error_message = Column(Text, nullable=True)
+    attempts = Column(Integer, nullable=False, default=0)
+    max_attempts = Column(Integer, nullable=False, default=3)
+    cancel_requested = Column(Boolean, nullable=False, default=False)
+    lease_owner = Column(String, nullable=True)
+    lease_expires_at = Column(DateTime(timezone=True), nullable=True)
+    heartbeat_at = Column(DateTime(timezone=True), nullable=True)
+    limits = Column(JSON, nullable=True)
+    max_cost_micros = Column(BigInteger, nullable=True)
+    total_cost_micros = Column(BigInteger, nullable=False, default=0)
+    total_input_tokens = Column(BigInteger, nullable=False, default=0)
+    total_output_tokens = Column(BigInteger, nullable=False, default=0)
+    step_count = Column(Integer, nullable=False, default=0)
+    idempotency_key = Column(String, nullable=True)
+    deadline_at = Column(DateTime(timezone=True), nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class AgentRun(Base):
+    """One specialist execution inside a task (the supervisor's delegation unit)."""
+    __tablename__ = "agent_runs"
+    __table_args__ = (
+        ForeignKeyConstraint(['task_id', 'organization_id'], ['agent_tasks.id', 'agent_tasks.organization_id'],
+                             name='fk_agent_runs_task_org', ondelete='CASCADE'),
+        UniqueConstraint('id', 'organization_id', name='uq_agent_runs_id_org'),
+        UniqueConstraint('task_id', 'sequence', name='uq_agent_runs_task_sequence'),
+        CheckConstraint("status IN ('pending','running','completed','failed','cancelled')", name='ck_agent_runs_status'),
+        Index('ix_agent_runs_org_task', 'organization_id', 'task_id'),
+    )
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False)
+    task_id = Column(String, nullable=False)
+    sequence = Column(Integer, nullable=False)
+    plan_step_id = Column(String, nullable=True)
+    agent_key = Column(String, nullable=False)
+    agent_version = Column(String, nullable=False)
+    instructions_hash = Column(String, nullable=False)
+    objective = Column(Text, nullable=False)
+    status = Column(String, nullable=False, default="pending")
+    output = Column(JSON, nullable=True)
+    error_kind = Column(String, nullable=True)
+    error_message = Column(Text, nullable=True)
+    step_count = Column(Integer, nullable=False, default=0)
+    total_cost_micros = Column(BigInteger, nullable=False, default=0)
+    input_tokens = Column(BigInteger, nullable=False, default=0)
+    output_tokens = Column(BigInteger, nullable=False, default=0)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class AgentStep(Base):
+    """Append-only history of what happened (model turn, tool call, plan note...). Inputs and outputs are
+    redacted and truncated BEFORE they are stored; prompts and raw provider bodies are never kept."""
+    __tablename__ = "agent_steps"
+    __table_args__ = (
+        ForeignKeyConstraint(['task_id', 'organization_id'], ['agent_tasks.id', 'agent_tasks.organization_id'],
+                             name='fk_agent_steps_task_org', ondelete='CASCADE'),
+        UniqueConstraint('task_id', 'sequence', name='uq_agent_steps_task_sequence'),
+        CheckConstraint("status IN ('ok','error')", name='ck_agent_steps_status'),
+        Index('ix_agent_steps_org_task', 'organization_id', 'task_id'),
+    )
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False)
+    task_id = Column(String, nullable=False)
+    run_id = Column(String, nullable=True)
+    sequence = Column(Integer, nullable=False)
+    kind = Column(String, nullable=False)             # plan | llm | tool | consolidate | note | system
+    name = Column(String, nullable=True)              # tool name / operation
+    status = Column(String, nullable=False, default="ok")
+    error_kind = Column(String, nullable=True)
+    input = Column(JSON, nullable=True)
+    output = Column(JSON, nullable=True)
+    injection_suspected = Column(Boolean, nullable=False, default=False)
+    gateway_request_id = Column(String, nullable=True)
+    provider = Column(String, nullable=True)
+    model_id = Column(String, nullable=True)
+    input_tokens = Column(BigInteger, nullable=False, default=0)
+    output_tokens = Column(BigInteger, nullable=False, default=0)
+    cost_micros = Column(BigInteger, nullable=True)
+    latency_ms = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class AgentSetting(Base):
+    """Per-organization switch and (capped) limit overrides of one agent."""
+    __tablename__ = "agent_settings"
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'agent_key', name='uq_agent_settings_org_agent'),
+        CheckConstraint("max_steps IS NULL OR max_steps > 0", name='ck_agent_settings_steps'),
+        CheckConstraint("timeout_seconds IS NULL OR timeout_seconds > 0", name='ck_agent_settings_timeout'),
+        Index('ix_agent_settings_organization_id', 'organization_id'),
+    )
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False)
+    agent_key = Column(String, nullable=False)
+    enabled = Column(Boolean, nullable=False, default=True)
+    max_steps = Column(Integer, nullable=True)
+    timeout_seconds = Column(Integer, nullable=True)
+    updated_by_user_id = Column(String, nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
