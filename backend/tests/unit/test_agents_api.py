@@ -56,11 +56,16 @@ class TestCatalogEndpoints:
         body = client.get(f"{P}/tools", headers=w.h["analyst"]).json()
         available = {t["name"] for t in body["available"]}
         planned = {t["name"]: t for t in body["planned"]}
-        assert "plan.note" in available and "web.fetch_page" in available and not any(n.startswith("google_ads.") for n in available)
+        assert "plan.note" in available and "web.fetch_page" in available and "web.analyze_page" in available
+        assert {n for n in available if n.startswith("google_ads.")} == {                     # only READ tools exist (etapa 02.5)
+            "google_ads.get_account_info", "google_ads.get_account_structure", "google_ads.get_campaign_performance",
+            "google_ads.get_ad_group_performance", "google_ads.get_ad_performance", "google_ads.get_search_terms_report", "google_ads.keyword_ideas"}
+        by_name = {t["name"]: t for t in body["available"]}
+        assert by_name["google_ads.keyword_ideas"]["external_system"] == "google_ads" and "connected" in by_name["google_ads.keyword_ideas"]["requires"]
         assert all(t["side_effect"] == "none" and t["status"] == "available" for t in body["available"])
         assert planned and all(t["status"] == "contract_only" for t in planned.values()) and not (available & set(planned))
         assert planned["google_ads.apply_change_proposal"]["agent_may_hold"] is False and planned["google_ads.apply_change_proposal"]["requires_human_approval"] is True
-        assert "arguments_schema" in planned["google_ads.get_campaign_performance"]
+        assert "arguments_schema" in planned["google_ads.draft_campaign"] and "google_ads.get_campaign_performance" not in planned
 
 
 class TestRBAC:

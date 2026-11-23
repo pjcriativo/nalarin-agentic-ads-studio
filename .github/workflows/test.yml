@@ -81,6 +81,8 @@ jobs:
           pytest tests/integration tests/unit/test_multitenancy_api.py tests/unit/test_tenant_isolation_complete.py                  tests/unit/test_tenant_integrations.py tests/unit/test_homologation_0104.py -q --tb=short
           # Agent worker (etapa 02.4): queue claim in the signed platform context + tenant execution, in-process and as real processes
           pytest tests/unit/test_agents_worker.py tests/unit/test_agents_worker_processes.py -q --tb=short
+          # Agent real-data tools (etapa 02.5): Google Ads reads under RLS on the dedicated login role, evidence rules, interrupted AI calls
+          pytest tests/unit/test_agents_google_tools.py tests/unit/test_agents_data_honesty.py tests/unit/test_agents_page_analysis.py tests/unit/test_ai_interrupted_calls.py -q --tb=short
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4

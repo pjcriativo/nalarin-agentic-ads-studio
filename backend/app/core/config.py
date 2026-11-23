@@ -86,6 +86,12 @@ class Settings:
     AGENT_MAX_ACTIVE_TASKS_PER_ORG: int = int(os.getenv("AGENT_MAX_ACTIVE_TASKS_PER_ORG", "3"))
     AGENT_DEFAULT_MAX_COST_USD: float = float(os.getenv("AGENT_DEFAULT_MAX_COST_USD", "2.0"))
     AGENT_MAX_OBJECTIVE_CHARS: int = int(os.getenv("AGENT_MAX_OBJECTIVE_CHARS", "4000"))
+    # Agent Google Ads READ tools (etapa 02.5): soft call limits (counted from agent_steps, so they survive retries and workers).
+    AGENT_GOOGLE_ADS_MAX_CALLS_PER_TASK: int = max(int(os.getenv("AGENT_GOOGLE_ADS_MAX_CALLS_PER_TASK", "15")), 0)
+    AGENT_GOOGLE_ADS_MAX_CALLS_PER_ORG_HOUR: int = max(int(os.getenv("AGENT_GOOGLE_ADS_MAX_CALLS_PER_ORG_HOUR", "120")), 0)
+    AGENT_KEYWORD_PLANNER_MAX_CALLS_PER_TASK: int = max(int(os.getenv("AGENT_KEYWORD_PLANNER_MAX_CALLS_PER_TASK", "4")), 0)
+    AGENT_KEYWORD_PLANNER_MAX_CALLS_PER_ORG_HOUR: int = max(int(os.getenv("AGENT_KEYWORD_PLANNER_MAX_CALLS_PER_ORG_HOUR", "20")), 0)
+    AGENT_GOOGLE_ADS_TIMEOUT_SECONDS: float = max(float(os.getenv("AGENT_GOOGLE_ADS_TIMEOUT_SECONDS", "25")), 1.0)
     # Agent worker (etapa 02.4). The API only enqueues; these tune the separate worker process.
     AGENT_WORKER_CONCURRENCY: int = max(int(os.getenv("AGENT_WORKER_CONCURRENCY", "2")), 1)          # tasks at once per worker process
     AGENT_GLOBAL_MAX_RUNNING: int = max(int(os.getenv("AGENT_GLOBAL_MAX_RUNNING", "8")), 1)          # across ALL workers

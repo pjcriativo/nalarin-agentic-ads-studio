@@ -74,8 +74,20 @@ class AgentRunner:
         try:
             result = await asyncio.wait_for(self.gateway.chat(self.defn.operation, request), timeout=max(self._remaining(), 0.001))
         except asyncio.TimeoutError:
-            self._step("llm", status="error", error_kind=AE.TIMEOUT, latency_ms=int((time.monotonic() - started) * 1000))
+            cost = getattr(self.gateway, "interrupted_cost_micros", None)        # what the gateway charged for the abandoned call
+            self.cost += cost or 0
+            self._step("llm", status="error", error_kind=AE.TIMEOUT, cost_micros=cost, latency_ms=int((time.monotonic() - started) * 1000))
             raise AgentError(AE.TIMEOUT, "the model call exceeded the remaining time") from None
+        except asyncio.CancelledError:
+            # worker shutdown (or any cancellation) while the call was in flight: keep its charged cost on the task
+            cost = getattr(self.gateway, "interrupted_cost_micros", None)
+            self.cost += cost or 0
+            try:
+                self._step("llm", status="error", error_kind="interrupted", cost_micros=cost,
+                           latency_ms=int((time.monotonic() - started) * 1000))
+            except Exception:  # noqa: BLE001 - e.g. the lease is already lost; the cancellation must proceed
+                pass
+            raise
         except AIE.AIError as exc:
             self._step("llm", status="error", error_kind=exc.kind, latency_ms=int((time.monotonic() - started) * 1000))
             raise AgentError(AE.AI_PREFIX + exc.kind, exc.message) from None

@@ -43,6 +43,8 @@ class ToolContext:
     run_id: Optional[str]
     input_context: Dict[str, Any] = field(default_factory=dict)
     fetch_page: Optional[Callable[[str], Awaitable[bytes]]] = None
+    upstream: Dict[str, Any] = field(default_factory=dict)       # results of earlier agents of the plan (untrusted data)
+    evidence: Dict[str, Any] = field(default_factory=dict)       # what THIS run's real-data tools returned (app.agents.evidence)
 
 
 class _Args(BaseModel):
@@ -57,6 +59,8 @@ class Tool:
     handler: Callable[[ToolContext, BaseModel], Awaitable[Any]]
     required_permission: Optional[str] = None
     side_effect: str = "none"
+    external: Optional[str] = None      # which outside system a READ tool talks to ("google_ads", "web")
+    requires: Optional[str] = None      # what must exist for it to return data (an account connection...)
 
     def spec_parameters(self) -> Dict[str, Any]:
         schema = self.args_model.model_json_schema()
@@ -203,6 +207,8 @@ TOOLS: Dict[str, Tool] = {t.name: t for t in (
     Tool("ads.validate_rsa", "Check Responsive Search Ad assets against character limits and editorial rules.", ValidateRsaArgs, _validate_rsa),
     Tool("policy.check_text", "Check ad text against static editorial/policy heuristics (not an official decision).", PolicyTextArgs, _check_policy),
 )}
+from app.agents.google_tools import GOOGLE_TOOLS  # noqa: E402 - needs Tool/ToolContext defined above
+TOOLS.update(GOOGLE_TOOLS)
 assert all(t.side_effect == "none" for t in TOOLS.values()), "this stage allows only read-only/planning tools"
 assert not (set(TOOLS) & set(FUTURE_TOOL_CONTRACTS)), "a contract-only tool must not share a name with a live tool"
 

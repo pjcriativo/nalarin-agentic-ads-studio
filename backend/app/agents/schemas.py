@@ -1,9 +1,10 @@
 """Pydantic contracts: what each specialist must return, and the supervisor's plan and report.
 
 Design rules:
-* Nothing here has a field for a metric the agent could only make up (search volume, CPC, impressions...).
-  Market and strategy agents give HYPOTHESES labelled as such; real figures arrive with the future
-  Google Ads read tools (see app.agents.future_tools).
+* Every claim that carries data is labelled ``real`` (a tool of THIS run or data the requester supplied returned it),
+  ``estimate`` (Google Keyword Planner's own estimate) or ``hypothesis`` (the model's idea), with its ``source``.
+  Cited metrics are verified server-side against what the tools actually returned (app.agents.evidence): a made-up volume,
+  CPC or conversion count fails validation and cannot be stored as a result. A hypothesis can never carry a number.
 * Text limits that the ad platform enforces (30/90 characters) are enforced here too, so an invalid answer is
   rejected and repaired before it is ever stored as a result.
 """
@@ -19,9 +20,28 @@ Description = Annotated[str, StringConstraints(strip_whitespace=True, min_length
 
 MAX_PLAN_STEPS = 6
 
+DataKind = Literal["real", "estimate", "hypothesis"]
+Source = Literal["google_ads_api", "google_keyword_planner", "product_page", "supplied_context", "model_knowledge"]
+
 
 class _Out(BaseModel):
     model_config = ConfigDict(extra="ignore")
+
+
+# ---------------------------------------------------------------------------- data provenance
+class CitedMetric(_Out):
+    """A number the output relies on, with the entity it belongs to, exactly as the tool returned it
+    (e.g. entity ``campaign:123`` / ``keyword:running shoes`` / ``page:https://...``, name ``clicks``)."""
+    entity: Short
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
+    value: float
+
+
+class DataBasis(_Out):
+    statement: Medium
+    data_kind: DataKind
+    source: Source
+    metrics: List[CitedMetric] = Field(default_factory=list, max_length=10)
 
 
 # ---------------------------------------------------------------------------- specialist outputs
@@ -33,6 +53,7 @@ class ProductAnalysis(_Out):
     claims_to_verify: List[Medium] = Field(default_factory=list, max_length=20)
     missing_information: List[Medium] = Field(default_factory=list, max_length=20)
     sources: List[Short] = Field(default_factory=list, max_length=10)
+    data_basis: List[DataBasis] = Field(default_factory=list, max_length=30)   # what the page states = real; inferences = hypothesis
 
 
 class KeywordCandidate(_Out):
@@ -40,6 +61,10 @@ class KeywordCandidate(_Out):
     intent: Literal["informational", "commercial", "transactional", "navigational"]
     match_type_suggestion: Literal["exact", "phrase", "broad"]
     rationale: Medium
+    # Default is the honest one: an idea of the model, no numbers. Planner figures must be cited and are verified.
+    data_kind: DataKind = "hypothesis"
+    source: Source = "model_knowledge"
+    metrics: List[CitedMetric] = Field(default_factory=list, max_length=6)
 
 
 class MarketResearch(_Out):
@@ -49,8 +74,10 @@ class MarketResearch(_Out):
     negative_keyword_candidates: List[Short] = Field(default_factory=list, max_length=40)
     alternatives_or_competitors: List[Short] = Field(default_factory=list, max_length=20)
     # Honesty marker: without a data tool these are model hypotheses, never measured demand.
-    evidence: Literal["model_hypotheses", "provided_context", "fetched_pages", "mixed"] = "model_hypotheses"
-    verification_notice: Medium = "Keyword ideas are unverified hypotheses: search volume, competition and cost were NOT measured."
+    evidence: Literal["model_hypotheses", "provided_context", "fetched_pages", "keyword_planner", "account_data", "mixed"] = "model_hypotheses"
+    verification_notice: Medium = ("Items labelled 'hypothesis' are unverified ideas of the model; only items labelled 'estimate' carry "
+                                   "Google Keyword Planner figures (Google's estimates, not measurements), and 'real' carries account data.")
+    data_basis: List[DataBasis] = Field(default_factory=list, max_length=30)
 
 
 class AdGroupPlan(_Out):
@@ -73,6 +100,7 @@ class SearchAdsStrategy(_Out):
     measurement_plan: List[Medium] = Field(default_factory=list, max_length=15)
     risks: List[Medium] = Field(default_factory=list, max_length=15)
     assumptions: List[Medium] = Field(default_factory=list, max_length=15)
+    data_basis: List[DataBasis] = Field(default_factory=list, max_length=30)
 
 
 class AdGroupCopy(_Out):
@@ -112,6 +140,7 @@ class PerformanceAnalysis(_Out):
     hypotheses: List[Medium] = Field(default_factory=list, max_length=15)
     recommended_experiments: List[Medium] = Field(default_factory=list, max_length=15)
     data_limitations: List[Medium] = Field(min_length=1, max_length=15)
+    data_basis: List[DataBasis] = Field(default_factory=list, max_length=40)   # every figure in `findings` must be backed here
 
 
 # ---------------------------------------------------------------------------- supervisor

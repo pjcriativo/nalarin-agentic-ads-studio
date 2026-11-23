@@ -20,8 +20,8 @@ from typing import Any, Callable, Dict, FrozenSet, List, Optional
 from app.agents import errors as AE
 from app.agents import schemas as S
 from app.agents.errors import AgentError
-from app.agents.registry import (AGENTS, HARD_MAX_STEPS, POST_VALIDATORS, SUPERVISOR, AgentDefinition, AgentLimits,
-                                 delegatable_agents)
+from app.agents.registry import (AGENTS, HARD_MAX_STEPS, SUPERVISOR, AgentDefinition, AgentLimits, delegatable_agents,
+                                 validators_for)
 from app.agents.runner import AgentRunner, RunOutcome
 from app.agents.security import safe_json, wrap_untrusted
 from app.agents.store import TaskStore, utcnow
@@ -73,11 +73,12 @@ async def run_specialist(ec: ExecContext, defn: AgentDefinition, objective: str,
                                  objective=objective, plan_step_id=plan_step_id)
     limits = ec.limits_for(defn)
     run_deadline = min(ec.deadline, ec.clock() + timedelta(seconds=limits.timeout_seconds))  # per-agent time limit inside the task's
+    tool_ctx = ToolContext(db=ec.db, org_id=ec.org_id, user_id=ec.user_id, permissions=ec.permissions, task_id=ec.task_id,
+                           run_id=run_id, input_context=ec.input_context, fetch_page=ec.fetch_page, upstream=upstream or {})
     runner = AgentRunner(
         gateway=ec.gateway, store=ec.store, defn=defn, limits=limits, deadline=run_deadline,
-        max_cost_micros=ec.max_cost_micros, run_id=run_id, post_validate=POST_VALIDATORS.get(defn.key), on_event=ec.on_event, clock=ec.clock,
-        tool_ctx=ToolContext(db=ec.db, org_id=ec.org_id, user_id=ec.user_id, permissions=ec.permissions, task_id=ec.task_id,
-                             run_id=run_id, input_context=ec.input_context, fetch_page=ec.fetch_page))
+        max_cost_micros=ec.max_cost_micros, run_id=run_id, post_validate=validators_for(defn.key, tool_ctx), on_event=ec.on_event, clock=ec.clock,
+        tool_ctx=tool_ctx)
     try:
         outcome = await runner.run(specialist_prompt(ec, objective, upstream or {}))
     except AgentError as exc:

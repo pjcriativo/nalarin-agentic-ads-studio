@@ -14,6 +14,11 @@ from tests.unit.agents_support import COPY, OUTPUT_FOR
 EXPECTED = {"product_analyst", "market_researcher", "search_ads_strategist", "ad_copywriter", "policy_reviewer", "performance_analyst"}
 
 
+READ_ONLY_GOOGLE_TOOLS = {"google_ads.get_account_info", "google_ads.get_account_structure", "google_ads.get_campaign_performance",
+                          "google_ads.get_ad_group_performance", "google_ads.get_ad_performance", "google_ads.get_search_terms_report",
+                          "google_ads.keyword_ideas"}
+
+
 class TestRegistry:
     def test_the_six_required_specialists_exist_and_the_supervisor_is_not_delegatable(self):
         assert set(AGENTS) == EXPECTED
@@ -36,12 +41,12 @@ class TestRegistry:
     def test_hashes_are_pinned_so_an_instruction_edit_forces_a_version_bump(self):
         """If this fails you changed an agent's instructions: bump its `version` and update the pin."""
         assert {k: (v.version, v.instructions_hash) for k, v in AGENTS.items()} == {
-            "product_analyst": ("1.0.0", "536019e548d91e41"),
-            "market_researcher": ("1.0.0", "184e9a3339f9ed3c"),
-            "search_ads_strategist": ("1.0.0", "18719d31a9e8f0f6"),
+            "product_analyst": ("1.1.0", "66b92580243b0334"),
+            "market_researcher": ("1.1.0", "b281090b750078f2"),
+            "search_ads_strategist": ("1.1.0", "75d56e32ad3c86e1"),
             "ad_copywriter": ("1.0.0", "8a043d6243a6200a"),
             "policy_reviewer": ("1.0.0", "60bc235abaa0192d"),
-            "performance_analyst": ("1.0.0", "c094353527d3c10a"),
+            "performance_analyst": ("1.1.0", "b7d71683e29cffde"),
         }
 
     def test_no_agent_may_use_a_tool_that_writes_publishes_or_spends(self):
@@ -49,7 +54,8 @@ class TestRegistry:
             for name in defn.allowed_tools:
                 assert name in TOOLS and TOOLS[name].side_effect == "none"
                 assert name not in FUTURE_TOOL_CONTRACTS
-                assert not name.startswith("google_ads.")
+                if name.startswith("google_ads."):        # etapa 02.5: only the explicit READ tools, never a mutation
+                    assert name in READ_ONLY_GOOGLE_TOOLS
         assert all(t.side_effect == "none" for t in TOOLS.values())
 
     def test_the_system_prompt_carries_the_security_rules_and_the_output_contract(self):
@@ -59,16 +65,17 @@ class TestRegistry:
         assert "cannot publish" in prompt or "can only READ" in prompt
 
     def test_agents_declare_honestly_what_they_cannot_do_yet(self):
-        assert "hypotheses" in AGENTS["market_researcher"].readiness or "limited" in AGENTS["market_researcher"].readiness
-        assert "limited" in AGENTS["performance_analyst"].readiness
-        assert any("contract-only" in lim for lim in AGENTS["performance_analyst"].limitations)
-        assert any("contract-only" in lim for lim in AGENTS["market_researcher"].limitations)
+        # etapa 02.5: real data exists only WITH a connected account, and every agent says so
+        for key in ("market_researcher", "performance_analyst"):
+            assert "connected Google Ads account" in AGENTS[key].readiness
+            assert any("Without a connected" in lim for lim in AGENTS[key].limitations)
+        assert any("estimates" in lim for lim in AGENTS["market_researcher"].limitations)
+        assert AGENTS["ad_copywriter"].version == "1.0.0"
 
 
 class TestFutureGoogleAdsContracts:
     def test_they_are_contracts_only_never_tools(self):
-        assert set(FUTURE_TOOL_CONTRACTS) >= {"google_ads.get_campaign_performance", "google_ads.keyword_ideas", "google_ads.draft_campaign",
-                                              "google_ads.apply_change_proposal"}
+        assert set(FUTURE_TOOL_CONTRACTS) == {"google_ads.draft_campaign", "google_ads.apply_change_proposal"}     # the read ones are live now
         for name, contract in FUTURE_TOOL_CONTRACTS.items():
             assert contract.status == STATUS_CONTRACT_ONLY and name not in TOOLS
             with pytest.raises(ToolUnavailable):
@@ -87,10 +94,10 @@ class TestFutureGoogleAdsContracts:
             assert description["status"] == "contract_only" and description["depends_on"]
 
     def test_arguments_are_strict(self):
-        args = FUTURE_TOOL_CONTRACTS["google_ads.get_campaign_performance"].args_model
-        ok = {"customer_id": "1234567890", "date_range": {"start_date": "2026-01-01", "end_date": "2026-01-31"}}
+        args = FUTURE_TOOL_CONTRACTS["google_ads.draft_campaign"].args_model
+        ok = {"customer_id": "1234567890", "name": "Draft", "plan_task_id": "t1"}
         assert args.model_validate(ok)
-        for bad in ({**ok, "customer_id": "12"}, {**ok, "extra": 1}, {**ok, "date_range": {"start_date": "x", "end_date": "y"}}):
+        for bad in ({**ok, "customer_id": "12"}, {**ok, "extra": 1}, {**ok, "name": ""}):
             with pytest.raises(ValidationError):
                 args.model_validate(bad)
 

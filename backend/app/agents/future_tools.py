@@ -1,4 +1,8 @@
-"""CONTRACTS of the future Google Ads tools. Nothing here executes, returns data or is offered to a model.
+"""CONTRACTS of the Google Ads tools that are STILL not implemented: the two that can change an account.
+(Etapa 02.5 turned the four READ contracts -- performance, search terms, keyword ideas, account structure -- into live
+read-only tools: see app/agents/google_tools.py.)
+
+Nothing here executes, returns data or is offered to a model.
 
 Why they exist now: the integration with the UI and the later Google Ads stage need a stable, reviewed shape
 (arguments, result, required permission, approval) to build against. Every contract carries
@@ -13,7 +17,7 @@ Side effects (``side_effect``):
                    (see app/core spend approvals); an agent may NEVER hold this tool on its own authority.
 """
 from dataclasses import dataclass
-from typing import Any, Dict, List, Literal, Optional, Type
+from typing import Any, Dict, Literal, Type
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -22,88 +26,6 @@ STATUS_CONTRACT_ONLY = "contract_only"
 
 class _Args(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
-
-class DateRange(_Args):
-    start_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
-    end_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
-
-
-# ------------------------------------------------------------------ read
-class GetCampaignPerformanceArgs(_Args):
-    customer_id: str = Field(pattern=r"^\d{10}$")
-    date_range: DateRange
-    campaign_ids: List[str] = Field(default_factory=list, max_length=50)
-
-
-class CampaignPerformanceRow(BaseModel):
-    campaign_id: str
-    campaign_name: str
-    impressions: int
-    clicks: int
-    cost_micros: int
-    conversions: float
-    conversions_value: float
-
-
-class GetCampaignPerformanceResult(BaseModel):
-    customer_id: str
-    currency_code: str
-    rows: List[CampaignPerformanceRow]
-    retrieved_at: str
-
-
-class GetSearchTermsReportArgs(_Args):
-    customer_id: str = Field(pattern=r"^\d{10}$")
-    date_range: DateRange
-    campaign_id: Optional[str] = None
-    limit: int = Field(default=200, ge=1, le=1000)
-
-
-class SearchTermRow(BaseModel):
-    search_term: str
-    campaign_id: str
-    ad_group_id: str
-    impressions: int
-    clicks: int
-    cost_micros: int
-    conversions: float
-
-
-class GetSearchTermsReportResult(BaseModel):
-    customer_id: str
-    rows: List[SearchTermRow]
-    retrieved_at: str
-
-
-class KeywordIdeasArgs(_Args):
-    customer_id: str = Field(pattern=r"^\d{10}$")
-    seed_keywords: List[str] = Field(min_length=1, max_length=20)
-    language_code: str = Field(pattern=r"^[a-z]{2}(-[A-Z]{2})?$")
-    geo_target_ids: List[str] = Field(default_factory=list, max_length=20)
-
-
-class KeywordIdea(BaseModel):
-    keyword: str
-    avg_monthly_searches: Optional[int]
-    competition: Optional[Literal["low", "medium", "high"]]
-    low_top_of_page_bid_micros: Optional[int]
-    high_top_of_page_bid_micros: Optional[int]
-
-
-class KeywordIdeasResult(BaseModel):
-    ideas: List[KeywordIdea]
-    retrieved_at: str
-
-
-class GetAccountStructureArgs(_Args):
-    customer_id: str = Field(pattern=r"^\d{10}$")
-
-
-class GetAccountStructureResult(BaseModel):
-    customer_id: str
-    campaigns: List[Dict[str, Any]]
-    retrieved_at: str
 
 
 # ------------------------------------------------------------------ draft / spend (NOT for agents on their own authority)
@@ -154,14 +76,6 @@ class FutureToolContract:
 
 
 FUTURE_TOOL_CONTRACTS: Dict[str, FutureToolContract] = {c.name: c for c in (
-    FutureToolContract("google_ads.get_campaign_performance", "Read campaign performance for a date range.",
-                       GetCampaignPerformanceArgs, GetCampaignPerformanceResult, "read", ("ads:read",), False, True),
-    FutureToolContract("google_ads.get_search_terms_report", "Read the search terms report.",
-                       GetSearchTermsReportArgs, GetSearchTermsReportResult, "read", ("ads:read",), False, True),
-    FutureToolContract("google_ads.keyword_ideas", "Read keyword ideas with measured volume and bid ranges (Keyword Planner).",
-                       KeywordIdeasArgs, KeywordIdeasResult, "read", ("ads:read",), False, True),
-    FutureToolContract("google_ads.get_account_structure", "Read campaigns, ad groups and assets of an account.",
-                       GetAccountStructureArgs, GetAccountStructureResult, "read", ("ads:read",), False, True),
     FutureToolContract("google_ads.draft_campaign", "Materialize a reviewed plan as a PAUSED draft campaign.",
                        DraftCampaignArgs, DraftCampaignResult, "draft_mutation", ("ads:draft",), True, False),
     FutureToolContract("google_ads.apply_change_proposal", "Apply a human-approved change that can spend money.",

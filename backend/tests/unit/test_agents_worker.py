@@ -607,7 +607,7 @@ class TestObservability:
             result["ok"] = await asyncio.to_thread(fetch, "/healthz")
             result["missing"] = await asyncio.to_thread(fetch, "/nope")
             result["cli"] = await asyncio.to_thread(healthcheck)
-            monkeypatch.setattr(settings, "AGENT_WORKER_STALE_SECONDS", 0.0001)      # a loop that did not tick "recently" is unhealthy
+            monkeypatch.setattr(settings, "AGENT_WORKER_STALE_SECONDS", -1.0)      # a loop that did not tick "recently" is unhealthy
             await asyncio.sleep(0.05)
             result["stale"] = await asyncio.to_thread(fetch, "/healthz")
             monkeypatch.setattr(settings, "AGENT_WORKER_STALE_SECONDS", 60.0)

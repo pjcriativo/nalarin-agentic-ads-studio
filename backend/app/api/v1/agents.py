@@ -71,6 +71,7 @@ def list_agents(db: Session = Depends(get_db), ctx: OrgContext = Depends(require
 def list_tools(ctx: OrgContext = Depends(require_org_permission("agents:read"))):
     """Tools that can run today, and the Google Ads tool CONTRACTS (planned: they cannot run and return no data)."""
     available = [{"name": t.name, "description": t.description, "side_effect": t.side_effect, "required_permission": t.required_permission,
+                  "external_system": t.external, "requires": t.requires,
                   "status": "available", "arguments_schema": t.spec_parameters()} for t in TOOLS.values()]
     return {"available": available, "planned": [c.describe() for c in FUTURE_TOOL_CONTRACTS.values()]}
 

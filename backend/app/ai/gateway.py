@@ -12,10 +12,15 @@ For one call (``AIGateway.chat``):
 3. **Call** the provider through its adapter with the organization's own decrypted key.
 4. **Account**: tokens, estimate, computed cost, user, model and operation are logged (no prompt,
    no completion, no secret); the reservation becomes the real cost.
-5. **Fallback**: on a *recoverable* error (rate limit, timeout, provider unavailable) the next
+5. **Interruption** (etapa 02.5): when the awaiting task is cancelled or times out while the provider call is in flight
+   (``asyncio.CancelledError``), the provider may have processed -- and billed -- the request. The reservation is therefore
+   NEVER released: it is charged at its estimate (``error_kind='interrupted'`` in the usage log) so the organization's limits
+   stay conservative, and the estimate is exposed as ``interrupted_cost_micros`` so the caller can account it on the task.
+6. **Fallback**: on a *recoverable* error (rate limit, timeout, provider unavailable) the next
    candidate is tried; every other error (auth, quota, invalid request, blocked content, unusable
    answer, budget) stops immediately and is raised as a redacted ``AIError``.
 """
+import asyncio
 import time
 import uuid
 from dataclasses import dataclass
@@ -60,6 +65,8 @@ class AIGateway:
         self.user_id = user_id
         self.adapters = adapters if adapters is not None else PROVIDER_ADAPTERS
         self.timeout = timeout or settings.AI_TIMEOUT_SECONDS
+        # Cost charged for the LAST call that was interrupted mid-flight (None: not interrupted, or no price known).
+        self.interrupted_cost_micros: Optional[int] = None
 
     @classmethod
     def for_context(cls, db: Session, ctx, **kwargs) -> "AIGateway":
@@ -109,8 +116,25 @@ class AIGateway:
         ))
         self.db.commit()
 
+    def _charge_interrupted(self, request_id, attempt, operation, model, credential, reserved, estimate, started) -> None:
+        """Best effort and synchronous (it runs while the task is being cancelled): never raises, always lets the
+        cancellation continue. Unknown price => nothing to charge, but the reservation (if any) is still settled at its
+        estimate by the abandoned-reservation recovery if this bookkeeping itself fails."""
+        self.interrupted_cost_micros = estimate
+        try:
+            if reserved:
+                budget_mod.settle(self.db, self.org_id, reserved, estimate or 0)
+            self._log(request_id, attempt, operation, model, getattr(credential, "id", None), "error",
+                      error_kind="interrupted", estimate=estimate, cost=estimate, started=started)
+        except Exception:  # noqa: BLE001
+            try:
+                self.db.rollback()
+            except Exception:  # noqa: BLE001
+                pass
+
     # ---- the call ---------------------------------------------------------------
     async def chat(self, operation: str, request: ChatRequest) -> GatewayResult:
+        self.interrupted_cost_micros = None
         needs = request.needs()
         candidates = self.candidates(operation)
         if not candidates:
@@ -145,6 +169,10 @@ class AIGateway:
                 last_error = exc
                 if exc.fallback_eligible:
                     continue
+                raise
+            except asyncio.CancelledError:
+                # Cancelled / timed out while the provider may already be processing: charge, never release.
+                self._charge_interrupted(request_id, attempt, operation, model, credential, reserved, estimate, started)
                 raise
             except Exception:  # an adapter bug must never escape with provider/secret detail
                 if reserved:

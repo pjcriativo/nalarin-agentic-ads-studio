@@ -46,7 +46,7 @@ class TestSingleAgentRun:
         assert status == "completed" and task.status == "completed" and task.result["kind"] == "single"
         assert task.result["output"]["summary"] == "A concise analysis."
         assert gw.operations == ["agent.product_analyst"]                      # routing/budget/fallback are the gateway's, per operation
-        assert (runs[0].agent_key, runs[0].agent_version, len(runs[0].instructions_hash)) == ("product_analyst", "1.0.0", 16)
+        assert (runs[0].agent_key, runs[0].agent_version, len(runs[0].instructions_hash)) == ("product_analyst", "1.1.0", 16)
         assert runs[0].status == "completed" and task.step_count == 1 and task.total_cost_micros == 1000
         assert (task.total_input_tokens, task.total_output_tokens) == (100, 50)
         assert task.lease_owner is None and task.lease_expires_at is None and task.finished_at and task.attempts == 1
@@ -59,8 +59,8 @@ class TestSingleAgentRun:
         assert "SECURITY RULES" in request.system and "OUTPUT CONTRACT" in request.system
         offered = {t.name for t in request.tools}
         assert offered == {"catalog.list_brands", "catalog.get_brand", "catalog.get_product", "catalog.list_customer_profiles",
-                           "web.fetch_page", "task.get_context", "plan.note"}
-        assert not any(name.startswith("google_ads.") for name in offered)
+                           "web.fetch_page", "web.analyze_page", "task.get_context", "plan.note"}
+        assert not any(name.startswith("google_ads.") for name in offered)             # the product analyst reads pages, not the ad account
 
     def test_tool_calling_round_trip_wraps_results_as_untrusted_data(self, w, monkeypatch, db_session):
         gw = ScriptedGateway(UseTools([("plan.note", {"note": "check the page first"})]), say_json(PRODUCT))
