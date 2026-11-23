@@ -307,7 +307,8 @@ describe('task history, progress and cost', () => {
         seedAll();
         await mount({ entry: '/agents?tab=tasks' });
         const list = await screen.findByTestId('task-list');
-        for (const text of ['Pending one', 'Running one', 'Completed one', 'Failed one', 'Cancelled one']) expect(within(list).getByText(text)).toBeInTheDocument();
+        // the list container can render while its rows are still loading: wait for each row instead of reading it at once
+        for (const text of ['Pending one', 'Running one', 'Completed one', 'Failed one', 'Cancelled one']) await waitFor(() => expect(within(screen.getByTestId('task-list')).getByText(text)).toBeInTheDocument());
         expect(screen.getByTestId('filter-all')).toHaveTextContent('All (5)');
         expect(screen.getByTestId('filter-failed')).toHaveTextContent('Failed (1)');
         for (const status of ['pending', 'running', 'completed', 'failed', 'cancelled']) expect(within(list).getByTestId(`status-${status}`)).toBeInTheDocument();
