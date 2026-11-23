@@ -57,10 +57,16 @@ class Runner:
         """Price check -> one real request -> ledger. Returns (response, cost_micros)."""
         model = _model_for(provider, self.env)
         worst = pricing.estimate_cost_micros(request, model)
-        self.ledger.check(worst, label)
         key = self.env[f"HOMOLOG_{provider.upper()}_API_KEY"]
-        response = await PROVIDER_ADAPTERS[provider].chat(request, model.model_id, key, self.timeout)
-        cost = self.ledger.charge(pricing.usage_cost_micros(response.usage, model), worst or 0)
+        token = self.ledger.reserve(worst, label)          # atomic: the worst case is set aside BEFORE anything is sent
+        try:
+            response = await PROVIDER_ADAPTERS[provider].chat(request, model.model_id, key, self.timeout)
+        except BaseException:
+            # the request may have reached the provider (timeout, dropped connection, 5xx after processing): its cost is
+            # unknown, so the whole reservation is charged instead of being given back
+            self.ledger.settle(token, None)
+            raise
+        cost = self.ledger.settle(token, pricing.usage_cost_micros(response.usage, model))
         return response, cost
 
     def _done(self, op: O.Operation, status: str, started: float, detail: str = "", usage: Optional[Usage] = None,
@@ -219,4 +225,5 @@ class Runner:
         return {"generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 "total_cost_usd": round(self.ledger.spent_micros / 1_000_000, 6),
                 "cost_cap_usd": self.ledger.max_total_micros / 1_000_000,
+                "cost_basis": "estimated/measured by this harness (aggregate ledger); not a provider invoice or a billing guarantee",
                 "summary": summary, "operations": [r.as_dict() for r in self.results.values()]}

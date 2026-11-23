@@ -164,15 +164,66 @@ def test_aggregate_ceiling_is_hard_clamped_and_shared_through_the_ledger_file(tm
     path = str(tmp_path / "ledger.json")
     a = guard.CostLedger(guard.usd_to_micros(50), guard.usd_to_micros(0.05), path=path)
     assert a.max_total_micros == guard.usd_to_micros(1.00)          # --max-total-usd 50 is lowered to the US$ 1.00 ceiling
-    a.charge(300_000, 0)
+    a.settle(a.reserve(40_000, "a"), 30_000)                        # real cost below the reservation: only the real one counts
+    a.add_external(270_000)
     b = guard.CostLedger(guard.usd_to_micros(1.00), guard.usd_to_micros(0.05), path=path)   # e.g. the agent tests, another process
     assert b.spent_micros == 300_000 and b.remaining_micros == 700_000
     b.add_external(500_000)
     c = guard.CostLedger(guard.usd_to_micros(1.00), guard.usd_to_micros(0.05), path=path)
     assert c.spent_micros == 800_000
     with pytest.raises(guard.CostCapExceeded):
-        c.check(300_000, "next")                                    # 800k + 300k > 1.00
-    assert json.loads(open(path).read()) == {"spent_micros": 800_000}   # numbers only
+        c.reserve(300_000, "next", enforce_op_cap=False)            # 800k + 300k > 1.00
+    assert json.loads(open(path).read()) == {"spent_micros": 800_000, "reservations": {}}   # numbers only
+
+
+def test_reservation_is_atomic_across_processes(tmp_path):
+    """8 independent processes race for a US$ 1.00 ceiling with 0.30 each: exactly 3 may reserve, never more."""
+    import subprocess
+    import sys
+    path = str(tmp_path / "ledger.json")
+    code = ("import sys\nfrom app.homologation import guard\n"
+            "l = guard.CostLedger(1_000_000, 400_000, path=sys.argv[1])\n"
+            "try:\n    l.reserve(300_000, 'race'); print('GOT')\nexcept guard.CostCapExceeded:\n    print('REFUSED')\n")
+    procs = [subprocess.Popen([sys.executable, "-c", code, path], cwd=str(ROOT), stdout=subprocess.PIPE, text=True)
+             for _ in range(8)]
+    outs = [p.communicate(timeout=120)[0].strip().splitlines()[-1] for p in procs]
+    assert outs.count("GOT") == 3 and outs.count("REFUSED") == 5
+    final = guard.CostLedger(1_000_000, 400_000, path=path)
+    assert final.reserved_micros == 900_000 and final.remaining_micros == 100_000
+
+
+def test_reservation_blocks_a_second_call_before_the_first_settles(tmp_path):
+    ledger = guard.CostLedger(100_000, 100_000, path=str(tmp_path / "l.json"))
+    token = ledger.reserve(80_000, "first")
+    with pytest.raises(guard.CostCapExceeded):
+        ledger.reserve(30_000, "second")                            # the open reservation already holds 80k
+    ledger.release(token)                                           # failure before sending: given back
+    assert ledger.reserve(30_000, "second")
+
+
+def test_unknown_cost_is_charged_in_full(tmp_path):
+    ledger = guard.CostLedger(100_000, 100_000, path=str(tmp_path / "l.json"))
+    assert ledger.settle(ledger.reserve(60_000, "interrupted"), None) == 60_000
+    assert ledger.spent_micros == 60_000 and ledger.reserved_micros == 0
+    with pytest.raises(guard.CostCapExceeded):
+        ledger.reserve(50_000, "next")                              # 60k spent + 50k > 100k
+
+
+def test_unreadable_ledger_refuses_instead_of_resetting(tmp_path):
+    path = tmp_path / "l.json"
+    path.write_text("{not json")
+    with pytest.raises(guard.CostCapExceeded):
+        guard.CostLedger(100_000, 100_000, path=str(path))
+
+
+def test_interrupted_provider_call_is_charged_the_reserved_worst_case(tmp_path, monkeypatch):
+    async def boom(*a, **k):
+        raise asyncio.TimeoutError()
+    monkeypatch.setattr(PROVIDER_ADAPTERS["anthropic"], "chat", boom)
+    ledger = guard.CostLedger(guard.usd_to_micros(1.0), guard.usd_to_micros(0.05), path=str(tmp_path / "l.json"))
+    results = run(Runner(env(), ledger, ["ai.anthropic.chat_minimal"]))
+    assert results["ai.anthropic.chat_minimal"].status == guard.FAILED
+    assert ledger.reserved_micros == 0 and ledger.spent_micros > 0   # not given back: the provider may have processed it
 
 
 def test_default_aggregate_ceiling_is_one_dollar():

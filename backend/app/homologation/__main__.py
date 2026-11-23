@@ -35,7 +35,9 @@ def _preflight(env) -> int:
         print(f"  price {p:10} input={'set' if m.input_price_micros_per_mtok is not None else 'MISSING'} "
               f"output={'set' if m.output_price_micros_per_mtok is not None else 'MISSING'}")
     ledger = guard.CostLedger.shared(env)
-    print(f"  aggregate ceiling (whole Phase B): US$ {ledger.max_total_micros / 1e6:.2f}; already recorded: US$ {ledger.spent_micros / 1e6:.4f}")
+    print(f"  aggregate ESTIMATED-spend budget (whole Phase B): US$ {ledger.max_total_micros / 1e6:.2f}; settled: US$ {ledger.spent_micros / 1e6:.4f}; "
+          f"open reservations: US$ {ledger.reserved_micros / 1e6:.4f}")
+    print("  note: this is OUR estimate/measurement, not a guarantee of the maximum the provider bills; set a spend limit in each provider console too")
     print(f"  authorization phrase: {'present' if guard.authorized(env) else 'absent (real calls refused)'}")
     return 0
 

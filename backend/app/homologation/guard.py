@@ -12,6 +12,10 @@ import json
 import math
 import os
 import re
+import threading
+import time
+import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional
 
@@ -84,56 +88,136 @@ def default_ledger_path(env: Optional[Dict[str, str]] = None) -> str:
 
 @dataclass
 class CostLedger:
-    """Hard spending cap for the WHOLE Phase B (USD micros), shared by the harness and the agent tests through a small
-    JSON file (numbers only, git-ignored). The cap is clamped to HARD_MAX_TOTAL_USD."""
+    """ESTIMATED-spend budget for the WHOLE Phase B (USD micros), shared by the harness and the agent tests (possibly in
+    different processes) through a small JSON file (numbers only, git-ignored). The cap is clamped to HARD_MAX_TOTAL_USD.
+
+    It is a budget of what WE estimate/measure, not a guarantee of the maximum the provider can bill (see the doc, 11.7).
+
+    Concurrency: every read-modify-write runs under an exclusive OS file lock (+ a thread lock), and a paid call must first
+    ``reserve`` its worst case: the amount is deducted from what is available BEFORE anything is sent, so two processes can
+    never both spend the same remainder. ``settle`` replaces the reservation by the real cost, or by the whole reservation
+    when the cost is unknown (interrupted call, error after sending, missing usage). A reservation left behind by a process
+    that died stays counted (conservative) until the ledger file is deleted on purpose."""
     max_total_micros: int = usd_to_micros(DEFAULT_MAX_TOTAL_USD)
     max_op_micros: int = usd_to_micros(DEFAULT_MAX_OP_USD)
     spent_micros: int = 0
-    reserved: List[int] = field(default_factory=list)
+    reservations: Dict[str, int] = field(default_factory=dict)
     path: Optional[str] = None
+    _tlock: object = field(default_factory=threading.Lock, repr=False, compare=False)
+
+    LOCK_TIMEOUT_SECONDS = 30.0
 
     def __post_init__(self):
         self.max_total_micros = min(self.max_total_micros, usd_to_micros(HARD_MAX_TOTAL_USD))
-        if self.path and os.path.exists(self.path):
-            with open(self.path, encoding="utf-8") as fh:
-                self.spent_micros = max(self.spent_micros, int(json.load(fh).get("spent_micros", 0)))
+        self._read()
 
     @classmethod
     def shared(cls, env: Optional[Dict[str, str]] = None, max_total_usd: float = DEFAULT_MAX_TOTAL_USD,
                max_op_usd: float = DEFAULT_MAX_OP_USD) -> "CostLedger":
         return cls(usd_to_micros(max_total_usd), usd_to_micros(max_op_usd), path=default_ledger_path(env))
 
-    @property
-    def remaining_micros(self) -> int:
-        return max(self.max_total_micros - self.spent_micros, 0)
+    # ---- persistence (always inside _transaction, except the read-only properties) ----------------------
+    def _read(self) -> None:
+        if self.path and os.path.exists(self.path):
+            try:
+                with open(self.path, encoding="utf-8") as fh:
+                    data = json.load(fh)
+            except (OSError, ValueError):
+                raise CostCapExceeded("ledger file unreadable: refusing to send anything (delete it on purpose to reset)")
+            self.spent_micros = max(int(data.get("spent_micros", 0)), 0)
+            self.reservations = {str(k): int(v) for k, v in (data.get("reservations") or {}).items()}
 
     def _save(self) -> None:
         if not self.path:
             return
-        tmp = self.path + ".tmp"
+        tmp = f"{self.path}.{os.getpid()}.{threading.get_ident()}.tmp"
         with open(tmp, "w", encoding="utf-8") as fh:
-            json.dump({"spent_micros": self.spent_micros}, fh)
+            json.dump({"spent_micros": self.spent_micros, "reservations": self.reservations}, fh)
         os.replace(tmp, self.path)
 
-    def add_external(self, micros: int) -> None:
-        """Account spending measured elsewhere (e.g. the usage log of an agent test)."""
-        self.spent_micros = max(self.spent_micros, 0) + max(micros, 0)
-        self._save()
+    @contextmanager
+    def _transaction(self):
+        with self._tlock:
+            if not self.path:
+                yield
+                return
+            handle = open(self.path + ".lock", "a+b")
+            try:
+                handle.write(b"0")
+                handle.flush()
+                deadline = time.monotonic() + self.LOCK_TIMEOUT_SECONDS
+                while True:
+                    try:
+                        if os.name == "nt":
+                            import msvcrt
+                            handle.seek(0)
+                            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                        else:
+                            import fcntl
+                            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        break
+                    except OSError:
+                        if time.monotonic() > deadline:
+                            raise CostCapExceeded("ledger lock timeout: refusing to send anything")
+                        time.sleep(0.02)
+                try:
+                    self._read()
+                    yield
+                    self._save()
+                finally:
+                    if os.name == "nt":
+                        import msvcrt
+                        handle.seek(0)
+                        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                    else:
+                        import fcntl
+                        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            finally:
+                handle.close()
 
-    def check(self, worst_case_micros: Optional[int], label: str = "operation") -> None:
+    # ---- accounting -------------------------------------------------------------------------------------
+    @property
+    def reserved_micros(self) -> int:
+        return sum(self.reservations.values())
+
+    @property
+    def remaining_micros(self) -> int:
+        """What can still be reserved: ceiling - settled spend - open reservations (re-read from the file)."""
+        self._read()
+        return max(self.max_total_micros - self.spent_micros - self.reserved_micros, 0)
+
+    def reserve(self, worst_case_micros: Optional[int], label: str = "operation", enforce_op_cap: bool = True) -> str:
+        """Atomically set aside the worst case BEFORE sending. Raises CostCapExceeded (nothing is sent) when the price is
+        unknown, the per-operation cap is crossed, or settled spend + open reservations + this amount > the ceiling."""
         if worst_case_micros is None:
             raise CostCapExceeded(f"{label}: no price supplied for the model, so the cost cap cannot be enforced (refused)")
-        if worst_case_micros > self.max_op_micros:
+        if enforce_op_cap and worst_case_micros > self.max_op_micros:
             raise CostCapExceeded(f"{label}: worst case {worst_case_micros} > per-operation cap {self.max_op_micros} micros")
-        if self.spent_micros + worst_case_micros > self.max_total_micros:
-            raise CostCapExceeded(f"{label}: would exceed the total cap ({self.max_total_micros} micros)")
+        with self._transaction():
+            if self.spent_micros + self.reserved_micros + worst_case_micros > self.max_total_micros:
+                raise CostCapExceeded(f"{label}: would exceed the total cap ({self.max_total_micros} micros)")
+            token = uuid.uuid4().hex
+            self.reservations[token] = int(worst_case_micros)
+            return token
 
-    def charge(self, micros: Optional[int], fallback_worst_case: int) -> int:
-        """Record the real cost; when it is unknown, charge the worst case (never under-count)."""
-        value = micros if micros is not None else fallback_worst_case
-        self.spent_micros += value
-        self._save()
-        return value
+    def settle(self, token: str, actual_micros: Optional[int]) -> int:
+        """Turn a reservation into spend: the real cost, or the WHOLE reservation when the cost is unknown (never
+        under-count). A real cost above the reservation is recorded as it is."""
+        with self._transaction():
+            reserved = self.reservations.pop(token, 0)
+            amount = int(actual_micros) if actual_micros is not None else reserved
+            self.spent_micros += max(amount, 0)
+            return amount
+
+    def release(self, token: str) -> None:
+        """Give a reservation back. ONLY for failures that happened before anything was sent."""
+        with self._transaction():
+            self.reservations.pop(token, None)
+
+    def add_external(self, micros: int) -> None:
+        """Account spending measured elsewhere, without a prior reservation."""
+        with self._transaction():
+            self.spent_micros += max(int(micros), 0)
 
 
 def worst_case_micros(prompt_chars: int, max_output_tokens: int, in_price: Optional[int], out_price: Optional[int]) -> Optional[int]:

@@ -16,6 +16,8 @@ import pytest
 
 from app.homologation import guard
 
+TEST_SLICE_USD = 0.15   # most one agent test may hold of the aggregate ceiling; the unused part is returned on settle
+
 
 def pytest_collection_modifyitems(config, items):
     for item in items:
@@ -52,17 +54,40 @@ def _global_cap_and_read_only(db_session):
     from datetime import datetime, timezone
     from app.homologation import readonly
     from app.models import AiUsageLog
+    from app.models import AiBudgetReservation
     ledger = guard.CostLedger.shared()
-    if ledger.remaining_micros < guard.usd_to_micros(0.01):
+    # atomic slice of the ceiling for THIS test (another process can never reserve the same remainder)
+    slice_micros = min(ledger.remaining_micros, guard.usd_to_micros(TEST_SLICE_USD))
+    if slice_micros < guard.usd_to_micros(0.01):
         pytest.skip("aggregate Phase B ceiling reached: nothing more is sent")
+    token = ledger.reserve(slice_micros, "agent test slice", enforce_op_cap=False)
     uninstall = readonly.install()
     started = datetime.now(timezone.utc)
-    yield ledger
-    uninstall()
-    db_session.expire_all()
-    spent = sum((r.cost_micros if r.cost_micros is not None else (r.estimated_cost_micros or 0))
-                for r in db_session.query(AiUsageLog).filter(AiUsageLog.created_at >= started).all())
-    ledger.add_external(spent)
+    ledger.slice_micros = slice_micros
+    try:
+        yield ledger
+    finally:
+        uninstall()
+        try:
+            db_session.rollback()
+            db_session.expire_all()
+            rows = db_session.query(AiUsageLog).filter(AiUsageLog.created_at >= started).all()
+            actual = 0
+            unknown = False
+            for r in rows:
+                if r.cost_micros is not None:
+                    actual += r.cost_micros                       # computed from provider-reported usage
+                elif r.estimated_cost_micros is not None:
+                    actual += r.estimated_cost_micros             # interrupted / no usage: the reserved estimate
+                else:
+                    unknown = True
+            # a gateway reservation still open = a call that never finished: its cost is unknown -> counted in full
+            open_res = db_session.query(AiBudgetReservation).filter(AiBudgetReservation.created_at >= started).all()
+            actual += sum(int(r.amount_micros or 0) for r in open_res)
+            ledger.settle(token, None if unknown else actual)
+        except BaseException:
+            ledger.settle(token, None)                            # could not measure: the whole slice is charged
+            raise
 
 
 def provider_config(provider: str):
@@ -90,7 +115,7 @@ def w(make_user, make_org, add_member, login_headers):
 
 
 @pytest.fixture
-def real_org(w, db_session):
+def real_org(w, db_session, _global_cap_and_read_only):
     """The organization with a REAL credential + priced model + default routing for every provider that was supplied."""
     from tests.unit.ai_support import seed_credential, seed_model
     from app.models import AiRouting
@@ -105,7 +130,7 @@ def real_org(w, db_session):
     w.models = models
     # gateway-level ceiling: the organization can never reserve more than what is left of the aggregate cap
     from app.models import AiBudget
-    remaining = guard.CostLedger.shared().remaining_micros
+    remaining = _global_cap_and_read_only.slice_micros      # this test's atomic slice, not the whole remainder
     for period in ("daily", "monthly"):
         db_session.add(AiBudget(organization_id=w.org.id, period=period, limit_micros=remaining, enabled=True))
     db_session.commit()

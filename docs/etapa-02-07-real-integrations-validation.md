@@ -151,7 +151,9 @@ Run `45237781296` (workflow *Test Suite*, commit `cc550c5`, esta branch), consul
 | `security-scan` | **success** | 2026-11-23 18:23:46 |
 | `frontend-tests` | **success** | 2026-11-23 18:24:17 |
 
-Nenhuma falha; nenhuma correção necessária. O commit do pré-voo (teto agregado, proteção de leitura, varredura de vazamento) tem run próprio: ver 11.1.
+Run `45242361817` (commit `ecbfc84`, pré-voo): `security-scan`, `backend-tests` e `frontend-tests` **success**. O commit da correção final do pré-voo tem run próprio: ver 11.8.
+
+Nenhuma falha; nenhuma correção necessária.
 
 ## 10. Riscos e pendências
 
@@ -186,11 +188,13 @@ Nenhuma falha; nenhuma correção necessária. O commit do pré-voo (teto agrega
 
 * `CostLedger` agora é **compartilhado por arquivo** (`backend/.homolog-ledger.json`, só números, no `.gitignore`; caminho alterável por `HOMOLOG_LEDGER_FILE`). O harness e a suíte `tests_real` leem e somam no **mesmo** arquivo.
 * **Trava dura**: `--max-total-usd` maior que 1,00 é rebaixado a 1,00 (`HARD_MAX_TOTAL_USD`). Subir o teto exige alterar o código, com sua aprovação.
-* **Harness**: cada chamada paga é precificada (pior caso) antes do envio contra o saldo restante; sem saldo ou sem preço ⇒ não envia.
-* **Testes de agentes**: (a) um teste só começa se restar saldo (≥ US$ 0,01); (b) a organização de teste recebe `AiBudget` diário e mensal **igual ao saldo restante**, então o próprio AI Gateway recusa reservar além do teto; (c) ao final de cada teste, o custo do `ai_usage_log` (inclusive chamadas interrompidas, cobradas pela estimativa) é somado ao arquivo; (d) teto por tarefa ≤ US$ 0,10 (clamp).
-* Reiniciar o contador exige apagar o arquivo conscientemente (nenhum comando o faz sozinho).
+* **O teto é um orçamento ESTIMADO, não uma garantia de cobrança máxima no provedor** (ver 11.7). Defina também um limite de gasto no console de cada provedor.
+* **Reserva atômica antes do envio** (corrigido em 11.8): todo ciclo ler-alterar-gravar do arquivo ocorre sob **trava exclusiva do SO** (`msvcrt`/`fcntl`, mais trava de thread). Uma chamada paga primeiro **reserva** o pior caso (`disponível = teto − gasto liquidado − reservas abertas`); sem saldo ou sem preço ⇒ não envia. Depois da resposta, a reserva é trocada pelo custo real (`settle`).
+* **Harness**: `reserve` → envio → `settle(custo real)`. Se a chamada falha **depois** do envio (timeout, conexão caída, 5xx), o custo é desconhecido e a **reserva inteira é cobrada**, nunca devolvida.
+* **Testes de agentes**: (a) cada teste reserva uma **fatia atômica** (≤ US$ 0,15) do teto; sem ao menos US$ 0,01 disponível ele é pulado; (b) a organização de teste recebe `AiBudget` diário e mensal **igual à fatia**, então o próprio AI Gateway recusa reservar além dela; (c) ao final, a fatia é liquidada pelo custo do `ai_usage_log` (custo calculado; ou a estimativa reservada para chamadas interrompidas) **mais** qualquer reserva do gateway ainda aberta; se alguma linha não tem custo nem estimativa, ou a medição falha, a **fatia inteira** é cobrada; (d) teto por tarefa ≤ US$ 0,10.
+* Reservas de um processo que morreu **permanecem contadas** (conservador). Arquivo ilegível ⇒ **recusa tudo** (não zera). Reiniciar o contador exige apagar `backend/.homolog-ledger.json` conscientemente.
 * **Estimativa**: com modelos baratos (11.4) a sonda do harness custa centavos (≈ 15 requisições de ≤ 256 tokens de saída). As tarefas de agentes são maiores; o teto agregado as interrompe (testes restantes ficam "não testados") se o gasto se aproximar de US$ 1,00. Prefira modelos de custo baixo.
-* Testes: `test_aggregate_ceiling_is_hard_clamped_and_shared_through_the_ledger_file`, `test_default_aggregate_ceiling_is_one_dollar`. Ensaio sem rede com provedor falso: 3 testes aprovados e US$ 0,00228 contabilizados no arquivo a partir do log de uso.
+* Testes: `test_aggregate_ceiling_is_hard_clamped_and_shared_through_the_ledger_file`, `test_reservation_is_atomic_across_processes` (8 processos disputando o teto: exatamente 3 reservas de US$ 0,30 vencem), `test_reservation_blocks_a_second_call_before_the_first_settles`, `test_unknown_cost_is_charged_in_full`, `test_unreadable_ledger_refuses_instead_of_resetting`, `test_interrupted_provider_call_is_charged_the_reserved_worst_case`, `test_default_aggregate_ceiling_is_one_dollar`.
 
 ### 11.3 Nenhum segredo no Git, nos logs ou no relatório
 
@@ -203,7 +207,7 @@ Nenhuma falha; nenhuma correção necessária. O commit do pré-voo (teto agrega
 
 ### 11.4 Modelos e preços oficiais (verificados em 2026-11-23)
 
-Fontes: páginas oficiais de preço lidas hoje — [Anthropic](https://platform.claude.com/docs/en/about-claude/pricing), [OpenAI](https://developers.openai.com/api/docs/pricing), [Google](https://ai.google.dev/gemini-api/docs/pricing) (redireciona para aistudio.google.com/docs/pricing). **O sistema não embute preços**: você informa os valores ao configurar; eles mudam (há degraus de preço datados), então **reconfira no console no dia**. Preço de cache **não** é configurado no harness: tokens em cache seriam cobrados ao preço de entrada (conservador, sem subestimar).
+**Modalidade usada em todas as linhas abaixo: Standard (síncrona, pay-as-you-go, contexto curto).** Batch, Flex, Fast/Priority e Ultrafast têm outras tarifas (tabela 11.4.1) e **não** se aplicam ao harness, que chama as APIs síncronas padrão. Fontes: páginas oficiais de preço relidas hoje, integralmente — [Anthropic](https://platform.claude.com/docs/en/about-claude/pricing), [OpenAI](https://developers.openai.com/api/docs/pricing), [Google](https://ai.google.dev/gemini-api/docs/pricing) (redireciona para aistudio.google.com/docs/pricing). **O sistema não embute preços**: você informa os valores ao configurar; eles mudam (há degraus de preço datados), então **reconfira no console no dia**. Preço de cache **não** é configurado no harness: tokens em cache seriam cobrados ao preço de entrada (conservador, sem subestimar).
 
 | Provedor | Modelo (nome na página) | Entrada US$/Mtok | Saída US$/Mtok | Variáveis (micro-USD/Mtok: entrada / saída) |
 |---|---|---|---|---|
@@ -211,16 +215,32 @@ Fontes: páginas oficiais de preço lidas hoje — [Anthropic](https://platform.
 | Anthropic | Claude Sonnet 5.5 | 2 | 10 | `2000000` / `10000000` |
 | Anthropic | Claude Opus 5.5 | 4 | 20 | `4000000` / `20000000` |
 | OpenAI | gpt-6.1-terra (contexto curto ≤ 272k) | 1,00 | 5,00 | `1000000` / `5000000` |
-| OpenAI | gpt-6-luna | 0,10 | 0,50 | `100000` / `500000` |
+| OpenAI | gpt-6-luna (contexto curto ≤ 272k) | 0,10 | 0,50 | `100000` / `500000` |
 | OpenAI | gpt-6.2-sol | 2,00 | 10,00 | `2000000` / `10000000` |
 | Gemini | gemini-3.5-flash-lite | 0,30 | 2,50 | `300000` / `2500000` |
 | Gemini | gemini-4-hydrogen | 1,50 | 7,50 | `1500000` / `7500000` |
 | Gemini | gemini-3.8-flash | 0,75 (até 31/12/2026; 1,50 depois) | 3,75 (7,50 depois) | `750000` / `3750000` |
 
+#### 11.4.1 Outras modalidades (NÃO usar no harness)
+
+| Modelo | Standard (entrada / saída) | Batch | Flex | Fast (ex-Priority) | Longo contexto (> 272k) Standard |
+|---|---|---|---|---|---|
+| OpenAI gpt-6-luna | 0,10 / 0,50 | 0,05 / 0,25 | 0,05 / 0,25 | 0,20 / 1,00 | 0,20 / 0,75 |
+| OpenAI gpt-6.1-terra | 1,00 / 5,00 | 0,50 / 2,50 | 0,50 / 2,50 | 2,00 / 10,00 | 2,00 / 7,50 |
+| OpenAI gpt-6.2-sol | 2,00 / 10,00 | 1,00 / 5,00 | não listado | 4,00 / 20,00 | 4,00 / 15,00 |
+| Gemini 3.5 flash-lite | 0,30 / 2,50 | 0,15 / 1,25 | 0,15 / 1,25 | 0,54 / 4,50 | sem degrau |
+| Gemini 4 hydrogen | 1,50 / 7,50 | 0,75 / 3,75 | 0,75 / 3,75 | 2,70 / 13,50 | sem degrau |
+| Gemini 3.8 flash (até 31/12/2026) | 0,75 / 3,75 | 0,375 / 1,875 | 0,375 / 1,875 | 1,35 / 6,75 | sem degrau |
+| Anthropic Haiku 5.5 | 0,10 / 0,50 | 0,05 / 0,25 | n/a | n/a | > 100k: 0,50 / 2,50 |
+| Anthropic Sonnet 5.5 | 2 / 10 | 1 / 5 | n/a | n/a | sem acréscimo |
+| Anthropic Opus 5.5 | 4 / 20 | 2 / 10 | n/a | fast mode: 8 / 40 | sem acréscimo |
+
+**Conferência do gpt-6-luna:** a tarifa **Standard** na página oficial da OpenAI é **US$ 0,10 entrada / US$ 0,50 saída** por Mtok (cache de entrada US$ 0,01), idêntica à que já constava; **nenhuma divergência foi encontrada**. Os valores 0,05/0,25 (Batch/Flex) e 0,20/1,00 (Fast) são de outras modalidades e **não** devem ser configurados. Há ainda *Background* (30–40% abaixo do Standard), endpoints regionais/FedRAMP (+10%) e, para o gpt-6.2-sol, *Ultrafast* (3× o Standard até 28/02/2027, 6× depois). Usar tarifa menor que a cobrada **subestimaria** o custo.
+
 Ressalvas verificadas:
-* **Anthropic**: a página usa nomes de exibição e **não lista IDs de API**. Use o ID exato do console ou de `GET /v1/models`; `ai.anthropic.verify` confere se `HOMOLOG_ANTHROPIC_MODEL` consta na lista da sua conta. Sonnet 5 a US$ 2/10 é o preço padrão (o aumento previsto para 01/09/2026 "não ocorrerá"). Haiku 5.5 acima de 100k tokens custa US$ 0,50/2,50 (irrelevante para as sondas).
-* **OpenAI**: a página não declara suporte a tool-calling por modelo; confirme em *Models* antes. Os resumos de busca divergiam entre si nos nomes e preços; a tabela vem da leitura direta da página.
-* **Gemini**: a leitura direta cobriu ~40k de 118k caracteres; as linhas gemini-4-*, 3.8/3.6-flash e 3.5-flash-lite são literais. As linhas abaixo do corte (3.1, 2.5…) vieram de resumo e **não** são recomendadas aqui. **Degraus datados**: Gemini 4 Argon/Carbon dobram em 01/12/2026; 3.6/3.8 Flash dobram em 01/01/2027, o que importa se a Fase B ocorrer perto dessas datas.
+* **Anthropic**: a página de preços usa nomes de exibição; a página *Models overview* lista os IDs `claude-haiku-5-5`, `claude-sonnet-5-5` e `claude-opus-5-5`. Confirme o ID exato no console ou em `GET /v1/models`; `ai.anthropic.verify` confere se `HOMOLOG_ANTHROPIC_MODEL` consta na lista da sua conta. Sonnet 5 a US$ 2/10 é o preço padrão (o aumento previsto para 01/09/2026 "não ocorrerá"). Haiku 5.5 acima de 100k tokens custa US$ 0,50/2,50 (irrelevante para as sondas).
+* **OpenAI**: a página não declara suporte a tool-calling por modelo; confirme em *Models* antes. A tabela vem da leitura direta da página. A OpenAI não rotula uma modalidade como "padrão"; Standard é a primeira listada e a síncrona comum (inferência de layout).
+* **Gemini**: nesta releitura a página foi lida inteira (em dois blocos); as linhas dos três modelos acima são literais (Standard, pago). O preço de saída **inclui os tokens de raciocínio** ("thinking"), e o harness já limita a saída a 256 tokens. A página não rotula um nível como padrão; Standard é o primeiro. **Degraus datados**: Gemini 4 Argon/Carbon dobram em 01/12/2026; 3.6/3.8 Flash dobram em 01/01/2027, o que importa se a Fase B ocorrer perto dessas datas.
 * Preço verificado ≠ modelo suportado pelo produto: o modelo precisa suportar tool-calling e JSON (a Fase B confirma).
 
 ### 11.5 Proteção contra mutação no Google Ads (quatro camadas)
@@ -258,3 +278,29 @@ Configure **no seu terminal**, na sessão que rodará a Fase B (ex.: `export NOM
 - [ ] `scripts/homologation.sh phase-b`
 - [ ] `scripts/homologation.sh scan` limpo antes de commitar `docs/evidence/etapa-02-07/`
 - [ ] Revogar/rotacionar as chaves de teste ao terminar
+
+### 11.7 O que o teto de US$ 1,00 é e o que não é
+
+O teto é um **limite de orçamento ESTIMADO da homologação**, calculado por nós (pior caso antes do envio, custo calculado a partir do `usage` depois). **Não é garantia de cobrança máxima no provedor.** O valor faturado pode divergir porque:
+
+* **Chamadas interrompidas** (timeout, conexão caída, cancelamento): o provedor pode ter processado e cobrado sem devolver `usage`. Tratamento: o custo é tratado como **desconhecido** e a **reserva inteira (pior caso) é cobrada** do orçamento, nunca devolvida; nos testes de agentes vale a estimativa reservada do `ai_usage_log`, mais reservas do gateway ainda abertas, e na dúvida a fatia inteira.
+* **Tokens de raciocínio/"thinking"**, cache, ferramentas embutidas, impostos, arredondamentos e retentativas do lado do provedor, que a nossa estimativa (3 caracteres por token) pode subestimar.
+* **Preço informado por você** diferente do vigente (ver 11.4, modalidade Standard).
+* **Reservas deixadas por processo morto** continuam contadas (podem superestimar).
+* Cobranças **fora do nosso controle** (a leitura da Google Ads API é gratuita, mas sujeita a cotas; o provedor de IA fatura pelo console).
+
+Por isso: (1) use chaves de **projeto dedicado** com **limite de gasto/alerta no console do provedor**; (2) compare o custo registrado com a fatura do console depois da Fase B e registre a diferença; (3) a trava dura de US$ 1,00 do código limita o que **nós** enviamos, não o que o provedor fatura.
+
+### 11.8 Correção final do pré-voo (base `ecbfc84`)
+
+| # | Pedido | Resultado |
+|---|---|---|
+| 1 | Preço do gpt-6-luna (Standard) | Verificado na página oficial: **0,10 / 0,50**, igual ao já documentado; **sem divergência**. Ver 11.4.1 |
+| 2 | Reconferir demais modelos e modalidades | Anthropic, OpenAI e Gemini relidos; modalidades separadas em 11.4.1; Gemini lido por inteiro; IDs Anthropic confirmados |
+| 3 | Bloqueio atômico entre processos | **Havia uma falha real**: o contador lia o arquivo só ao ser construído e gravava o total em memória; dois processos podiam gastar o mesmo saldo e um sobrescrevia o outro, e o saldo só era checado, sem reserva. Corrigido: trava de arquivo + reserva antes do envio (11.2) |
+| 4 | Custo desconhecido / cobranças externas | Reserva inteira cobrada em chamada interrompida; fatia inteira cobrada quando não há medição (11.2, 11.7) |
+| 5 | Teto = orçamento estimado | Documentado (11.7); `preflight` e o relatório do harness trazem o aviso (`cost_basis`) |
+| 6 | Testes e CI | Ver a entrega (commit e run da Actions) |
+| 7 | Relatório | Esta seção |
+
+Nenhuma chamada real, credencial, deploy, merge ou migration foi feita. A Fase B continua **não iniciada** e aguarda sua autorização explícita.
