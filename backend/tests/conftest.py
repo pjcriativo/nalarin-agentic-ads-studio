@@ -44,10 +44,9 @@ from cryptography.fernet import Fernet  # noqa: E402
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["SECRET_KEY"] = "test-secret-key-0123456789-abcdefghijklmnop"
 os.environ["OAUTH_TOKEN_ENCRYPTION_KEY"] = Fernet.generate_key().decode()
-os.environ["GEMINI_API_KEY"] = "mock-key"
 os.environ["FAL_AI_API_KEY"] = "mock-key"
 for _var in (
-    "KIE_AI_API_KEY", "FACEBOOK_ACCESS_TOKEN", "VITE_FACEBOOK_ACCESS_TOKEN",
+    "GEMINI_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "KIE_AI_API_KEY", "FACEBOOK_ACCESS_TOKEN", "VITE_FACEBOOK_ACCESS_TOKEN",
     "FACEBOOK_APP_ID", "FACEBOOK_APP_SECRET", "FACEBOOK_OAUTH_REDIRECT_URI",
     "GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_DEVELOPER_TOKEN",
     "GOOGLE_ADS_LOGIN_CUSTOMER_ID", "GOOGLE_ADS_OAUTH_REDIRECT_URI",
@@ -120,6 +119,32 @@ def google_ads_configured(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_paid_ai_calls():
+    """No test may reach an AI provider: any outbound AI request fails the test unless the test
+    installs its own scripted transport (tests/unit/ai_support.ProviderMock)."""
+    import httpx
+    from app.ai.adapters.base import set_transport
+
+    def deny(request):
+        raise AssertionError(f"a test attempted a REAL network call to {request.url.host}")
+
+    set_transport(httpx.MockTransport(deny))
+    yield
+    set_transport(None)
+
+
+@pytest.fixture
+def provider_mock():
+    """Scripted answers for the three providers' real endpoints (no network)."""
+    from app.ai.adapters.base import set_transport
+    from tests.unit.ai_support import ProviderMock
+    mock = ProviderMock()
+    set_transport(mock.transport())
+    yield mock
+    # _no_paid_ai_calls restores the deny-all transport / resets it afterwards
+
+
+@pytest.fixture(autouse=True)
 def _hermetic_dns(monkeypatch):
     """The SSRF guard resolves hostnames; tests must not depend on real DNS."""
     from app.core import storage
@@ -164,6 +189,7 @@ def db_session():
         # This session is the (superuser) seeding connection, so it bypasses RLS
         # and can wipe the tenant tables of the disposable test database.
         for table in (
+            "ai_usage_logs", "ai_routing", "ai_budgets", "ai_models", "ai_credentials",
             "spend_approvals", "ad_account_links", "oauth_states", "mutation_audits",
             "google_ads_connections", "meta_ads_connections", "tiktok_ads_connections", "api_keys",
             "brand_scraped_ads", "brand_scrapes", "scraped_ads", "search_logs", "api_usage_logs",

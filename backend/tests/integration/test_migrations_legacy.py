@@ -109,7 +109,7 @@ class TestFromEmptyDatabase:
             tables = set(text_ for (text_,) in conn.execute(text(
                 "SELECT tablename FROM pg_tables WHERE schemaname = 'public'")))
             assert {"organizations", "organization_members", "brands"} <= tables
-            assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar() == "b8c9d0e1f2a3"
+            assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar() == "c9d0e1f2a3b4"
         command.downgrade(cfg, PRE_TENANT)
         with scratch_db.connect() as conn:
             tables = set(t for (t,) in conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname='public'")))

@@ -67,7 +67,15 @@ class Settings:
         return self.REQUIRE_LOGIN_RUNTIME_ROLE or self.is_production
 
     # External APIs
-    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    # AI providers are configured PER ORGANIZATION (BYOK, encrypted in ai_credentials). There is
+    # deliberately no server-wide GEMINI/OPENAI/ANTHROPIC key: one tenant's usage would be billed
+    # to the operator and could leak across organizations.
+    AI_ANTHROPIC_BASE_URL: str = os.getenv("AI_ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
+    # Required request header of the Messages API; kept configurable, never hard-wired to a model.
+    AI_ANTHROPIC_VERSION: str = os.getenv("AI_ANTHROPIC_VERSION", "2023-06-01")
+    AI_OPENAI_BASE_URL: str = os.getenv("AI_OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    AI_GEMINI_BASE_URL: str = os.getenv("AI_GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta").rstrip("/")
+    AI_TIMEOUT_SECONDS: float = float(os.getenv("AI_TIMEOUT_SECONDS", "60"))
     FAL_AI_API_KEY: str = os.getenv("FAL_AI_API_KEY", "")
     KIE_AI_API_KEY: str = os.getenv("KIE_AI_API_KEY", "")
     FACEBOOK_ACCESS_TOKEN: str = os.getenv("FACEBOOK_ACCESS_TOKEN", "")

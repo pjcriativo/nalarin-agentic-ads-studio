@@ -54,6 +54,8 @@ TENANT_TABLES = (
     # etapa 01.3: ad-platform integrations and operations
     "google_ads_connections", "meta_ads_connections", "tiktok_ads_connections",
     "ad_account_links", "spend_approvals", "mutation_audits",
+    # etapa 02.1: AI Gateway (BYOK credentials, catalog, routing, budgets, usage)
+    "ai_credentials", "ai_models", "ai_routing", "ai_budgets", "ai_usage_logs",
 )
 
 # api_keys: tenant policy + "the one row whose hash you present" (authentication

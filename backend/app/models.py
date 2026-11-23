@@ -1,6 +1,6 @@
 from sqlalchemy import (
     Column, String, Integer, BigInteger, ForeignKey, DateTime, Text, JSON, Table, Boolean,
-    UniqueConstraint, ForeignKeyConstraint, CheckConstraint, Index,
+    UniqueConstraint, ForeignKeyConstraint, CheckConstraint, Index, text,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -924,3 +924,138 @@ class OAuthState(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used_at = Column(DateTime(timezone=True), nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# AI Gateway (etapa 02.1): per-organization credentials (BYOK), model catalog,
+# routing, budgets and usage. All tenant tables (RLS); no prompts or secrets are
+# ever stored in the usage log.
+# ---------------------------------------------------------------------------
+class AiCredential(Base):
+    """An organization's own API key for one AI provider. The key is Fernet-encrypted
+    at rest, shown only as its last four characters, rotated in place and WIPED on
+    revocation. At most one ACTIVE credential per (organization, provider)."""
+    __tablename__ = "ai_credentials"
+    __table_args__ = (
+        CheckConstraint("status IN ('active','revoked')", name='ck_ai_credentials_status'),
+        CheckConstraint("char_length(last4) <= 4", name='ck_ai_credentials_last4'),
+        Index('ix_ai_credentials_organization_id', 'organization_id'),
+        Index('uq_ai_credentials_active_provider', 'organization_id', 'provider', unique=True,
+              postgresql_where=text("status = 'active'")),
+    )
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False)
+    provider = Column(String, nullable=False)
+    label = Column(String, nullable=True)
+    encrypted_key = Column(Text, nullable=False, default="")
+    last4 = Column(String, nullable=False, default="")
+    status = Column(String, nullable=False, default="active", server_default="active")
+    created_by_user_id = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    rotated_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    last_verified_at = Column(DateTime(timezone=True), nullable=True)
+    last_verification_ok = Column(Boolean, nullable=True)
+
+
+class AiModel(Base):
+    """A model an organization enabled. Names, capabilities and prices are DATA
+    (entered or discovered), never constants in the code."""
+    __tablename__ = "ai_models"
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'provider', 'model_id', name='uq_ai_models_org_provider_model'),
+        UniqueConstraint('id', 'organization_id', name='uq_ai_models_id_org'),
+        CheckConstraint("input_price_micros_per_mtok IS NULL OR input_price_micros_per_mtok >= 0", name='ck_ai_models_in_price'),
+        CheckConstraint("output_price_micros_per_mtok IS NULL OR output_price_micros_per_mtok >= 0", name='ck_ai_models_out_price'),
+        Index('ix_ai_models_organization_id', 'organization_id'),
+    )
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False)
+    provider = Column(String, nullable=False)
+    model_id = Column(String, nullable=False)            # the provider's own identifier
+    display_name = Column(String, nullable=True)
+    enabled = Column(Boolean, nullable=False, default=True, server_default="true")
+    supports_tools = Column(Boolean, nullable=False, default=False, server_default="false")
+    supports_vision = Column(Boolean, nullable=False, default=False, server_default="false")
+    supports_json = Column(Boolean, nullable=False, default=False, server_default="false")
+    context_window = Column(Integer, nullable=True)
+    max_output_tokens = Column(Integer, nullable=True)
+    # USD (in millionths) per ONE MILLION tokens; NULL = unknown price.
+    input_price_micros_per_mtok = Column(BigInteger, nullable=True)
+    output_price_micros_per_mtok = Column(BigInteger, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class AiRouting(Base):
+    """Which model serves an operation: a primary and ordered fallbacks."""
+    __tablename__ = "ai_routing"
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'operation', name='uq_ai_routing_org_operation'),
+        ForeignKeyConstraint(['primary_model_id', 'organization_id'], ['ai_models.id', 'ai_models.organization_id'],
+                             name='fk_ai_routing_primary_org', ondelete='SET NULL (primary_model_id)'),
+        Index('ix_ai_routing_organization_id', 'organization_id'),
+    )
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False)
+    operation = Column(String, nullable=False)           # 'default' or a concrete operation name
+    primary_model_id = Column(String, nullable=True)
+    fallback_model_ids = Column(JSON, nullable=False, default=list)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class AiBudget(Base):
+    """Spending limit of one organization for one period, with the counters that make
+    reservation atomic (limit check + reservation = ONE UPDATE)."""
+    __tablename__ = "ai_budgets"
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'period', name='uq_ai_budgets_org_period'),
+        CheckConstraint("period IN ('daily','monthly')", name='ck_ai_budgets_period'),
+        CheckConstraint("limit_micros >= 0 AND spent_micros >= 0 AND reserved_micros >= 0", name='ck_ai_budgets_nonneg'),
+        Index('ix_ai_budgets_organization_id', 'organization_id'),
+    )
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False)
+    period = Column(String, nullable=False)
+    limit_micros = Column(BigInteger, nullable=False)    # USD in millionths
+    enabled = Column(Boolean, nullable=False, default=True, server_default="true")
+    window_start = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    spent_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    reserved_micros = Column(BigInteger, nullable=False, default=0, server_default="0")
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class AiUsageLog(Base):
+    """One provider attempt. Append-only for the application role; never holds prompts,
+    completions, keys or provider error bodies."""
+    __tablename__ = "ai_usage_logs"
+    __table_args__ = (
+        CheckConstraint("status IN ('success','error')", name='ck_ai_usage_status'),
+        Index('ix_ai_usage_logs_org_created', 'organization_id', 'created_at'),
+        Index('ix_ai_usage_logs_org_user', 'organization_id', 'user_id'),
+    )
+    __mapper_args__ = {"eager_defaults": False}
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False)
+    user_id = Column(String, nullable=True)
+    request_id = Column(String, nullable=False)          # groups the attempts of one gateway call
+    attempt = Column(Integer, nullable=False, default=1)
+    operation = Column(String, nullable=False)
+    provider = Column(String, nullable=False)
+    model_id = Column(String, nullable=False)
+    credential_id = Column(String, nullable=True)
+    status = Column(String, nullable=False)
+    error_kind = Column(String, nullable=True)
+    input_tokens = Column(BigInteger, nullable=False, default=0)
+    output_tokens = Column(BigInteger, nullable=False, default=0)
+    cached_input_tokens = Column(BigInteger, nullable=False, default=0)
+    reasoning_tokens = Column(BigInteger, nullable=False, default=0)
+    estimated_cost_micros = Column(BigInteger, nullable=True)   # what was reserved
+    cost_micros = Column(BigInteger, nullable=True)             # computed from the provider-reported usage
+    latency_ms = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -47,7 +47,9 @@ _VIEWER = frozenset({
 #   ads:draft   prepare things that cannot spend (PAUSED campaigns, approval requests)
 #   ads:publish change live state without raising spend (pause, negative keywords)
 #   ads:spend   approve/execute operations that can spend money (human approval)
-_ANALYST = _VIEWER | {"reports:read", "research:write", "connections:read"}
+# AI Gateway: ai:read = see models/usage/budgets; ai:use = (indirectly) run AI operations
+# through features; ai:manage = credentials (BYOK), models, routing and budgets.
+_ANALYST = _VIEWER | {"reports:read", "research:write", "connections:read", "ai:read"}
 _MANAGER = _ANALYST | {
     "brands:write", "brands:delete",
     "products:write", "products:delete",
@@ -58,8 +60,9 @@ _MANAGER = _ANALYST | {
     "research:delete",
     "uploads:write",
     "ads:draft",
+    "ai:use",
 }
-_ADMIN = _MANAGER | {"members:manage", "audit:read", "connections:manage", "apikeys:manage", "ads:publish"}
+_ADMIN = _MANAGER | {"members:manage", "audit:read", "connections:manage", "apikeys:manage", "ads:publish", "ai:manage"}
 _OWNER = _ADMIN | {"org:manage", "ads:spend"}
 
 ROLE_PERMISSIONS = {

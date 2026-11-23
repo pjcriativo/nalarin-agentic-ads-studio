@@ -19,6 +19,10 @@ from app.schemas.ad_blueprint import (
     ReconstructRequest
 )
 from app.services.ad_remix_service import deconstruct_template, reconstruct_ad
+from app.ai import errors as ai_errors
+from app.ai.api_errors import to_http
+from app.ai.gateway import AIGateway
+from app.ai.media import load_template_image
 
 router = APIRouter()
 
@@ -46,7 +50,8 @@ async def deconstruct_ad_template(
     
     # Deconstruct the template
     try:
-        blueprint = await deconstruct_template(template.image_url)
+        image = await load_template_image(template.image_url, ctx.org.id)
+        blueprint = await deconstruct_template(AIGateway.for_context(db, ctx), image)
         
         # Save the blueprint to the template
         template.blueprint_json = blueprint.model_dump()
@@ -55,7 +60,13 @@ async def deconstruct_ad_template(
         
         return blueprint
         
-    except Exception as e:
+    except ai_errors.AIError as e:
+        if e.kind == ai_errors.INVALID_RESPONSE:
+            raise HTTPException(status_code=500, detail="Deconstruction failed")
+        raise to_http(e)
+    except HTTPException:
+        raise
+    except Exception:
         raise HTTPException(status_code=500, detail="Deconstruction failed")
 
 
@@ -115,10 +126,16 @@ async def reconstruct_ad_from_blueprint(
     blueprint = AdBlueprint(**template.blueprint_json)
     
     try:
-        ad_concept = await reconstruct_ad(blueprint, brand_data)
+        ad_concept = await reconstruct_ad(AIGateway.for_context(db, ctx), blueprint, brand_data)
         return ad_concept
         
-    except Exception as e:
+    except ai_errors.AIError as e:
+        if e.kind == ai_errors.INVALID_RESPONSE:
+            raise HTTPException(status_code=500, detail="Reconstruction failed")
+        raise to_http(e)
+    except HTTPException:
+        raise
+    except Exception:
         raise HTTPException(status_code=500, detail="Reconstruction failed")
 
 
