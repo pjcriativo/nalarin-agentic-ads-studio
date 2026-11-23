@@ -1,0 +1,288 @@
+{
+  "page": {
+    "title": "Central de IA",
+    "subtitle": "Conecte seus provedores de IA, escolha os modelos e mantenha os gastos sob controle. Tudo aqui pertence somente a {{organization}}.",
+    "noAccessTitle": "Você não pode ver as configurações de IA",
+    "noAccessBody": "Seu papel nesta organização não inclui acesso à Central de IA. Peça a um administrador se precisar.",
+    "readOnly": "Você pode ver esta página, mas só administradores podem alterá-la.",
+    "sections": "Seções da Central de IA",
+    "tab": {
+      "providers": "Provedores",
+      "models": "Modelos",
+      "routing": "Roteamento",
+      "usage": "Consumo e limites"
+    }
+  },
+  "state": {
+    "loading": "Carregando…",
+    "unavailableTitle": "O serviço de IA está indisponível",
+    "unavailableBody": "Não conseguimos acessar o serviço de IA. Suas configurações estão seguras. Tente novamente em instantes.",
+    "retry": "Tentar novamente",
+    "saving": "Salvando…"
+  },
+  "overview": {
+    "notConfigured": "A IA ainda não foi configurada. Adicione uma chave de API e um modelo para começar.",
+    "needsModel": "Há um provedor conectado, mas nenhum modelo está ativo. Adicione um modelo para começar.",
+    "ready_one": "A IA está pronta: {{count}} provedor conectado, {{models}} ativos.",
+    "ready_other": "A IA está pronta: {{count}} provedores conectados, {{models}} ativos.",
+    "limitReached": "O limite de gasto {{period}} foi atingido. As requisições de IA ficam bloqueadas até ele reiniciar.",
+    "nearLimit": "O gasto {{period}} está em {{percent}}% do limite."
+  },
+  "provider": {
+    "title": "Chaves dos provedores",
+    "subtitle": "Cada organização usa as próprias chaves. Elas são criptografadas ao salvar e nunca mais exibidas: só os quatro últimos caracteres ficam visíveis.",
+    "status": {
+      "notConfigured": "Não configurado",
+      "verified": "Conexão verificada",
+      "failed": "Falha na verificação",
+      "untested": "Ainda não testada",
+      "revoked": "Chave revogada",
+      "active": "Ativa"
+    },
+    "keyEnding": "Chave terminada em {{last4}}",
+    "label": "Rótulo: {{label}}",
+    "lastTested": "Testada pela última vez em {{date}}",
+    "neverTested": "Nunca testada",
+    "noKey": "Nenhuma chave salva para este provedor.",
+    "onlyAdmins": "Só administradores podem adicionar ou alterar chaves.",
+    "add": "Adicionar chave de API",
+    "test": "Testar conexão",
+    "testing": "Testando…",
+    "replace": "Substituir chave",
+    "revoke": "Revogar chave",
+    "form": {
+      "addTitle": "Adicionar chave {{provider}}",
+      "replaceTitle": "Substituir chave {{provider}}",
+      "help": "Cole a chave da sua conta {{provider}}. Ela é enviada por HTTPS, guardada criptografada e nunca mais exibida.",
+      "key": "Chave de API",
+      "keyHint": "Entre 8 e 512 caracteres.",
+      "label": "Rótulo (opcional)",
+      "labelHint": "Para sua referência, como \"Time de marketing\".",
+      "verify": "Verificar a chave com {{provider}} antes de salvar",
+      "verifyHint": "Uma requisição leve ao provedor. Se falhar, a chave não é salva.",
+      "save": "Salvar chave",
+      "replaceSave": "Substituir chave",
+      "cancel": "Cancelar",
+      "close": "Fechar",
+      "tooShort": "A chave é curta demais.",
+      "tooLong": "A chave é longa demais."
+    },
+    "revokeConfirm": {
+      "title": "Revogar esta chave?",
+      "message": "{{provider}} deixa de funcionar para {{organization}} até você adicionar uma nova chave. A chave guardada é apagada e não pode ser recuperada.",
+      "confirm": "Revogar chave"
+    },
+    "toast": {
+      "added": "Chave {{provider}} salva.",
+      "replaced": "Chave {{provider}} substituída.",
+      "revoked": "Chave {{provider}} revogada.",
+      "testOk": "A conexão com {{provider}} funciona.",
+      "testFailed": "A conexão com {{provider}} falhou: {{reason}}"
+    }
+  },
+  "model": {
+    "title": "Catálogo de modelos",
+    "subtitle": "Você define os nomes, as capacidades e os preços dos modelos. Os preços nunca são preenchidos por nós: copie-os da página de preços do seu provedor.",
+    "add": "Adicionar modelo",
+    "discover": "Descobrir modelos",
+    "edit": "Editar",
+    "remove": "Excluir",
+    "empty": "Nenhum modelo ainda",
+    "emptyHint": "Descubra os modelos que sua chave pode usar ou adicione um pelo nome.",
+    "columns": {
+      "model": "Modelo",
+      "capabilities": "Capacidades",
+      "prices": "USD por 1 mi de tokens",
+      "status": "Situação",
+      "actions": "Ações"
+    },
+    "capability": {
+      "tools": "Ferramentas",
+      "vision": "Visão",
+      "json": "JSON",
+      "none": "Somente texto"
+    },
+    "price": {
+      "input": "Entrada",
+      "output": "Saída",
+      "cached": "Cache",
+      "notSet": "não definido",
+      "cachedNote": "Sem preço de cache, os tokens em cache são cobrados pelo preço de entrada."
+    },
+    "enabled": "Ativo",
+    "disabled": "Inativo",
+    "noCredential": "Nenhuma chave ativa para este provedor.",
+    "unpriced": "Sem preço definido: fica bloqueado enquanto houver limite de gasto ativo.",
+    "toggle": "Ativar ou desativar {{model}}",
+    "form": {
+      "addTitle": "Adicionar um modelo",
+      "editTitle": "Editar {{model}}",
+      "provider": "Provedor",
+      "modelId": "ID do modelo",
+      "modelIdHint": "Exatamente como o provedor o chama.",
+      "displayName": "Nome de exibição (opcional)",
+      "capabilities": "Capacidades",
+      "capabilitiesHint": "Marque só o que o provedor confirma para este modelo.",
+      "contextWindow": "Janela de contexto (tokens)",
+      "maxOutput": "Saída máxima (tokens)",
+      "inputPrice": "Preço de entrada (USD por 1 mi de tokens)",
+      "outputPrice": "Preço de saída (USD por 1 mi de tokens)",
+      "cachedPrice": "Preço de entrada em cache (USD por 1 mi de tokens)",
+      "cachedHint": "Só se o provedor publicar um preço diferente para tokens de prompt em cache.",
+      "priceHint": "Deixe vazio se não souber. Sem preço, o modelo não pode ser usado enquanto houver limite de gasto ativo.",
+      "enabled": "Disponível para uso",
+      "save": "Salvar modelo",
+      "cancel": "Cancelar",
+      "modelIdRequired": "Informe o ID do modelo.",
+      "invalidNumber": "Informe um número maior ou igual a 0.",
+      "invalidInteger": "Informe um número inteiro maior que 0."
+    },
+    "discoverDialog": {
+      "title": "Modelos disponíveis em {{provider}}",
+      "intro": "Estes nomes vêm direto de {{provider}} usando a sua chave, então a disponibilidade está confirmada. Capacidades e preços não estão: você os confirma ao adicionar o modelo.",
+      "loading": "Consultando {{provider}}…",
+      "empty": "{{provider}} não retornou modelos para esta chave.",
+      "needsKey": "Antes, adicione uma chave ativa de {{provider}}.",
+      "already": "Já adicionado",
+      "use": "Adicionar",
+      "close": "Fechar"
+    },
+    "removeConfirm": {
+      "title": "Excluir este modelo?",
+      "message": "{{model}} sai do catálogo e das rotas que o usam. O histórico de consumo continua.",
+      "confirm": "Excluir modelo"
+    },
+    "toast": {
+      "added": "{{model}} adicionado.",
+      "updated": "{{model}} atualizado.",
+      "removed": "{{model}} excluído."
+    }
+  },
+  "routing": {
+    "title": "Roteamento",
+    "subtitle": "Escolha o modelo principal de cada tarefa e os modelos a tentar em seguida. Os reservas só entram quando o provedor está limitando, demorando ou indisponível, nunca por problema de chave, cota ou requisição.",
+    "operation": {
+      "default": "Todas as tarefas (padrão)",
+      "copyGenerate": "Gerar textos de anúncio",
+      "copyRegenerateField": "Reescrever um campo do texto",
+      "adRemixDeconstruct": "Analisar um modelo (Ad Remix)",
+      "adRemixReconstruct": "Recriar um anúncio (Ad Remix)"
+    },
+    "primary": "Modelo principal",
+    "choose": "Selecione um modelo",
+    "fallbacks": "Modelos reserva, em ordem",
+    "noFallbacks": "Sem modelos reserva.",
+    "addFallback": "Adicionar reserva",
+    "moveUp": "Subir {{model}}",
+    "moveDown": "Descer {{model}}",
+    "removeFallback": "Tirar {{model}} dos reservas",
+    "implicit": "Sem rota definida: usa-se o primeiro modelo ativo.",
+    "usesDefault": "Sem rota definida: segue a rota padrão.",
+    "unsaved": "Alterações não salvas",
+    "save": "Salvar rota",
+    "clear": "Limpar rota",
+    "maxFallbacks": "No máximo {{count}} reservas.",
+    "needsModels": "Adicione um modelo antes de criar uma rota.",
+    "disabledModel": "inativo",
+    "toast": {
+      "saved": "Rota salva.",
+      "cleared": "Rota limpa."
+    }
+  },
+  "usage": {
+    "title": "Consumo",
+    "period": "Período",
+    "range_one": "Último {{count}} dia",
+    "range_other": "Últimos {{count}} dias",
+    "kpi": {
+      "requests": "Requisições",
+      "inputTokens": "Tokens de entrada",
+      "outputTokens": "Tokens de saída",
+      "cachedTokens": "Tokens de entrada em cache",
+      "cost": "Custo (USD)",
+      "errors": "Tentativas com falha"
+    },
+    "costNote": "O custo é calculado a partir dos tokens informados pelo provedor e dos preços que você definiu. Modelos sem preço não mostram custo.",
+    "perDay": "Custo por dia (USD)",
+    "perDayEmpty": "Nenhum custo registrado neste período.",
+    "byModel": "Por modelo",
+    "byOperation": "Por tarefa",
+    "byUser": "Por usuário",
+    "unknownUser": "Sistema",
+    "history": "Requisições recentes",
+    "empty": "Nenhuma requisição de IA neste período.",
+    "columns": {
+      "when": "Quando",
+      "task": "Tarefa",
+      "model": "Modelo",
+      "result": "Resultado",
+      "tokens": "Tokens entrada / saída",
+      "cost": "Custo (USD)",
+      "latency": "Tempo",
+      "requests": "Requisições",
+      "name": "Nome"
+    },
+    "success": "Sucesso",
+    "failure": "Falhou: {{reason}}",
+    "latencyMs": "{{ms}} ms"
+  },
+  "budget": {
+    "title": "Limites de gasto",
+    "subtitle": "Os limites são conferidos antes de cada requisição. As janelas são em UTC: o limite diário reinicia às 00:00 UTC e o mensal no dia 1.",
+    "period": {
+      "daily": "Diário",
+      "monthly": "Mensal"
+    },
+    "spent": "Gasto",
+    "inFlight": "Em andamento",
+    "remaining": "Restante",
+    "limit": "Limite",
+    "ok": "Dentro do limite",
+    "warning": "{{percent}}% do limite usado",
+    "reached": "Limite atingido: requisições bloqueadas",
+    "notEnforced": "Não aplicado",
+    "none": "Nenhum limite definido: o gasto não tem teto.",
+    "set": "Definir limite",
+    "change": "Alterar limite",
+    "remove": "Remover limite",
+    "enforce": "Aplicar este limite",
+    "form": {
+      "title": "Limite {{period}}",
+      "field": "Limite (USD)",
+      "hint": "Use 0 para bloquear todas as requisições de IA nesta janela.",
+      "save": "Salvar limite",
+      "cancel": "Cancelar",
+      "invalid": "Informe um valor maior ou igual a 0."
+    },
+    "removeConfirm": {
+      "title": "Remover o limite {{period}}?",
+      "message": "O gasto nesta janela deixa de ter teto.",
+      "confirm": "Remover limite"
+    },
+    "toast": {
+      "saved": "Limite {{period}} salvo.",
+      "removed": "Limite {{period}} removido."
+    }
+  },
+  "errors": {
+    "authentication": "O provedor recusou a chave de API.",
+    "permission": "A chave não tem acesso a isto.",
+    "quota": "O provedor informa que a conta ficou sem crédito ou cota.",
+    "rate_limit": "Muitas requisições. Tente novamente em instantes.",
+    "timeout": "O provedor demorou demais para responder.",
+    "unavailable": "O provedor está indisponível no momento.",
+    "invalid_request": "O provedor não conseguiu processar a requisição.",
+    "not_found": "O modelo não está disponível no provedor.",
+    "content_blocked": "O provedor bloqueou a requisição ou a resposta.",
+    "invalid_response": "O provedor devolveu uma resposta inutilizável.",
+    "budget_exceeded": "O limite de gasto foi atingido.",
+    "not_configured": "A IA ainda não foi configurada.",
+    "unknown": "A requisição de IA falhou.",
+    "network": "Não foi possível acessar o servidor. Verifique sua conexão.",
+    "forbidden": "Seu papel não permite esta ação.",
+    "notFound": "Não encontrado. Pode ter sido removido.",
+    "conflict": "Isso já existe ou não é permitido agora.",
+    "invalid": "O servidor recusou os dados. Confira os campos.",
+    "generic": "Algo deu errado. Tente novamente."
+  }
+}

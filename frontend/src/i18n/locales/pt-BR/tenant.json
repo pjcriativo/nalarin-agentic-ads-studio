@@ -50,7 +50,8 @@
       "reports": "Relatórios",
       "connections": "Contas de anúncios",
       "apikeys": "Chaves de API",
-      "audit": "Auditoria"
+      "audit": "Auditoria",
+      "ai": "IA"
     },
     "org_read": "Ver a organização",
     "org_manage": "Gerenciar a organização",
@@ -85,6 +86,9 @@
     "connections_read": "Ver contas de anúncios conectadas",
     "connections_manage": "Conectar e gerenciar contas de anúncios",
     "apikeys_manage": "Gerenciar chaves de API",
-    "audit_read": "Ver o log de auditoria"
+    "audit_read": "Ver o log de auditoria",
+    "ai_read": "Ver configurações, modelos e consumo de IA",
+    "ai_use": "Usar IA dentro das funcionalidades",
+    "ai_manage": "Gerenciar chaves, modelos, roteamento e limites de IA"
   }
 }

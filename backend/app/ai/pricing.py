@@ -17,11 +17,16 @@ def tokens_cost_micros(tokens: int, price_micros_per_mtok: Optional[int]) -> Opt
 
 def usage_cost_micros(usage: Usage, model) -> Optional[int]:
     """Cost computed from the provider-reported usage; None when the model has no price."""
-    cost_in = tokens_cost_micros(usage.input_tokens, model.input_price_micros_per_mtok)
+    cached = max(min(usage.cached_input_tokens, usage.input_tokens), 0)
+    cached_price = getattr(model, "cached_input_price_micros_per_mtok", None)
+    if cached_price is None:
+        cached = 0  # no cache price informed: every prompt token is charged at the input price
+    cost_in = tokens_cost_micros(usage.input_tokens - cached, model.input_price_micros_per_mtok)
+    cost_cached = tokens_cost_micros(cached, cached_price) if cached else 0
     cost_out = tokens_cost_micros(usage.output_tokens, model.output_price_micros_per_mtok)
     if cost_in is None or cost_out is None:
         return None
-    return cost_in + cost_out
+    return cost_in + cost_cached + cost_out
 
 
 def estimate_cost_micros(request: ChatRequest, model) -> Optional[int]:
@@ -30,7 +35,9 @@ def estimate_cost_micros(request: ChatRequest, model) -> Optional[int]:
     max_out = request.max_tokens
     if model.max_output_tokens:
         max_out = min(max_out, model.max_output_tokens)
-    cost_in = tokens_cost_micros(prompt_tokens, model.input_price_micros_per_mtok)
+    # worst case: the dearer of the two prices applies to the whole prompt
+    prices = [p for p in (model.input_price_micros_per_mtok, getattr(model, "cached_input_price_micros_per_mtok", None)) if p is not None]
+    cost_in = tokens_cost_micros(prompt_tokens, max(prices)) if model.input_price_micros_per_mtok is not None else None
     cost_out = tokens_cost_micros(max_out, model.output_price_micros_per_mtok)
     if cost_in is None or cost_out is None:
         return None

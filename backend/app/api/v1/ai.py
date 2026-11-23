@@ -21,7 +21,7 @@ from app.ai import credentials as cred
 from app.ai import errors as E
 from app.ai.adapters import PROVIDER_ADAPTERS, PROVIDERS
 from app.ai.api_errors import to_http
-from app.ai.budget import window_start
+from app.ai.budget import recover_abandoned, window_start
 from app.ai.pricing import micros_to_usd, usd_to_micros
 from app.core.audit import audit_event
 from app.core.tenancy import OrgContext, require_org_permission
@@ -154,6 +154,8 @@ class ModelIn(BaseModel):
     max_output_tokens: Optional[int] = Field(default=None, gt=0)
     input_price_usd_per_mtok: Optional[Decimal] = Field(default=None, ge=0)
     output_price_usd_per_mtok: Optional[Decimal] = Field(default=None, ge=0)
+    # only when the provider publishes a distinct price for cached prompt tokens
+    cached_input_price_usd_per_mtok: Optional[Decimal] = Field(default=None, ge=0)
 
 
 class ModelPatch(BaseModel):
@@ -166,6 +168,7 @@ class ModelPatch(BaseModel):
     max_output_tokens: Optional[int] = Field(default=None, gt=0)
     input_price_usd_per_mtok: Optional[Decimal] = Field(default=None, ge=0)
     output_price_usd_per_mtok: Optional[Decimal] = Field(default=None, ge=0)
+    cached_input_price_usd_per_mtok: Optional[Decimal] = Field(default=None, ge=0)
 
 
 def _model_view(m: AiModel) -> dict:
@@ -175,6 +178,7 @@ def _model_view(m: AiModel) -> dict:
         "context_window": m.context_window, "max_output_tokens": m.max_output_tokens,
         "input_price_usd_per_mtok": micros_to_usd(m.input_price_micros_per_mtok),
         "output_price_usd_per_mtok": micros_to_usd(m.output_price_micros_per_mtok),
+        "cached_input_price_usd_per_mtok": micros_to_usd(m.cached_input_price_micros_per_mtok),
     }
 
 
@@ -215,6 +219,7 @@ def add_model(body: ModelIn, request: Request, db: Session = Depends(get_db),
         supports_json=body.supports_json, context_window=body.context_window, max_output_tokens=body.max_output_tokens,
         input_price_micros_per_mtok=None if body.input_price_usd_per_mtok is None else usd_to_micros(body.input_price_usd_per_mtok),
         output_price_micros_per_mtok=None if body.output_price_usd_per_mtok is None else usd_to_micros(body.output_price_usd_per_mtok),
+        cached_input_price_micros_per_mtok=None if body.cached_input_price_usd_per_mtok is None else usd_to_micros(body.cached_input_price_usd_per_mtok),
     )
     db.add(model)
     try:
@@ -236,7 +241,8 @@ def update_model(model_id: str, body: ModelPatch, request: Request, db: Session 
     for key in ("display_name", "enabled", "supports_tools", "supports_vision", "supports_json", "context_window", "max_output_tokens"):
         if key in data:
             setattr(model, key, data[key])
-    for key, column in (("input_price_usd_per_mtok", "input_price_micros_per_mtok"), ("output_price_usd_per_mtok", "output_price_micros_per_mtok")):
+    for key, column in (("input_price_usd_per_mtok", "input_price_micros_per_mtok"), ("output_price_usd_per_mtok", "output_price_micros_per_mtok"),
+                        ("cached_input_price_usd_per_mtok", "cached_input_price_micros_per_mtok")):
         if key in data:
             setattr(model, column, None if data[key] is None else usd_to_micros(data[key]))
     audit_event(db, action="ai.model.updated", organization_id=ctx.org.id, actor_user_id=ctx.user.id, target=model.id,
@@ -331,6 +337,7 @@ def _budget_view(b: AiBudget) -> dict:
 
 @router.get("/budgets")
 def list_budgets(db: Session = Depends(get_db), ctx: OrgContext = Depends(require_org_permission("ai:read"))):
+    recover_abandoned(db, ctx.org.id)  # numbers shown must not include what a dead process left reserved
     rows = db.query(AiBudget).filter(AiBudget.organization_id == ctx.org.id).order_by(AiBudget.period).all()
     return [_budget_view(b) for b in rows]
 
@@ -375,9 +382,11 @@ def usage_summary(days: int = Query(30, ge=1, le=366), db: Session = Depends(get
         row = query.with_entities(
             func.count(AiUsageLog.id), func.coalesce(func.sum(AiUsageLog.input_tokens), 0),
             func.coalesce(func.sum(AiUsageLog.output_tokens), 0), func.coalesce(func.sum(AiUsageLog.cost_micros), 0),
-            func.coalesce(func.sum(AiUsageLog.estimated_cost_micros), 0)).one()
+            func.coalesce(func.sum(AiUsageLog.estimated_cost_micros), 0),
+            func.coalesce(func.sum(AiUsageLog.cached_input_tokens), 0)).one()
         return {"requests": row[0], "input_tokens": int(row[1]), "output_tokens": int(row[2]),
-                "cost_usd": micros_to_usd(int(row[3])), "estimated_cost_usd": micros_to_usd(int(row[4]))}
+                "cost_usd": micros_to_usd(int(row[3])), "estimated_cost_usd": micros_to_usd(int(row[4])),
+                "cached_input_tokens": int(row[5])}
 
     def grouped(*columns):
         rows = base.with_entities(
@@ -389,8 +398,15 @@ def usage_summary(days: int = Query(30, ge=1, le=366), db: Session = Depends(get
                  "output_tokens": int(r[len(keys) + 2]), "cost_usd": micros_to_usd(int(r[len(keys) + 3]))} for r in rows]
 
     errors = base.filter(AiUsageLog.status == "error").count()
+    day = func.date_trunc("day", func.timezone("UTC", AiUsageLog.created_at))
+    by_day = [{"date": d.date().isoformat(), "requests": int(n), "input_tokens": int(i), "output_tokens": int(o),
+               "cost_usd": micros_to_usd(int(c))}
+              for d, n, i, o, c in base.with_entities(
+                  day, func.count(AiUsageLog.id), func.coalesce(func.sum(AiUsageLog.input_tokens), 0),
+                  func.coalesce(func.sum(AiUsageLog.output_tokens), 0), func.coalesce(func.sum(AiUsageLog.cost_micros), 0)
+              ).group_by(day).order_by(day).all()]
     return {
-        "days": days, "totals": {**totals(base), "errors": errors},
+        "days": days, "totals": {**totals(base), "errors": errors}, "by_day": by_day,
         "by_model": grouped(AiUsageLog.provider, AiUsageLog.model_id),
         "by_operation": grouped(AiUsageLog.operation),
         "by_user": grouped(AiUsageLog.user_id),

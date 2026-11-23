@@ -189,7 +189,7 @@ def db_session():
         # This session is the (superuser) seeding connection, so it bypasses RLS
         # and can wipe the tenant tables of the disposable test database.
         for table in (
-            "ai_usage_logs", "ai_routing", "ai_budgets", "ai_models", "ai_credentials",
+            "ai_usage_logs", "ai_budget_reservations", "ai_routing", "ai_budgets", "ai_models", "ai_credentials",
             "spend_approvals", "ad_account_links", "oauth_states", "mutation_audits",
             "google_ads_connections", "meta_ads_connections", "tiktok_ads_connections", "api_keys",
             "brand_scraped_ads", "brand_scrapes", "scraped_ads", "search_logs", "api_usage_logs",

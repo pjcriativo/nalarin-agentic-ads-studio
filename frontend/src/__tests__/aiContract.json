@@ -1,0 +1,17 @@
+{
+  "_comment": "Fields the AI Control Center READS from /api/v1/ai. Verified against the REAL backend (backend/tests/unit/test_ai_frontend_contract.py) and against the in-memory fake the UI tests use (src/__tests__/aiContract.test.js), so the fake cannot drift from the API. 'forbidden' fields must never appear in any answer.",
+  "providers": ["provider", "has_active_credential"],
+  "credential": ["id", "provider", "label", "status", "last4", "last_verified_at", "last_verification_ok"],
+  "credentialTest": ["ok", "error", "credential"],
+  "model": ["id", "provider", "model_id", "display_name", "enabled", "supports_tools", "supports_vision", "supports_json", "context_window", "max_output_tokens", "input_price_usd_per_mtok", "output_price_usd_per_mtok", "cached_input_price_usd_per_mtok"],
+  "discovered": ["model_id", "display_name", "already_added"],
+  "route": ["operation", "primary_model_id", "fallback_model_ids"],
+  "budget": ["period", "enabled", "limit_usd", "spent_usd", "reserved_usd", "remaining_usd"],
+  "usageTotals": ["requests", "input_tokens", "output_tokens", "cached_input_tokens", "cost_usd", "estimated_cost_usd", "errors"],
+  "usageByDay": ["date", "requests", "cost_usd"],
+  "usageByModel": ["provider", "model_id", "requests", "cost_usd"],
+  "usageByOperation": ["operation", "requests", "cost_usd"],
+  "usageByUser": ["user_id", "requests", "cost_usd"],
+  "usageLog": ["id", "created_at", "operation", "model_id", "status", "error_kind", "input_tokens", "output_tokens", "cost_usd", "latency_ms"],
+  "forbidden": ["api_key", "encrypted_key", "key", "secret"]
+}

@@ -50,7 +50,8 @@
       "reports": "Reports",
       "connections": "Ad accounts",
       "apikeys": "API keys",
-      "audit": "Audit"
+      "audit": "Audit",
+      "ai": "AI"
     },
     "org_read": "View the organization",
     "org_manage": "Manage the organization",
@@ -85,6 +86,9 @@
     "connections_read": "View connected ad accounts",
     "connections_manage": "Connect and manage ad accounts",
     "apikeys_manage": "Manage API keys",
-    "audit_read": "View the audit log"
+    "audit_read": "View the audit log",
+    "ai_read": "View AI settings, models and usage",
+    "ai_use": "Use AI inside features",
+    "ai_manage": "Manage AI keys, models, routing and limits"
   }
 }

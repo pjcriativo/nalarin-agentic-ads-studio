@@ -1,0 +1,288 @@
+{
+  "page": {
+    "title": "AI Control Center",
+    "subtitle": "Connect your AI providers, choose the models and keep spending under control. Everything here belongs to {{organization}} only.",
+    "noAccessTitle": "You can't view the AI settings",
+    "noAccessBody": "Your role in this organization doesn't include access to the AI Control Center. Ask an administrator if you need it.",
+    "readOnly": "You can view this page, but only administrators can change it.",
+    "sections": "AI Control Center sections",
+    "tab": {
+      "providers": "Providers",
+      "models": "Models",
+      "routing": "Routing",
+      "usage": "Usage and limits"
+    }
+  },
+  "state": {
+    "loading": "Loading…",
+    "unavailableTitle": "The AI service is unavailable",
+    "unavailableBody": "We couldn't reach the AI service. Your settings are safe. Try again in a moment.",
+    "retry": "Try again",
+    "saving": "Saving…"
+  },
+  "overview": {
+    "notConfigured": "AI isn't set up yet. Add an API key and a model to start.",
+    "needsModel": "A provider is connected but no model is enabled yet. Add a model to start.",
+    "ready_one": "AI is ready: {{count}} provider connected, {{models}} enabled.",
+    "ready_other": "AI is ready: {{count}} providers connected, {{models}} enabled.",
+    "limitReached": "The {{period}} spending limit has been reached. AI requests are blocked until it resets.",
+    "nearLimit": "{{period}} spending is at {{percent}}% of the limit."
+  },
+  "provider": {
+    "title": "Provider keys",
+    "subtitle": "Each organization uses its own keys. Keys are encrypted when saved and never shown again: only the last four characters stay visible.",
+    "status": {
+      "notConfigured": "Not configured",
+      "verified": "Connection verified",
+      "failed": "Verification failed",
+      "untested": "Not tested yet",
+      "revoked": "Key revoked",
+      "active": "Active"
+    },
+    "keyEnding": "Key ending in {{last4}}",
+    "label": "Label: {{label}}",
+    "lastTested": "Last tested {{date}}",
+    "neverTested": "Never tested",
+    "noKey": "No key saved for this provider.",
+    "onlyAdmins": "Only administrators can add or change keys.",
+    "add": "Add API key",
+    "test": "Test connection",
+    "testing": "Testing…",
+    "replace": "Replace key",
+    "revoke": "Revoke key",
+    "form": {
+      "addTitle": "Add {{provider}} key",
+      "replaceTitle": "Replace {{provider}} key",
+      "help": "Paste the key from your {{provider}} account. It is sent over HTTPS, stored encrypted and never displayed again.",
+      "key": "API key",
+      "keyHint": "Between 8 and 512 characters.",
+      "label": "Label (optional)",
+      "labelHint": "For your reference, like \"Marketing team\".",
+      "verify": "Check the key with {{provider}} before saving",
+      "verifyHint": "A lightweight request to the provider. If it fails, the key isn't saved.",
+      "save": "Save key",
+      "replaceSave": "Replace key",
+      "cancel": "Cancel",
+      "close": "Close",
+      "tooShort": "The key is too short.",
+      "tooLong": "The key is too long."
+    },
+    "revokeConfirm": {
+      "title": "Revoke this key?",
+      "message": "{{provider}} stops working for {{organization}} until you add a new key. The stored key is erased and can't be recovered.",
+      "confirm": "Revoke key"
+    },
+    "toast": {
+      "added": "{{provider}} key saved.",
+      "replaced": "{{provider}} key replaced.",
+      "revoked": "{{provider}} key revoked.",
+      "testOk": "{{provider}} connection works.",
+      "testFailed": "{{provider}} connection failed: {{reason}}"
+    }
+  },
+  "model": {
+    "title": "Model catalog",
+    "subtitle": "You define the model names, capabilities and prices. Prices are never filled in for you: copy them from your provider's pricing page.",
+    "add": "Add model",
+    "discover": "Discover models",
+    "edit": "Edit",
+    "remove": "Remove",
+    "empty": "No models yet",
+    "emptyHint": "Discover the models your key can use, or add one by name.",
+    "columns": {
+      "model": "Model",
+      "capabilities": "Capabilities",
+      "prices": "USD per 1M tokens",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "capability": {
+      "tools": "Tools",
+      "vision": "Vision",
+      "json": "JSON",
+      "none": "Text only"
+    },
+    "price": {
+      "input": "In",
+      "output": "Out",
+      "cached": "Cached",
+      "notSet": "not set",
+      "cachedNote": "Without a cached price, cached tokens are charged at the input price."
+    },
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "noCredential": "No active key for this provider.",
+    "unpriced": "No price set: blocked while a spending limit is active.",
+    "toggle": "Enable or disable {{model}}",
+    "form": {
+      "addTitle": "Add a model",
+      "editTitle": "Edit {{model}}",
+      "provider": "Provider",
+      "modelId": "Model ID",
+      "modelIdHint": "Exactly as the provider names it.",
+      "displayName": "Display name (optional)",
+      "capabilities": "Capabilities",
+      "capabilitiesHint": "Tick only what the provider confirms for this model.",
+      "contextWindow": "Context window (tokens)",
+      "maxOutput": "Maximum output (tokens)",
+      "inputPrice": "Input price (USD per 1M tokens)",
+      "outputPrice": "Output price (USD per 1M tokens)",
+      "cachedPrice": "Cached input price (USD per 1M tokens)",
+      "cachedHint": "Only if the provider publishes a different price for cached prompt tokens.",
+      "priceHint": "Leave empty if you don't know it. The model then can't be used while a spending limit is active.",
+      "enabled": "Available for use",
+      "save": "Save model",
+      "cancel": "Cancel",
+      "modelIdRequired": "Enter the model ID.",
+      "invalidNumber": "Enter a number of 0 or more.",
+      "invalidInteger": "Enter a whole number above 0."
+    },
+    "discoverDialog": {
+      "title": "Models available to {{provider}}",
+      "intro": "These names come straight from {{provider}} using your key, so their availability is confirmed. Capabilities and prices aren't: you confirm them when you add a model.",
+      "loading": "Asking {{provider}}…",
+      "empty": "{{provider}} returned no models for this key.",
+      "needsKey": "Add an active {{provider}} key first.",
+      "already": "Already added",
+      "use": "Add",
+      "close": "Close"
+    },
+    "removeConfirm": {
+      "title": "Remove this model?",
+      "message": "{{model}} leaves the catalog and the routes that use it. Past usage records stay.",
+      "confirm": "Remove model"
+    },
+    "toast": {
+      "added": "{{model}} added.",
+      "updated": "{{model}} updated.",
+      "removed": "{{model}} removed."
+    }
+  },
+  "routing": {
+    "title": "Routing",
+    "subtitle": "Choose the main model for each task and the models to try next. Fallbacks run only when the provider is rate limiting, timing out or unavailable, never for key, quota or request problems.",
+    "operation": {
+      "default": "All tasks (default)",
+      "copyGenerate": "Generate ad copy",
+      "copyRegenerateField": "Rewrite one copy field",
+      "adRemixDeconstruct": "Analyze a template (Ad Remix)",
+      "adRemixReconstruct": "Rebuild an ad (Ad Remix)"
+    },
+    "primary": "Main model",
+    "choose": "Select a model",
+    "fallbacks": "Fallback models, in order",
+    "noFallbacks": "No fallbacks.",
+    "addFallback": "Add fallback",
+    "moveUp": "Move {{model}} up",
+    "moveDown": "Move {{model}} down",
+    "removeFallback": "Remove {{model}} from the fallbacks",
+    "implicit": "No route set: the first enabled model is used.",
+    "usesDefault": "No route set: follows the default route.",
+    "unsaved": "Unsaved changes",
+    "save": "Save route",
+    "clear": "Clear route",
+    "maxFallbacks": "Up to {{count}} fallbacks.",
+    "needsModels": "Add a model first to create a route.",
+    "disabledModel": "disabled",
+    "toast": {
+      "saved": "Route saved.",
+      "cleared": "Route cleared."
+    }
+  },
+  "usage": {
+    "title": "Usage",
+    "period": "Period",
+    "range_one": "Last {{count}} day",
+    "range_other": "Last {{count}} days",
+    "kpi": {
+      "requests": "Requests",
+      "inputTokens": "Input tokens",
+      "outputTokens": "Output tokens",
+      "cachedTokens": "Cached input tokens",
+      "cost": "Cost (USD)",
+      "errors": "Failed attempts"
+    },
+    "costNote": "Cost is computed from the provider's reported tokens and the prices you set. Models without a price show no cost.",
+    "perDay": "Cost per day (USD)",
+    "perDayEmpty": "No cost recorded in this period.",
+    "byModel": "By model",
+    "byOperation": "By task",
+    "byUser": "By user",
+    "unknownUser": "System",
+    "history": "Recent requests",
+    "empty": "No AI requests in this period.",
+    "columns": {
+      "when": "When",
+      "task": "Task",
+      "model": "Model",
+      "result": "Result",
+      "tokens": "Tokens in / out",
+      "cost": "Cost (USD)",
+      "latency": "Time",
+      "requests": "Requests",
+      "name": "Name"
+    },
+    "success": "Success",
+    "failure": "Failed: {{reason}}",
+    "latencyMs": "{{ms}} ms"
+  },
+  "budget": {
+    "title": "Spending limits",
+    "subtitle": "Limits are checked before every request. Windows are in UTC: the daily limit resets at 00:00 UTC and the monthly limit on day 1.",
+    "period": {
+      "daily": "Daily",
+      "monthly": "Monthly"
+    },
+    "spent": "Spent",
+    "inFlight": "In flight",
+    "remaining": "Remaining",
+    "limit": "Limit",
+    "ok": "Within the limit",
+    "warning": "{{percent}}% of the limit used",
+    "reached": "Limit reached: requests are blocked",
+    "notEnforced": "Not enforced",
+    "none": "No limit set: spending isn't capped.",
+    "set": "Set limit",
+    "change": "Change limit",
+    "remove": "Remove limit",
+    "enforce": "Enforce this limit",
+    "form": {
+      "title": "{{period}} limit",
+      "field": "Limit (USD)",
+      "hint": "Use 0 to block all AI requests in this window.",
+      "save": "Save limit",
+      "cancel": "Cancel",
+      "invalid": "Enter an amount of 0 or more."
+    },
+    "removeConfirm": {
+      "title": "Remove the {{period}} limit?",
+      "message": "Spending in this window won't be capped anymore.",
+      "confirm": "Remove limit"
+    },
+    "toast": {
+      "saved": "{{period}} limit saved.",
+      "removed": "{{period}} limit removed."
+    }
+  },
+  "errors": {
+    "authentication": "The provider rejected the API key.",
+    "permission": "The key doesn't have access to this.",
+    "quota": "The provider reports that the account has no credit or quota left.",
+    "rate_limit": "Too many requests. Try again shortly.",
+    "timeout": "The provider took too long to answer.",
+    "unavailable": "The provider is unavailable right now.",
+    "invalid_request": "The provider couldn't process the request.",
+    "not_found": "The model isn't available at the provider.",
+    "content_blocked": "The provider blocked the request or the answer.",
+    "invalid_response": "The provider returned an unusable answer.",
+    "budget_exceeded": "The spending limit was reached.",
+    "not_configured": "AI isn't configured yet.",
+    "unknown": "The AI request failed.",
+    "network": "Couldn't reach the server. Check your connection.",
+    "forbidden": "Your role doesn't allow this action.",
+    "notFound": "Not found. It may have been removed.",
+    "conflict": "That already exists or isn't allowed right now.",
+    "invalid": "The server rejected the data. Check the fields.",
+    "generic": "Something went wrong. Try again."
+  }
+}

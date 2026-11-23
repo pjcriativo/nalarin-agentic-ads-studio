@@ -15,7 +15,8 @@
     "googleAds": "Google Ads",
     "tiktokAds": "TikTok Ads",
     "userManagement": "User Management",
-    "logout": "Logout"
+    "logout": "Logout",
+    "aiControlCenter": "AI Control Center"
   },
   "nav": {
     "open": "Open navigation menu",

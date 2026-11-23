@@ -1,0 +1,78 @@
+SAME / 1440x900: 0 px
+SAME / 820x1000: 0 px
+SAME / 390x844: 0 px
+SAME /dashboard 1440x900: 0 px
+SAME /dashboard 820x1000: 0 px
+     diff bbox {"x0":17,"y0":77,"x1":389,"y1":843}
+DIFF /dashboard 390x844: 20774 px
+SAME /research 1440x900: 0 px
+SAME /research 820x1000: 0 px
+     diff bbox {"x0":33,"y0":111,"x1":389,"y1":843}
+DIFF /research 390x844: 23875 px
+SAME /research/brand-scrapes 1440x900: 0 px
+SAME /research/brand-scrapes 820x1000: 0 px
+     diff bbox {"x0":16,"y0":80,"x1":389,"y1":843}
+DIFF /research/brand-scrapes 390x844: 19584 px
+     diff bbox {"x0":8,"y0":25,"x1":943,"y1":303}
+DIFF /research/settings 1440x900: 8887 px
+SAME /research/settings 820x1000: 0 px
+SAME /research/settings 390x844: 0 px
+SAME /build-creatives 1440x900: 0 px
+SAME /build-creatives 820x1000: 0 px
+     diff bbox {"x0":18,"y0":79,"x1":384,"y1":843}
+DIFF /build-creatives 390x844: 10452 px
+SAME /image-ads 1440x900: 0 px
+SAME /image-ads 820x1000: 0 px
+     diff bbox {"x0":17,"y0":77,"x1":389,"y1":843}
+DIFF /image-ads 390x844: 11896 px
+SAME /video-ads 1440x900: 0 px
+SAME /video-ads 820x1000: 0 px
+     diff bbox {"x0":17,"y0":79,"x1":389,"y1":820}
+DIFF /video-ads 390x844: 10871 px
+SAME /facebook-campaigns 1440x900: 0 px
+SAME /facebook-campaigns 820x1000: 0 px
+     diff bbox {"x0":17,"y0":77,"x1":389,"y1":440}
+DIFF /facebook-campaigns 390x844: 11693 px
+SAME /google-ads 1440x900: 0 px
+SAME /google-ads 820x1000: 0 px
+     diff bbox {"x0":17,"y0":79,"x1":389,"y1":658}
+DIFF /google-ads 390x844: 14776 px
+SAME /tiktok-ads 1440x900: 0 px
+SAME /tiktok-ads 820x1000: 0 px
+     diff bbox {"x0":17,"y0":76,"x1":389,"y1":436}
+DIFF /tiktok-ads 390x844: 10342 px
+SAME /winning-ads 1440x900: 0 px
+SAME /winning-ads 820x1000: 0 px
+     diff bbox {"x0":17,"y0":81,"x1":389,"y1":728}
+DIFF /winning-ads 390x844: 15223 px
+SAME /generated-ads 1440x900: 0 px
+SAME /generated-ads 820x1000: 0 px
+     diff bbox {"x0":17,"y0":77,"x1":389,"y1":560}
+DIFF /generated-ads 390x844: 7178 px
+SAME /brands 1440x900: 0 px
+SAME /brands 820x1000: 0 px
+     diff bbox {"x0":17,"y0":79,"x1":389,"y1":758}
+DIFF /brands 390x844: 9766 px
+SAME /products 1440x900: 0 px
+SAME /products 820x1000: 0 px
+     diff bbox {"x0":16,"y0":76,"x1":389,"y1":782}
+DIFF /products 390x844: 11957 px
+SAME /profiles 1440x900: 0 px
+SAME /profiles 820x1000: 0 px
+     diff bbox {"x0":16,"y0":77,"x1":389,"y1":822}
+DIFF /profiles 390x844: 12278 px
+SAME /ad-remix 1440x900: 0 px
+SAME /ad-remix 820x1000: 0 px
+     diff bbox {"x0":17,"y0":76,"x1":389,"y1":836}
+DIFF /ad-remix 390x844: 14489 px
+SAME /reporting 1440x900: 0 px
+SAME /reporting 820x1000: 0 px
+     diff bbox {"x0":16,"y0":79,"x1":389,"y1":843}
+DIFF /reporting 390x844: 11814 px
+SAME /settings 1440x900: 0 px
+SAME /settings 820x1000: 0 px
+     diff bbox {"x0":17,"y0":76,"x1":389,"y1":843}
+DIFF /settings 390x844: 17189 px
+SAME /users 1440x900: 0 px
+SAME /users 820x1000: 0 px
+SAME /users 390x844: 0 px

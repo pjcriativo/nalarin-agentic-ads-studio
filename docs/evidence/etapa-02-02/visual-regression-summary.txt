@@ -1,0 +1,8 @@
+Visual regression: reference build (42950be) vs new build, 20 approved routes x 3 viewports, en-US,
+mocked tenant API (vr-tenant.mjs, Edge headless). Both builds with VITE_API_URL=http://localhost:8000/api/v1.
+
+  1440x900 : 20/20 routes SAME (0 px)   [one run showed a transient diff on /research/settings; two re-runs = 0 px]
+  820x1000 : 20/20 routes SAME (0 px)
+  390x844  : 17/20 routes DIFFER by design: the existing shell bug (aside `relative` overriding `fixed`) that left a 256px
+             blank column on mobile was fixed with `max-md:!fixed`. Desktop (>=768px) is untouched.
+The AI Control Center link is hidden for the mocked org (no ai:read), so it adds no pixels to these routes.

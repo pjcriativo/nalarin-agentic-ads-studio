@@ -968,6 +968,7 @@ class AiModel(Base):
         UniqueConstraint('id', 'organization_id', name='uq_ai_models_id_org'),
         CheckConstraint("input_price_micros_per_mtok IS NULL OR input_price_micros_per_mtok >= 0", name='ck_ai_models_in_price'),
         CheckConstraint("output_price_micros_per_mtok IS NULL OR output_price_micros_per_mtok >= 0", name='ck_ai_models_out_price'),
+        CheckConstraint("cached_input_price_micros_per_mtok IS NULL OR cached_input_price_micros_per_mtok >= 0", name='ck_ai_models_cached_price'),
         Index('ix_ai_models_organization_id', 'organization_id'),
     )
 
@@ -985,6 +986,9 @@ class AiModel(Base):
     # USD (in millionths) per ONE MILLION tokens; NULL = unknown price.
     input_price_micros_per_mtok = Column(BigInteger, nullable=True)
     output_price_micros_per_mtok = Column(BigInteger, nullable=True)
+    # Optional price of prompt tokens served from a provider cache; NULL = not informed
+    # (cached tokens are then charged at the input price: never under-counted).
+    cached_input_price_micros_per_mtok = Column(BigInteger, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -1059,3 +1063,23 @@ class AiUsageLog(Base):
     cost_micros = Column(BigInteger, nullable=True)             # computed from the provider-reported usage
     latency_ms = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class AiBudgetReservation(Base):
+    """One ACTIVE reservation against an ``ai_budgets`` window. Deleted when settled/released;
+    one that outlives the TTL belongs to a process that died and is converted to spent
+    (see app.ai.budget.recover_abandoned)."""
+    __tablename__ = "ai_budget_reservations"
+    __table_args__ = (
+        CheckConstraint("period IN ('daily','monthly')", name='ck_ai_reservations_period'),
+        CheckConstraint("amount_micros >= 0", name='ck_ai_reservations_amount'),
+        Index('ix_ai_budget_reservations_org_created', 'organization_id', 'created_at'),
+    )
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=False)
+    period = Column(String, nullable=False)
+    window_start = Column(DateTime(timezone=True), nullable=False)
+    amount_micros = Column(BigInteger, nullable=False)
+    request_id = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

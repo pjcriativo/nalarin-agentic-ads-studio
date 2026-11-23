@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, BarChart3, Package, Users, Video, Wand2, Settings, LogOut, Image, ShoppingBag, Target, ChevronLeft, ChevronRight, FileImage, Search, ChevronDown, UserCog, TrendingUp, Music2, Menu, X } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Package, Users, Video, Wand2, Settings, LogOut, Image, ShoppingBag, Target, ChevronLeft, ChevronRight, FileImage, Search, ChevronDown, UserCog, TrendingUp, Music2, Menu, X, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useOrganization } from '../context/OrganizationContext';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
 import OrganizationSwitcher from './OrganizationSwitcher';
@@ -13,6 +14,7 @@ export default function Layout() {
     const navigate = useNavigate();
     const { user, logout, hasRole } = useAuth();
     const { showSuccess } = useToast();
+    const { can } = useOrganization();
     const { t } = useTranslation('layout');
     const [expandedMenus, setExpandedMenus] = useState({ brands: false, research: false });
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -101,7 +103,7 @@ export default function Layout() {
 
             {/* Sidebar — desktop: static; mobile: off-canvas drawer */}
             <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-amber-200 flex-col shadow-sm transition-all duration-300 ease-in-out relative
-                fixed md:static inset-y-0 left-0 z-50 -translate-x-full md:translate-x-0
+                fixed max-md:!fixed md:static inset-y-0 left-0 z-50 -translate-x-full md:translate-x-0
                 ${mobileOpen ? 'translate-x-0 flex' : 'md:flex'}`}>
                 {/* Toggle Button (desktop collapse / mobile close) */}
                 <button
@@ -228,6 +230,25 @@ export default function Layout() {
                                     : 'text-gray-400 group-hover:text-amber-600'
                             }`} />
                             {!isCollapsed && <span className="whitespace-nowrap overflow-hidden">{t('menu.userManagement')}</span>}
+                        </Link>
+                    )}
+                    {/* AI Control Center - visible to roles that hold ai:read (the server authorizes every call) */}
+                    {can('ai:read') && (
+                        <Link
+                            to="/ai"
+                            className={`flex items-center gap-3 px-4 py-3 w-full rounded-xl transition-colors group ${
+                                location.pathname === '/ai'
+                                    ? 'bg-amber-100 text-amber-900 font-medium shadow-sm'
+                                    : 'text-gray-600 hover:bg-amber-50 hover:text-amber-800'
+                            } ${isCollapsed ? 'justify-center px-2' : ''}`}
+                            title={isCollapsed ? t('menu.aiControlCenter') : ''}
+                        >
+                            <Sparkles size={20} className={`flex-shrink-0 ${
+                                location.pathname === '/ai'
+                                    ? 'text-amber-600'
+                                    : 'text-gray-400 group-hover:text-amber-600'
+                            }`} />
+                            {!isCollapsed && <span className="whitespace-nowrap overflow-hidden">{t('menu.aiControlCenter')}</span>}
                         </Link>
                     )}
                     <Link

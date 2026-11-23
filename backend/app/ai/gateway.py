@@ -126,18 +126,18 @@ class AIGateway:
             started = time.monotonic()
             adapter = self.adapters[model.provider]
             credential = None
-            reserved: List[str] = []
+            reserved: list = []
             estimate = pricing.estimate_cost_micros(request, model)
             try:
                 if budget_mod.enabled_periods(self.db, self.org_id):
                     if estimate is None:
                         raise E.AIError(E.BUDGET_EXCEEDED, "model has no price: cannot enforce the spending limit")
-                    reserved = budget_mod.reserve(self.db, self.org_id, estimate)
+                    reserved = budget_mod.reserve(self.db, self.org_id, estimate, request_id=request_id)
                 credential, key = cred_mod.get_plain_key(self.db, self.org_id, model.provider)
                 response = await adapter.chat(request, model.model_id, key, self.timeout)
             except E.AIError as exc:
                 if reserved:
-                    budget_mod.release(self.db, self.org_id, reserved, estimate or 0)
+                    budget_mod.release(self.db, self.org_id, reserved)
                 if exc.kind == E.BUDGET_EXCEEDED:
                     raise  # our own limit: not a model problem, no attempt was made
                 self._log(request_id, attempt, operation, model, getattr(credential, "id", None), "error",
@@ -148,14 +148,14 @@ class AIGateway:
                 raise
             except Exception:  # an adapter bug must never escape with provider/secret detail
                 if reserved:
-                    budget_mod.release(self.db, self.org_id, reserved, estimate or 0)
+                    budget_mod.release(self.db, self.org_id, reserved)
                 self._log(request_id, attempt, operation, model, getattr(credential, "id", None), "error",
                           error_kind=E.UNKNOWN, estimate=estimate, started=started)
                 raise E.AIError(E.UNKNOWN, "unexpected adapter failure", provider=model.provider) from None
 
             cost = pricing.usage_cost_micros(response.usage, model)
             if reserved:
-                budget_mod.settle(self.db, self.org_id, reserved, estimate or 0, cost or 0)
+                budget_mod.settle(self.db, self.org_id, reserved, cost or 0)
             self._log(request_id, attempt, operation, model, credential.id, "success", usage=response.usage,
                       estimate=estimate, cost=cost, started=started)
             return GatewayResult(response=response, model_row_id=model.id, provider=model.provider,

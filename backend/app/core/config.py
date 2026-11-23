@@ -76,6 +76,10 @@ class Settings:
     AI_OPENAI_BASE_URL: str = os.getenv("AI_OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     AI_GEMINI_BASE_URL: str = os.getenv("AI_GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta").rstrip("/")
     AI_TIMEOUT_SECONDS: float = float(os.getenv("AI_TIMEOUT_SECONDS", "60"))
+    # A budget reservation older than this belongs to a process that died before settling it.
+    # It MUST be well above the longest possible call (timeout) or live calls would be recovered.
+    AI_RESERVATION_TTL_SECONDS: int = max(int(os.getenv("AI_RESERVATION_TTL_SECONDS", "900")),
+                                          int(float(os.getenv("AI_TIMEOUT_SECONDS", "60")) * 5))
     FAL_AI_API_KEY: str = os.getenv("FAL_AI_API_KEY", "")
     KIE_AI_API_KEY: str = os.getenv("KIE_AI_API_KEY", "")
     FACEBOOK_ACCESS_TOKEN: str = os.getenv("FACEBOOK_ACCESS_TOKEN", "")

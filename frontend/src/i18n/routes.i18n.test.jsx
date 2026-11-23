@@ -23,11 +23,11 @@ vi.mock('../context/AuthContext', () => {
     const authFetch = vi.fn(async (url) => {
         const u = String(url);
         if (/\/organizations\/role-matrix/.test(u)) {
-            const perms = ['ads:read', 'ads:draft', 'ads:publish', 'ads:spend', 'brands:read', 'connections:manage'];
+            const perms = ['ads:read', 'ads:draft', 'ads:publish', 'ads:spend', 'brands:read', 'connections:manage', 'ai:read', 'ai:use', 'ai:manage'];
             return { ok: true, status: 200, json: async () => ({ roles: ['owner', 'viewer'], permissions: { owner: perms, viewer: ['ads:read', 'brands:read'] } }) };
         }
         if (/\/organizations(\?|$)/.test(u)) {
-            return { ok: true, status: 200, json: async () => [{ id: 'org-1', name: 'Acme Org', slug: 'acme', role: 'owner', permissions: ['ads:read', 'ads:draft', 'ads:publish', 'ads:spend', 'brands:read', 'connections:read', 'connections:manage'] }] };
+            return { ok: true, status: 200, json: async () => [{ id: 'org-1', name: 'Acme Org', slug: 'acme', role: 'owner', permissions: ['ads:read', 'ads:draft', 'ads:publish', 'ads:spend', 'brands:read', 'connections:read', 'connections:manage', 'ai:read', 'ai:use', 'ai:manage'] }] };
         }
         if (/\/optimization\/approvals/.test(u)) {
             return { ok: true, status: 200, json: async () => [] };
@@ -67,7 +67,7 @@ const ROUTES = [
     '/', '/dashboard', '/research', '/research/brand-scrapes', '/research/settings',
     '/build-creatives', '/image-ads', '/video-ads', '/facebook-campaigns', '/google-ads', '/tiktok-ads',
     '/winning-ads', '/generated-ads', '/brands', '/products', '/profiles', '/ad-remix', '/reporting',
-    '/settings', '/users',
+    '/settings', '/users', '/ai',
 ];
 const PUBLIC = new Set(['/login', '/about', '/privacy', '/terms']);
 

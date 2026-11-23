@@ -9,11 +9,12 @@
  * Nothing here talks to a real service. Every call is recorded in `calls`.
  */
 import { enablePayloadHash } from '../lib/spendApprovals.js';
+import { aiSeed, createAiState, handleAi } from './fakeAiBackend.js';
 
 const VIEWER = ['org:read', 'members:read', 'brands:read', 'products:read', 'profiles:read', 'ads:read', 'templates:read', 'campaigns:read', 'research:read'];
-const ANALYST = [...VIEWER, 'reports:read', 'research:write', 'connections:read'];
-const MANAGER = [...ANALYST, 'brands:write', 'brands:delete', 'products:write', 'products:delete', 'profiles:write', 'profiles:delete', 'ads:write', 'ads:delete', 'templates:write', 'templates:delete', 'campaigns:write', 'campaigns:delete', 'research:delete', 'uploads:write', 'ads:draft'];
-const ADMIN = [...MANAGER, 'members:manage', 'audit:read', 'connections:manage', 'apikeys:manage', 'ads:publish'];
+const ANALYST = [...VIEWER, 'reports:read', 'research:write', 'connections:read', 'ai:read'];
+const MANAGER = [...ANALYST, 'brands:write', 'brands:delete', 'products:write', 'products:delete', 'profiles:write', 'profiles:delete', 'ads:write', 'ads:delete', 'templates:write', 'templates:delete', 'campaigns:write', 'campaigns:delete', 'research:delete', 'uploads:write', 'ads:draft', 'ai:use'];
+const ADMIN = [...MANAGER, 'members:manage', 'audit:read', 'connections:manage', 'apikeys:manage', 'ads:publish', 'ai:manage'];
 const OWNER = [...ADMIN, 'org:manage', 'ads:spend'];
 export const ROLE_PERMISSIONS = { owner: OWNER, admin: ADMIN, manager: MANAGER, analyst: ANALYST, viewer: VIEWER };
 export const ROLES = ['owner', 'admin', 'manager', 'analyst', 'viewer'];
@@ -22,12 +23,13 @@ const brand = (id, name) => ({
     id, name, logo: '', voice: 'Friendly', colors: { primary: '#112233', secondary: '#445566', highlight: '#778899' }, products: [], profileIds: [],
 });
 
-const json = (status, body) => ({
+const json = (status, body, extraHeaders = {}) => ({
     ok: status >= 200 && status < 300,
     status,
+    headers: { get: (name) => extraHeaders[name] ?? null },
     // like a real network answer: a COPY, never a live reference into the server's state
     json: async () => JSON.parse(JSON.stringify(body)),
-    clone() { return json(status, body); },
+    clone() { return json(status, body, extraHeaders); },
     text: async () => JSON.stringify(body),
 });
 
@@ -57,6 +59,7 @@ export function createFakeBackend() {
         tokens: {},
         refreshTokens: {},
         calls: [],
+        ai: createAiState(),
         deferred: [],
         enabledCampaigns: [],
         seq: 0,
@@ -217,6 +220,11 @@ export function createFakeBackend() {
             return json(200, approval);
         }
 
+        // ---- AI Control Center (/api/v1/ai)
+        if (path.startsWith('/ai/')) {
+            return respond(handleAi({ state: state.ai, path, method, body, headers, query: url.searchParams, userId, tenant, json }));
+        }
+
         // endpoints only needed so pages that load them do not show error toasts in e2e screenshots
         if (path === '/optimization/status') {
             return json(200, { kill_switch_active: false, engine_active: false, auto_enabled: false, allowed_actions: [], max_budget_micros: null, max_daily_spend_micros: null, max_actions_per_day: null, operating_hours: { start: null, end: null, timezone: 'America/Sao_Paulo' } });
@@ -251,6 +259,7 @@ export function createFakeBackend() {
             state.members.find((x) => x.user === userId && x.org === orgId).role = role;
         },
         loginTokens: (userKey) => issue(state.users[userKey].id),
+        ai: { state: state.ai, seed: aiSeed },
     };
 }
 
