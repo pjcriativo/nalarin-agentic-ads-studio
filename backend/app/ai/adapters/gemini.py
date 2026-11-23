@@ -63,7 +63,11 @@ class GeminiAdapter(ProviderAdapter):
                 elif isinstance(part, T.ImagePart):
                     parts.append({"inline_data": {"mime_type": part.mime_type, "data": base64.b64encode(part.data).decode()}})
                 elif isinstance(part, T.ToolCall):
-                    parts.append({"functionCall": {"name": part.name, "args": part.arguments}})
+                    call_part: Dict[str, Any] = {"functionCall": {"name": part.name, "args": part.arguments}}
+                    signature = (part.provider_data or {}).get("thoughtSignature")
+                    if signature:  # thinking models require it echoed back (Gemini 3 rejects the turn otherwise)
+                        call_part["thoughtSignature"] = signature
+                    parts.append(call_part)
                 elif isinstance(part, T.ToolResult):
                     key = "error" if part.is_error else "result"
                     parts.append({"functionResponse": {"name": names.get(part.call_id, part.call_id),
@@ -122,8 +126,10 @@ class GeminiAdapter(ProviderAdapter):
                 continue
             if "functionCall" in part:
                 fc = part["functionCall"] or {}
+                signature = part.get("thoughtSignature") or part.get("thought_signature")
                 calls.append(T.ToolCall(id=str(fc.get("id") or f"call_{index}"), name=str(fc.get("name")),
-                                        arguments=fc.get("args") if isinstance(fc.get("args"), dict) else {}))
+                                        arguments=fc.get("args") if isinstance(fc.get("args"), dict) else {},
+                                        provider_data={"thoughtSignature": signature} if signature else None))
             elif "text" in part and not part.get("thought"):
                 texts.append(part["text"])
         reason = candidate.get("finishReason")

@@ -1,0 +1,68 @@
+# ISOLATED homologation environment (etapa 02.7): disposable PostgreSQL (tmpfs) + API + agent worker + frontend.
+# - NO env_file: the dev/production .env is never read; nothing here can reach the Railway database or R2.
+# - Throwaway secrets below are valid ONLY inside this stack (generated for homologation, not used anywhere else).
+# - AI keys are NOT environment variables here: they are entered through the product (AI Control Center, BYOK) so the
+#   whole path UI -> API -> credential store -> worker -> AI Gateway -> provider is exercised.
+# - Google Ads server credentials (client id/secret/developer token) are passed through from the CALLER'S shell, if set.
+# Start/stop with scripts/homologation.sh (up | down). Ports are bound to 127.0.0.1 only.
+name: ads-homologation
+x-backend-env: &backend-env
+  DATABASE_URL: postgresql://ads_homolog:ads_homolog_pw@postgres:5432/ads_homolog_test
+  APP_ENV: development
+  SECRET_KEY: homologation-only-secret-key-0123456789abcdef
+  OAUTH_TOKEN_ENCRYPTION_KEY: "PPq4rM9mxZ-0N0vXn3t2-k9RxFWyDo2AyaJISOO29Co="
+  ALLOWED_ORIGINS: http://localhost:15173,http://127.0.0.1:15173
+  FRONTEND_URL: http://localhost:15173
+  GOOGLE_ADS_CLIENT_ID: ${GOOGLE_ADS_CLIENT_ID:-}
+  GOOGLE_ADS_CLIENT_SECRET: ${GOOGLE_ADS_CLIENT_SECRET:-}
+  GOOGLE_ADS_DEVELOPER_TOKEN: ${GOOGLE_ADS_DEVELOPER_TOKEN:-}
+  GOOGLE_ADS_OAUTH_REDIRECT_URI: http://localhost:18000/api/v1/google-ads/oauth/callback
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ads_homolog_test
+      POSTGRES_USER: ads_homolog
+      POSTGRES_PASSWORD: ads_homolog_pw
+    tmpfs:
+      - /var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:55433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ads_homolog -d ads_homolog_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  backend:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    environment: *backend-env
+    ports:
+      - "127.0.0.1:18000:8000"
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  agent-worker:
+    build: {context: ., dockerfile: backend/Dockerfile.worker}
+    init: true
+    environment:
+      <<: *backend-env
+      AGENT_POLL_INTERVAL_SECONDS: "1"
+    depends_on:
+      postgres: {condition: service_healthy}
+      backend: {condition: service_started}
+    stop_grace_period: 45s
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
+    environment:
+      VITE_BACKEND_PROXY_TARGET: http://backend:8000
+      VITE_API_URL: http://localhost:18000/api/v1
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "127.0.0.1:15173:5173"
+    depends_on: [backend]

@@ -30,6 +30,9 @@ class ToolCall:
     id: str
     name: str
     arguments: Dict[str, Any]
+    # Opaque, provider-specific data that must travel back unchanged with this call on the next turn
+    # (Gemini ``thoughtSignature``). Never shown, logged or interpreted outside its adapter.
+    provider_data: Optional[Dict[str, Any]] = None
 
 
 @dataclass
