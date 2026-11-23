@@ -47,6 +47,28 @@ services:
       postgres:
         condition: service_healthy
 
+  # Agent worker (etapa 02.4): executes the agent tasks the API enqueues. Without it tasks stay `pending`.
+  # The ./backend bind mount keeps code in sync; restart this service after editing agent code (no auto-reload).
+  agent-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.worker
+    user: "0:0"
+    init: true
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://ads_studio:ads_studio_dev_password@postgres:5432/ads_studio_dev
+      AGENT_POLL_INTERVAL_SECONDS: "1"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    stop_grace_period: 45s
+
   frontend:
     image: node:20-alpine
     working_dir: /app

@@ -8,7 +8,7 @@ from sqlalchemy import text
 
 from app.agents import executor
 from app.models import AgentTask, AuditLog
-from tests.unit.agents_support import (COPY, PLAN, PRODUCT, REPORT, Say, ScriptedGateway, UseTools, create_task_row, say_json, world_of)
+from tests.unit.agents_support import (COPY, PLAN, PRODUCT, REPORT, Say, ScriptedGateway, UseTools, create_task_row, drain, say_json, world_of)
 
 P = "/api/v1/agents"
 
@@ -97,6 +97,9 @@ class TestStartPollAndResult:
         assert r.status_code == 201
         created = r.json()
         assert created["status"] == "pending" and created["kind"] == "single" and created["created_by_user_id"] == w.users["manager"].id
+        assert gw.requests == []                                       # the API only enqueued: nothing ran in the request
+        assert client.get(f"{P}/tasks/{created['id']}", headers=w.h["analyst"]).json()["status"] == "pending"
+        assert drain() == {"completed": 1}                             # the worker executes it
         progress = client.get(f"{P}/tasks/{created['id']}", headers=w.h["analyst"]).json()
         assert progress["status"] == "completed" and progress["progress"] == {"completed_steps": 1, "total_steps": 1, "final": True}
         assert progress["usage"]["cost_usd"] == pytest.approx(0.002) and progress["step_count"] == 3 and progress["attempts"] == 1
@@ -112,6 +115,7 @@ class TestStartPollAndResult:
     def test_supervised_task_exposes_the_plan(self, client, w, use):
         use(say_json(PLAN), say_json(PRODUCT), say_json(COPY), say_json(REPORT))
         task_id = start(client, w.h["manager"]).json()["id"]
+        drain()
         view = client.get(f"{P}/tasks/{task_id}", headers=w.h["manager"]).json()
         assert view["status"] == "completed" and view["kind"] == "supervised"
         assert [s["agent"] for s in view["plan"]["steps"]] == ["product_analyst", "ad_copywriter"] and view["plan"]["steps"][1]["depends_on"] == ["s1"]
@@ -121,6 +125,7 @@ class TestStartPollAndResult:
     def test_a_failed_task_reports_its_error_and_a_result_endpoint_still_answers(self, client, w, use):
         use(Say("nope"), Say("nope again"))
         task_id = start(client, w.h["manager"], agent_key="product_analyst").json()["id"]
+        drain()
         view = client.get(f"{P}/tasks/{task_id}", headers=w.h["manager"]).json()
         assert view["status"] == "failed" and view["error"]["kind"] == "invalid_output"
         out = client.get(f"{P}/tasks/{task_id}/result", headers=w.h["manager"]).json()
@@ -135,6 +140,8 @@ class TestStartPollAndResult:
         use(say_json(PRODUCT), say_json(PRODUCT))
         for _ in range(2):
             start(client, w.h["manager"], agent_key="product_analyst")
+        assert len(client.get(f"{P}/tasks?status=pending", headers=w.h["analyst"]).json()) == 2
+        drain()
         assert len(client.get(f"{P}/tasks", headers=w.h["analyst"]).json()) == 2
         assert len(client.get(f"{P}/tasks?limit=1", headers=w.h["analyst"]).json()) == 1
         assert len(client.get(f"{P}/tasks?status=completed", headers=w.h["analyst"]).json()) == 2
@@ -159,6 +166,8 @@ class TestValidation:
         gw = use(say_json(PRODUCT), say_json(PRODUCT))
         a = start(client, w.h["manager"], agent_key="product_analyst", idempotency_key="order-77").json()
         b = start(client, w.h["manager"], agent_key="product_analyst", idempotency_key="order-77").json()
+        drain()
+        drain()
         assert a["id"] == b["id"] and len(gw.requests) == 1
 
     def test_active_task_cap_answers_429(self, client, w, manual):
@@ -235,6 +244,7 @@ class TestTenantIsolation:
     def test_another_organization_sees_and_touches_nothing_of_mine(self, client, w, use):
         use(say_json(PRODUCT))
         task_id = start(client, w.h["manager"], agent_key="product_analyst").json()["id"]
+        drain()
         assert client.get(f"{P}/tasks", headers=w.other_h).json() == []
         for method, path in (("get", f"/tasks/{task_id}"), ("get", f"/tasks/{task_id}/steps"), ("get", f"/tasks/{task_id}/result"), ("post", f"/tasks/{task_id}/cancel")):
             assert getattr(client, method)(P + path, headers=w.other_h).status_code == 404, path
@@ -266,7 +276,7 @@ class TestTenantIsolation:
             db_session.execute(text("UPDATE agent_tasks SET status = 'running', lease_owner = 'dead', attempts = 1, lease_expires_at = now() - interval '5 minutes' WHERE id = :i"), {"i": task_id})
         db_session.commit()
         r = client.post(f"{P}/recover", headers=w.h["admin"])
-        assert r.status_code == 200 and r.json()["requeued_or_failed"] == [{"id": mine, "status": "pending"}] and r.json()["started"] == 1
+        assert r.status_code == 200 and r.json()["requeued_or_failed"] == [{"id": mine, "status": "pending"}] and r.json()["queued"] == 1
         db_session.expire_all()
         assert db_session.query(AgentTask).filter(AgentTask.id == mine).one().status == "pending"
         assert db_session.query(AgentTask).filter(AgentTask.id == theirs).one().status == "running"

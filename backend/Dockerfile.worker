@@ -1,0 +1,33 @@
+# Agent worker image (etapa 02.4): the SAME application code as the API (app.agents, app.ai, app.models ...), a different
+# process. Build context is the repository root, like backend/Dockerfile:
+#   docker build -f backend/Dockerfile.worker -t ads-studio-agent-worker .
+#
+# Leaner than the API image: no Chromium / Playwright system libraries (agents fetch pages with the SSRF-guarded HTTP client,
+# they never drive a browser). It does NOT run migrations: the API service owns `alembic upgrade head`; until the schema is at
+# head the worker reports itself unhealthy (database error) instead of touching it.
+FROM python:3.12-slim-bookworm
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN useradd --system --uid 10001 --create-home --shell /usr/sbin/nologin app
+COPY --chown=app:app backend/ .
+USER app
+
+ENV PYTHONUNBUFFERED=1 \
+    AGENT_WORKER_HEALTH_HOST=127.0.0.1 \
+    AGENT_WORKER_HEALTH_PORT=8081
+
+# No port is published: the probe talks to the worker from inside the container.
+HEALTHCHECK --interval=30s --timeout=6s --start-period=30s --retries=3 \
+  CMD ["python", "-m", "app.worker", "--healthcheck"]
+
+# `python -m app.worker` handles SIGTERM: it stops claiming, lets running tasks finish for AGENT_SHUTDOWN_GRACE_SECONDS,
+# hands the rest back to the queue and exits 0. Give the orchestrator a stop timeout above that grace.
+STOPSIGNAL SIGTERM
+CMD ["python", "-m", "app.worker"]

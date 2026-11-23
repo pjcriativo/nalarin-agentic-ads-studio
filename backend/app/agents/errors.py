@@ -34,3 +34,9 @@ class AgentError(Exception):
 
 class LostLease(Exception):
     """This executor no longer owns the task (a recovery re-queued it, or it was cancelled/finished elsewhere)."""
+
+
+# Transient causes worth another attempt (bounded by ``max_attempts``, exponential back-off). Everything else is final:
+# the task's own timeout, limits, invalid output, authorization, credentials or budget do not clear by retrying, and a
+# retry would only spend more.
+RETRYABLE_KINDS = frozenset({INTERNAL, AI_PREFIX + "unavailable", AI_PREFIX + "timeout", AI_PREFIX + "rate_limit"})

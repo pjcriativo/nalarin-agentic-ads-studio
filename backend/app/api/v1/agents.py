@@ -5,14 +5,16 @@ RBAC: ``agents:read`` (analyst+) lists agents/tasks/results; ``agents:run`` (man
 ``agents:manage`` (admin+) enables/disables agents and tunes their capped limits. Every query is filtered by the
 organization of the request on top of PostgreSQL RLS.
 
-A task runs after the response (FastAPI background task) through the AI Gateway of the organization: its own
-credentials, routing, fallbacks and budgets. Progress is polled with ``GET /tasks/{id}``.
+The API NEVER executes a task (etapa 02.4): ``POST /tasks`` only records it as ``pending`` and returns. The separate
+``agent-worker`` process (``python -m app.worker``) claims it from the PostgreSQL queue and runs it through the AI Gateway of
+the organization: its own credentials, routing, fallbacks and budgets. Progress is polled with ``GET /tasks/{id}``; with no
+worker running a task simply stays ``pending``.
 """
 import json
 import re
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -110,7 +112,7 @@ def _task_view(task: AgentTask) -> Dict[str, Any]:
         "id": task.id, "status": task.status, "agent_key": task.agent_key, "kind": "single" if task.agent_key else "supervised",
         "objective": task.objective, "created_by_user_id": task.created_by_user_id, "created_at": task.created_at,
         "started_at": task.started_at, "finished_at": task.finished_at, "attempts": task.attempts, "max_attempts": task.max_attempts,
-        "cancel_requested": task.cancel_requested, "step_count": task.step_count,
+        "cancel_requested": task.cancel_requested, "step_count": task.step_count, "next_attempt_at": task.available_at,
         "usage": {"input_tokens": task.total_input_tokens, "output_tokens": task.total_output_tokens,
                   "cost_usd": micros_to_usd(task.total_cost_micros), "max_cost_usd": micros_to_usd(task.max_cost_micros)},
         "error": {"kind": task.error_kind, "message": task.error_message} if task.error_kind else None,
@@ -135,7 +137,7 @@ def _own_task(db: Session, ctx: OrgContext, task_id: str) -> AgentTask:
 
 
 @router.post("/tasks", status_code=status.HTTP_201_CREATED)
-async def start_task(body: TaskIn, request: Request, background: BackgroundTasks, db: Session = Depends(get_db),
+def start_task(body: TaskIn, request: Request, db: Session = Depends(get_db),
                      ctx: OrgContext = Depends(require_org_permission("agents:run"))):
     objective = body.objective.strip()
     if len(objective) < 5 or len(objective) > settings.AGENT_MAX_OBJECTIVE_CHARS:
@@ -157,8 +159,6 @@ async def start_task(body: TaskIn, request: Request, background: BackgroundTasks
         raise HTTPException(status_code=409, detail="This agent is disabled for the organization")
     except executor.ActiveTaskLimit:
         raise HTTPException(status_code=429, detail="Too many tasks are running for this organization; wait for one to finish")
-    if created:
-        background.add_task(executor.execute_task, task.id, ctx.org.id)
     return _task_view(task)
 
 
@@ -223,9 +223,8 @@ def cancel_task(task_id: str, request: Request, db: Session = Depends(get_db),
 
 
 @router.post("/recover")
-async def recover_my_tasks(db: Session = Depends(get_db), ctx: OrgContext = Depends(require_org_permission("agents:manage"))):
-    """Re-queue this organization's interrupted tasks (expired lease) and start every pending one. Other organizations are untouched."""
+def recover_my_tasks(db: Session = Depends(get_db), ctx: OrgContext = Depends(require_org_permission("agents:manage"))):
+    """Re-queue this organization's interrupted tasks (expired lease) now instead of waiting for the worker's periodic
+    recovery. Nothing is executed here: the worker picks the pending tasks up. Other organizations are untouched."""
     outcome = executor.recover_interrupted_tasks(org_id=ctx.org.id)
-    for task_id, org_id in outcome["pending"]:
-        executor.schedule(task_id, org_id)
-    return {"requeued_or_failed": [{"id": i, "status": s} for i, _o, s in outcome["recovered"]], "started": len(outcome["pending"])}
+    return {"requeued_or_failed": [{"id": i, "status": s} for i, _o, s in outcome["recovered"]], "queued": len(outcome["pending"])}

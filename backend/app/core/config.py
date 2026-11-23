@@ -86,7 +86,18 @@ class Settings:
     AGENT_MAX_ACTIVE_TASKS_PER_ORG: int = int(os.getenv("AGENT_MAX_ACTIVE_TASKS_PER_ORG", "3"))
     AGENT_DEFAULT_MAX_COST_USD: float = float(os.getenv("AGENT_DEFAULT_MAX_COST_USD", "2.0"))
     AGENT_MAX_OBJECTIVE_CHARS: int = int(os.getenv("AGENT_MAX_OBJECTIVE_CHARS", "4000"))
-    AGENT_RECOVER_ON_STARTUP: bool = os.getenv("AGENT_RECOVER_ON_STARTUP", "true").lower() == "true"
+    # Agent worker (etapa 02.4). The API only enqueues; these tune the separate worker process.
+    AGENT_WORKER_CONCURRENCY: int = max(int(os.getenv("AGENT_WORKER_CONCURRENCY", "2")), 1)          # tasks at once per worker process
+    AGENT_GLOBAL_MAX_RUNNING: int = max(int(os.getenv("AGENT_GLOBAL_MAX_RUNNING", "8")), 1)          # across ALL workers
+    AGENT_ORG_MAX_RUNNING: int = max(int(os.getenv("AGENT_ORG_MAX_RUNNING", "2")), 1)                # per organization, across all workers
+    AGENT_POLL_INTERVAL_SECONDS: float = max(float(os.getenv("AGENT_POLL_INTERVAL_SECONDS", "2")), 0.05)
+    AGENT_RECOVERY_INTERVAL_SECONDS: float = max(float(os.getenv("AGENT_RECOVERY_INTERVAL_SECONDS", "30")), 0.1)
+    AGENT_SHUTDOWN_GRACE_SECONDS: float = max(float(os.getenv("AGENT_SHUTDOWN_GRACE_SECONDS", "30")), 0.0)
+    AGENT_RETRY_BASE_SECONDS: float = max(float(os.getenv("AGENT_RETRY_BASE_SECONDS", "5")), 0.0)    # back-off: base * 2^(attempt-1)
+    AGENT_RETRY_MAX_SECONDS: float = max(float(os.getenv("AGENT_RETRY_MAX_SECONDS", "300")), 0.0)
+    AGENT_WORKER_HEALTH_HOST: str = os.getenv("AGENT_WORKER_HEALTH_HOST", "127.0.0.1")
+    AGENT_WORKER_HEALTH_PORT: int = int(os.getenv("AGENT_WORKER_HEALTH_PORT", "8081"))               # 0 disables the endpoint
+    AGENT_WORKER_STALE_SECONDS: float = max(float(os.getenv("AGENT_WORKER_STALE_SECONDS", "60")), 1.0)  # unhealthy if no poll for this long
     AI_RESERVATION_TTL_SECONDS: int = max(int(os.getenv("AI_RESERVATION_TTL_SECONDS", "900")),
                                           int(float(os.getenv("AI_TIMEOUT_SECONDS", "60")) * 5))
     FAL_AI_API_KEY: str = os.getenv("FAL_AI_API_KEY", "")

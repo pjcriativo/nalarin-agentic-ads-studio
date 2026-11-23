@@ -79,6 +79,8 @@ jobs:
           OAUTH_TOKEN_ENCRYPTION_KEY: 'PPq4rM9mxZ-0N0vXn3t2-k9RxFWyDo2AyaJISOO29Co='
         run: |
           pytest tests/integration tests/unit/test_multitenancy_api.py tests/unit/test_tenant_isolation_complete.py                  tests/unit/test_tenant_integrations.py tests/unit/test_homologation_0104.py -q --tb=short
+          # Agent worker (etapa 02.4): queue claim in the signed platform context + tenant execution, in-process and as real processes
+          pytest tests/unit/test_agents_worker.py tests/unit/test_agents_worker_processes.py -q --tb=short
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4

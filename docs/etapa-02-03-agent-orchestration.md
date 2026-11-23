@@ -125,7 +125,7 @@ Como rodar: `bash scripts/test-backend.sh tests/unit/test_agents_*.py` (banco de
 ## 8. Limitações e pendências
 
 1. **Nada homologado com APIs reais.** Falta uma execução, com chaves de teste e autorização, de cada agente em cada provedor (verificar tool-calling real, JSON final e custo).
-2. **Execução dentro do processo da API** (tarefa em segundo plano + recuperação por lease), sem fila externa. Se o processo morrer, a tarefa só continua quando uma recuperação rodar (startup, `POST /agents/recover` ou job). Para volume maior, mover o `execute_task` para um worker dedicado (a API do executor já é independente do HTTP).
+2. *(Superado pela etapa 02.4: a execução agora ocorre num worker independente, ver `docs/etapa-02-04-agent-worker.md`.)* **Execução dentro do processo da API** (tarefa em segundo plano + recuperação por lease), sem fila externa. Se o processo morrer, a tarefa só continua quando uma recuperação rodar (startup, `POST /agents/recover` ou job). Para volume maior, mover o `execute_task` para um worker dedicado (a API do executor já é independente do HTTP).
 3. **Cancelamento** não interrompe uma chamada ao modelo já em voo; a tarefa para antes da próxima.
 4. **Execução sequencial** dos passos do plano (sem paralelismo entre especialistas).
 5. **Sem dados do Google Ads**: pesquisa de mercado é hipótese; desempenho só analisa dados fornecidos; política é consultiva (regras estáticas). Dependem das ferramentas `contract_only` e da integração com a conta.

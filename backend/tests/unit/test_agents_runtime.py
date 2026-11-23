@@ -14,7 +14,7 @@ from app.agents import executor, tools as tools_mod
 from app.agents.store import utcnow
 from app.models import AgentSetting, AuditLog, Brand, OrganizationMember, Product
 from tests.unit.agents_support import (COPY, MARKET, PERFORMANCE, PLAN, PRODUCT, REPORT, Delay, Say, ScriptedGateway, UseTools,
-                                       ai_error, create_task_row, run_task, say_json, set_limits, snapshot, world_of)
+                                       ai_error, create_task_row, drain, run_task, say_json, set_limits, snapshot, world_of)
 
 
 @pytest.fixture
@@ -236,8 +236,12 @@ class TestLimitsAndFailures:
     @pytest.mark.parametrize("kind", ["authentication", "quota", "budget_exceeded", "not_configured", "rate_limit", "invalid_response"])
     def test_gateway_errors_become_a_failed_task_with_the_error_kind(self, w, monkeypatch, db_session, kind):
         status, task, runs, steps = single(w, monkeypatch, db_session, ScriptedGateway(ai_error(kind)))
-        assert status == "failed" and task.error_kind == f"ai_{kind}" and runs[0].error_kind == f"ai_{kind}"
-        assert steps[0].status == "error" and steps[0].error_kind == kind and task.result is None
+        if kind == "rate_limit":        # transient: back in the queue with a back-off, not failed (see test_agents_worker.py)
+            assert status == "retry" and task.status == "pending" and task.available_at is not None
+        else:
+            assert status == "failed" and task.result is None
+        assert task.error_kind == f"ai_{kind}" and runs[0].error_kind == f"ai_{kind}"
+        assert steps[0].status == "error" and steps[0].error_kind == kind
 
     def test_cancellation_during_a_run_stops_before_the_next_model_call(self, w, monkeypatch, db_session):
         task_holder = {}
@@ -266,7 +270,7 @@ class TestLimitsAndFailures:
         def explode(_request):
             raise RuntimeError("internal detail with password=hunter2hunter2")
         status, task, *_ = single(w, monkeypatch, db_session, ScriptedGateway(explode))
-        assert status == "failed" and task.error_kind == "internal" and "hunter2" not in (task.error_message or "")
+        assert status == "retry" and task.status == "pending" and task.error_kind == "internal" and "hunter2" not in (task.error_message or "")
 
 
 # =============================================================================================== the supervisor
@@ -560,16 +564,11 @@ class TestRecoveryOfInterruptedTasks:
         assert [r[0] for r in outcome["recovered"]] == [other_id]
         assert snapshot(db_session, mine)[0].status == "running"                   # my organization's task was not touched
 
-    def test_a_recovered_task_runs_to_completion_through_the_resume_helper(self, w, monkeypatch, db_session):
+    def test_a_recovered_task_runs_to_completion_through_the_worker(self, w, monkeypatch, db_session):
         task_id = self.die_mid_run(w, monkeypatch, db_session, [Crash_after()], agent="product_analyst")
         self.expire(db_session, task_id)
         monkeypatch.setattr(executor, "GATEWAY_FACTORY", lambda db, org_id, user_id: ScriptedGateway(say_json(PRODUCT)))
-
-        async def go():
-            started = await executor.recover_and_resume()
-            await asyncio.gather(*[t for t in asyncio.all_tasks() if t is not asyncio.current_task()])
-            return started
-        assert asyncio.run(go()) >= 1
+        assert drain(recovery_interval=0) == {"completed": 1}                     # the worker recovers, then resumes
         assert snapshot(db_session, task_id)[0].status == "completed"
 
 

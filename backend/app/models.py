@@ -1101,6 +1101,7 @@ class AgentTask(Base):
         Index('uq_agent_tasks_idempotency', 'organization_id', 'idempotency_key', unique=True,
               postgresql_where=text("idempotency_key IS NOT NULL")),
         Index('ix_agent_tasks_running_lease', 'lease_expires_at', postgresql_where=text("status = 'running'")),
+        Index('ix_agent_tasks_claimable', 'available_at', 'created_at', postgresql_where=text("status = 'pending'")),
     )
 
     id = Column(String, primary_key=True, default=generate_uuid)
@@ -1120,6 +1121,8 @@ class AgentTask(Base):
     lease_owner = Column(String, nullable=True)
     lease_expires_at = Column(DateTime(timezone=True), nullable=True)
     heartbeat_at = Column(DateTime(timezone=True), nullable=True)
+    available_at = Column(DateTime(timezone=True), nullable=True)   # a pending task is not claimable before this (retry back-off)
+    worker_id = Column(String, nullable=True)                       # worker process holding / last holding the task (diagnostics)
     limits = Column(JSON, nullable=True)
     max_cost_micros = Column(BigInteger, nullable=True)
     total_cost_micros = Column(BigInteger, nullable=False, default=0)

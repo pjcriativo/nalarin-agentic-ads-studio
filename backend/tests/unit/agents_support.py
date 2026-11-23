@@ -146,3 +146,12 @@ def set_limits(monkeypatch, key, **changes):
     from app.agents import registry
     defn = registry.AGENTS[key]
     monkeypatch.setitem(registry.AGENTS, key, dataclasses.replace(defn, limits=dataclasses.replace(defn.limits, **changes)))
+
+
+def drain(**kwargs):
+    """Run the REAL worker loop in-process until the queue has nothing claimable (``--once``). The API never executes a task,
+    so tests that want one finished enqueue it (API or ``create_task_row``) and then drain. Returns {status: count}."""
+    from app.worker.worker import AgentWorker
+    options = {"once": True, "health_port": 0, "handle_signals": False, "poll_interval": 0.05, "recovery_interval": 3600}
+    options.update(kwargs)
+    return asyncio.run(AgentWorker(**options).run())

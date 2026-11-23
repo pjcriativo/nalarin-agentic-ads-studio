@@ -11,6 +11,11 @@ State machine (``agent_tasks.status``)::
   (see store.py), so an executor that lost the task stops at its next write.
 * CANCEL of a pending task is immediate; of a running task it sets a flag read before each model turn (a model call
   already in flight finishes, then the task stops and nothing further is started).
+* WHO RUNS IT: only the separate worker process (``app.worker``). The API merely inserts PENDING rows (``create_task``);
+  the worker claims them through ``app.agents.queue.claim_next`` (global / per-organization concurrency limits) and
+  calls ``execute_task(..., owner=<claimed lease>)``.
+* RETRY: a transient failure (``errors.RETRYABLE_KINDS``) puts the task back to pending with exponential back-off until
+  ``max_attempts``; the next attempt resumes (saved plan, completed runs kept, cost totals carried over).
 * RECOVERY (``recover_interrupted_tasks``) runs with the signed platform-admin context, which a single extra policy on
   ``agent_tasks`` honours; it only changes status/lease columns and never reads tenant content.
 """
@@ -18,7 +23,7 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -40,7 +45,6 @@ logger = logging.getLogger(__name__)
 # Test seams: a callable (db, org_id, user_id) -> gateway, and an async page fetcher.
 GATEWAY_FACTORY: Optional[Callable[..., Any]] = None
 FETCH_PAGE: Optional[Callable[[str], Any]] = None
-_ACTIVE: Set[str] = set()
 MAX_CONTEXT_CHARS = 12000
 
 
@@ -174,23 +178,34 @@ async def _default_fetch(url: str) -> bytes:
     return await storage.fetch_public_bytes(url, MAX_PAGE_BYTES, timeout=15.0)
 
 
-async def execute_task(task_id: str, org_id: str) -> str:
-    """Run one task to a final state. Returns the final status, or 'not_claimed' / 'lost_lease'."""
-    owner = str(uuid.uuid4())
+async def execute_task(task_id: str, org_id: str, owner: Optional[str] = None) -> str:
+    """Run one task to a final state. Returns the final status, 'retry' (back in the queue), 'not_claimed' or 'lost_lease'.
+
+    ``owner`` is the lease already taken by the worker's queue claim. Without it the task is claimed here (single-task
+    helper used by tests and tooling); either way exactly one executor can hold the lease."""
     db = _session(org_id)
     heartbeat: Optional[asyncio.Task] = None
+    ec = None
     try:
         now = utcnow()
-        if not _claim(db, task_id, org_id, owner, now):
-            return "not_claimed"
+        if owner is None:
+            owner = str(uuid.uuid4())
+            if not _claim(db, task_id, org_id, owner, now):
+                return "not_claimed"
         task = db.query(AgentTask).filter(AgentTask.id == task_id, AgentTask.organization_id == org_id).one()
         store = TaskStore(db, org_id, task_id, owner)
+        # FENCED start: a stale executor (its lease was recovered and re-claimed) must not touch the current owner's rows.
+        owns = "EXISTS (SELECT 1 FROM agent_tasks t WHERE t.id = :tid AND t.organization_id = :org AND t.lease_owner = :owner AND t.status = 'running')"
         # runs left open by the previous (dead) executor are closed as interrupted; completed ones are kept
         db.execute(text("UPDATE agent_runs SET status = 'failed', error_kind = 'interrupted', finished_at = now() "
-                        "WHERE task_id = :tid AND organization_id = :org AND status IN ('pending', 'running')"), {"tid": task_id, "org": org_id})
+                        f"WHERE task_id = :tid AND organization_id = :org AND status IN ('pending', 'running') AND {owns}"),
+                   {"tid": task_id, "org": org_id, "owner": owner})
         timeout = int((task.limits or {}).get("task_timeout_seconds") or settings.AGENT_TASK_TIMEOUT_SECONDS)
-        db.execute(text("UPDATE agent_tasks SET deadline_at = :d WHERE id = :tid AND organization_id = :org"),
-                   {"d": now + timedelta(seconds=timeout), "tid": task_id, "org": org_id})
+        if not db.execute(text("UPDATE agent_tasks SET deadline_at = :d WHERE id = :tid AND organization_id = :org "
+                               "AND lease_owner = :owner AND status = 'running'"),
+                          {"d": now + timedelta(seconds=timeout), "tid": task_id, "org": org_id, "owner": owner}).rowcount:
+            db.rollback()
+            raise LostLease()
         db.commit()
         db.refresh(task)
 
@@ -203,6 +218,8 @@ async def execute_task(task_id: str, org_id: str) -> str:
         try:
             if "agents:run" not in permissions:
                 raise AgentError(AE.AUTHORIZATION, "the requesting user can no longer run agents in this organization")
+            if task.max_cost_micros is not None and (task.total_cost_micros or 0) >= task.max_cost_micros:
+                raise AgentError(AE.COST_LIMIT, "the task cost limit was reached")   # a retry can never reset the cap
             configured = organization_settings(db, org_id)
             ec = ExecContext(
                 db=db, gateway=(GATEWAY_FACTORY or _default_gateway)(db, org_id, task.created_by_user_id), store=store, org_id=org_id,
@@ -217,16 +234,20 @@ async def execute_task(task_id: str, org_id: str) -> str:
             emit("agent.task.completed", {"steps": task.step_count})
             return "completed"
         except AgentError as exc:
-            status = "cancelled" if exc.kind == AE.CANCELLED else "failed"
-            partial = {"partial": ec.partial} if "ec" in locals() and ec.partial else None
-            store.finish_task(status=status, result=partial, error_kind=exc.kind, error_message=exc.message)
-            emit(f"agent.task.{status}", {"error": exc.kind})
-            return status
+            partial = {"partial": ec.partial} if ec is not None and ec.partial else None
+            if exc.kind == AE.CANCELLED:
+                store.finish_task(status="cancelled", result=partial, error_kind=exc.kind, error_message=exc.message)
+                emit("agent.task.cancelled", {"error": exc.kind})
+                return "cancelled"
+            status, attempts = store.fail_or_retry(error_kind=exc.kind, error_message=exc.message, retry=exc.kind in AE.RETRYABLE_KINDS, result=partial)
+            emit("agent.task.retry_scheduled" if status == "pending" else f"agent.task.{status}", {"error": exc.kind, "attempt": attempts})
+            return "retry" if status == "pending" else status
     except LostLease:
         logger.warning("agent task %s: lease lost, another executor owns it now", task_id)
         return "lost_lease"
-    except Exception:
-        logger.exception("agent task %s crashed", task_id)
+    except Exception as exc:
+        # Only the exception TYPE is logged: tracebacks and messages can carry prompt or provider content.
+        logger.error("agent task %s crashed (%s)", task_id, type(exc).__name__)
         try:
             db.rollback()
             db.execute(text("UPDATE agent_runs SET status = 'failed', error_kind = 'internal', finished_at = now() "
@@ -234,7 +255,11 @@ async def execute_task(task_id: str, org_id: str) -> str:
                             "(SELECT 1 FROM agent_tasks t WHERE t.id = :tid AND t.organization_id = :org AND t.lease_owner = :owner)"),
                        {"tid": task_id, "org": org_id, "owner": owner})
             db.commit()
-            TaskStore(db, org_id, task_id, owner).finish_task(status="failed", error_kind=AE.INTERNAL, error_message="internal error")
+            status, attempts = TaskStore(db, org_id, task_id, owner).fail_or_retry(error_kind=AE.INTERNAL, error_message="internal error", retry=True)
+            audit_event(db, action="agent.task.retry_scheduled" if status == "pending" else f"agent.task.{status}", organization_id=org_id,
+                        actor_user_id=None, target=task_id, detail={"error": AE.INTERNAL, "attempt": attempts})
+            db.commit()
+            return "retry" if status == "pending" else status
         except Exception:
             db.rollback()
         return "failed"
@@ -242,15 +267,6 @@ async def execute_task(task_id: str, org_id: str) -> str:
         if heartbeat is not None:
             heartbeat.cancel()
         db.close()
-
-
-def schedule(task_id: str, org_id: str) -> None:
-    """Run a task in the current event loop (deduplicated per process; the claim deduplicates across processes)."""
-    if task_id in _ACTIVE:
-        return
-    _ACTIVE.add(task_id)
-    task = asyncio.get_running_loop().create_task(execute_task(task_id, org_id))
-    task.add_done_callback(lambda _t: _ACTIVE.discard(task_id))
 
 
 # ------------------------------------------------------------------------------------ recovery
@@ -294,11 +310,3 @@ def recover_interrupted_tasks(now: Optional[datetime] = None, org_id: Optional[s
         finally:
             org_db.close()
     return {"recovered": [(r.id, r.organization_id, r.status) for r in rows], "pending": [(p.id, p.organization_id) for p in pending]}
-
-
-async def recover_and_resume() -> int:
-    """Recovery + schedule every pending task in this process. Called at startup and by the recovery endpoint."""
-    outcome = await asyncio.get_running_loop().run_in_executor(None, recover_interrupted_tasks)
-    for task_id, org_id in outcome["pending"]:
-        schedule(task_id, org_id)
-    return len(outcome["pending"])

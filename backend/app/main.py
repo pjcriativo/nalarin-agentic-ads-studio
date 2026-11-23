@@ -40,18 +40,7 @@ async def lifespan(_app: FastAPI):
         print(f"Failed to connect to database: {e}")
         print(f"   DATABASE_URL: {sanitized_url}")
         raise RuntimeError("Database connection failed") from e
-    if settings.AGENT_RECOVER_ON_STARTUP:
-        # Tasks left running by a process that died are re-queued (or failed after too many attempts) and pending
-        # ones are started. Background and best-effort: it must never stop the API from starting.
-        import asyncio
-        from app.agents.executor import recover_and_resume
-
-        async def _recover():
-            try:
-                await recover_and_resume()
-            except Exception as exc:  # noqa: BLE001
-                print(f"Agent recovery skipped: {type(exc).__name__}")
-        asyncio.get_running_loop().create_task(_recover())
+    # Agent tasks are executed ONLY by the separate agent-worker process (app.worker); the API just enqueues them.
     yield
 
 

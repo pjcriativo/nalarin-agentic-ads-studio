@@ -52,6 +52,30 @@ services:
       retries: 12
     restart: unless-stopped
 
+  # Agent worker (etapa 02.4): the ONLY process that executes agent tasks. The API just records them in PostgreSQL (the queue);
+  # scale with `docker compose -p ads-studio-prod -f docker-compose.prod.yml up -d --scale agent-worker=3`. No port is published
+  # (health is probed inside the container). Same .env / SECRET_KEY / database role as the backend, so it is bound by the same
+  # row level security. It waits for the backend (which runs the migrations) to be healthy.
+  agent-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.worker
+    image: ads-studio-agent-worker
+    init: true
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://ads_studio:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@postgres:5432/ads_studio
+      AGENT_WORKER_CONCURRENCY: ${AGENT_WORKER_CONCURRENCY:-2}
+      AGENT_GLOBAL_MAX_RUNNING: ${AGENT_GLOBAL_MAX_RUNNING:-8}
+      AGENT_ORG_MAX_RUNNING: ${AGENT_ORG_MAX_RUNNING:-2}
+      AGENT_SHUTDOWN_GRACE_SECONDS: ${AGENT_SHUTDOWN_GRACE_SECONDS:-30}
+    depends_on:
+      backend:
+        condition: service_healthy
+    stop_grace_period: 45s
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend

@@ -71,6 +71,19 @@ npm run lint
 npm run preview
 ```
 
+### Agent worker (etapa 02.4)
+
+The API only enqueues agent tasks; a separate process executes them. Without it tasks stay `pending`.
+
+```bash
+cd backend
+python -m app.worker            # run until SIGTERM (poll, heartbeat, recovery, retries, graceful shutdown)
+python -m app.worker --once     # recover, drain the claimable queue, exit
+python -m app.worker --healthcheck   # exit 0 if the local worker answers /healthz
+```
+
+Docker: `backend/Dockerfile.worker`, service `agent-worker` in the compose files. Ops guide: `docs/etapa-02-04-agent-worker.md`.
+
 ### Full Stack Development
 
 The backend API runs on `http://localhost:8000` and the frontend on `http://localhost:5173`. API documentation is available at `http://localhost:8000/api/v1/docs`.
