@@ -5,6 +5,7 @@ from typing import List
 from app.database import get_db
 from app.models import Brand as BrandModel, Product as ProductModel, CustomerProfile as ProfileModel
 from app.schemas.brand import Brand, BrandCreate, BrandUpdate
+from app.core.storage import require_own_media, require_own_shots
 from app.core.tenancy import OrgContext, client_or_new_id, require_org_permission
 
 router = APIRouter()
@@ -33,6 +34,13 @@ def _own_profiles(db: Session, ctx: OrgContext, profile_ids):
     )
 
 
+def _check_media(ctx: OrgContext, brand) -> None:
+    """Logo and product shots may only reference this organization's uploads."""
+    require_own_media(ctx.org.id, brand.logo)
+    for p in brand.products or []:
+        require_own_shots(ctx.org.id, p.product_shots)
+
+
 @router.get("", response_model=List[Brand])
 def read_brands(
     skip: int = 0,
@@ -55,6 +63,7 @@ def create_brand(
     db: Session = Depends(get_db),
     ctx: OrgContext = Depends(require_org_permission("brands:write")),
 ):
+    _check_media(ctx, brand)
     db_brand = BrandModel(
         id=client_or_new_id(brand.id),
         organization_id=ctx.org.id,
@@ -119,6 +128,7 @@ def update_brand(
     db_brand = _own_brand(db, ctx, brand_id)
     if not db_brand:
         raise HTTPException(status_code=404, detail="Brand not found")
+    _check_media(ctx, brand)
 
     # Update basic fields
     db_brand.name = brand.name

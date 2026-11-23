@@ -29,6 +29,14 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection
 
 TABLES = ("brands", "products", "customer_profiles", "brand_profiles")
+# Etapa 01.2 tables, PARENTS FIRST (composite foreign keys: a child can only be
+# claimed into an organization once its parent already belongs to it).
+OTHER_TABLES = (
+    "winning_ads", "facebook_campaigns", "facebook_adsets", "facebook_ads", "generated_ads",
+    "verticals", "facebook_pages", "saved_searches", "scraped_ads", "search_logs",
+    "api_usage_logs", "page_blacklist", "keyword_blacklist", "brand_scrapes", "brand_scraped_ads",
+)
+ALL_TABLES = TABLES + OTHER_TABLES
 
 
 class ClaimError(Exception):
@@ -50,8 +58,38 @@ def report(conn: Connection) -> Dict[str, int]:
     """Number of unassigned (organization_id IS NULL) rows per tenant table."""
     return {
         table: conn.execute(text(f"SELECT count(*) FROM {table} WHERE organization_id IS NULL")).scalar()
-        for table in TABLES
+        for table in ALL_TABLES
     }
+
+
+def claim_tables(conn: Connection, org_id: str, tables: Iterable[str], apply: bool = False) -> Dict[str, int]:
+    """Assign EVERY quarantined row of the given (etapa 01.2) tables to ``org_id``.
+
+    Explicit operator action, dry run unless ``apply``. Tables are processed
+    parents-first; a child whose parent is still ownerless or belongs to another
+    organization is rejected by the composite foreign keys and the whole claim
+    is rolled back (nothing is half-assigned).
+    """
+    assert_privileged(conn)
+    wanted = list(tables)
+    unknown = [t for t in wanted if t not in OTHER_TABLES]
+    if unknown:
+        raise ClaimError(f"Not claimable here (use `claim` for brands/products/profiles): {unknown}")
+    org = conn.execute(text("SELECT is_active FROM organizations WHERE id = :o"), {"o": org_id}).first()
+    if org is None or not org.is_active:
+        raise ClaimError(f"Organization {org_id} does not exist or is inactive")
+    changed: Dict[str, int] = {}
+    try:
+        for table in [t for t in OTHER_TABLES if t in wanted]:
+            changed[table] = conn.execute(
+                text(f"UPDATE {table} SET organization_id = :org WHERE organization_id IS NULL"), {"org": org_id}
+            ).rowcount
+    except Exception as exc:  # FK / unique violation: refuse, change nothing
+        conn.rollback()
+        raise ClaimError(f"Claim refused, nothing changed: {str(exc).splitlines()[0]}") from exc
+    if not apply:
+        conn.rollback()
+    return changed
 
 
 def _resolve_ids(conn: Connection, table: str, wanted: Optional[Iterable[str]]) -> List[str]:
@@ -136,6 +174,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     c.add_argument("--brands", help="'all' or comma separated brand ids")
     c.add_argument("--profiles", help="'all' or comma separated customer profile ids")
     c.add_argument("--apply", action="store_true", help="really write (default: dry run)")
+    t = sub.add_parser("claim-tables", help="assign all quarantined rows of the etapa 01.2 tables (dry run by default)")
+    t.add_argument("--org-id", required=True)
+    t.add_argument("--tables", required=True, help="comma separated table names")
+    t.add_argument("--apply", action="store_true")
     args = parser.parse_args(argv)
 
     url = os.getenv("ADMIN_DATABASE_URL") or os.getenv("DATABASE_URL")
@@ -149,6 +191,15 @@ def main(argv: Optional[List[str]] = None) -> int:
                 assert_privileged(conn)
                 for table, n in report(conn).items():
                     print(f"{table:20s} unassigned: {n}")
+                return 0
+            if args.cmd == "claim-tables":
+                changed = claim_tables(conn, args.org_id, [x.strip() for x in args.tables.split(",") if x.strip()], args.apply)
+                for table, n in changed.items():
+                    print(f"{table:20s} {'assigned' if args.apply else 'would assign'}: {n}")
+                if args.apply:
+                    conn.commit()
+                else:
+                    print("Dry run: nothing was written. Re-run with --apply.")
                 return 0
             changed = claim(conn, args.org_id, _csv_or_all(args.brands), _csv_or_all(args.profiles), args.apply)
             for table, n in changed.items():

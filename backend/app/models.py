@@ -179,7 +179,8 @@ class Brand(Base):
     profiles = relationship("CustomerProfile", secondary=brand_profiles, back_populates="brands",
                             primaryjoin="Brand.id == brand_profiles.c.brand_id",
                             secondaryjoin="CustomerProfile.id == brand_profiles.c.profile_id")
-    generated_ads = relationship("GeneratedAd", back_populates="brand")
+    generated_ads = relationship("GeneratedAd", back_populates="brand",
+                                 primaryjoin="Brand.id == GeneratedAd.brand_id", foreign_keys="GeneratedAd.brand_id")
 
     @property
     def colors(self):
@@ -198,6 +199,7 @@ class Product(Base):
     __table_args__ = (
         ForeignKeyConstraint(['brand_id', 'organization_id'], ['brands.id', 'brands.organization_id'],
                              name='fk_products_brand_org', ondelete='CASCADE'),
+        UniqueConstraint('id', 'organization_id', name='uq_products_id_org'),
         Index('ix_products_organization_id', 'organization_id'),
     )
 
@@ -234,8 +236,14 @@ class CustomerProfile(Base):
 
 class FacebookCampaign(Base):
     __tablename__ = "facebook_campaigns"
+    __table_args__ = (
+        UniqueConstraint('id', 'organization_id', name='uq_facebook_campaigns_id_org'),
+        Index('ix_facebook_campaigns_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     name = Column(String, nullable=False)
     objective = Column(String, nullable=False)
     budget_type = Column(String, nullable=False)
@@ -246,12 +254,21 @@ class FacebookCampaign(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    adsets = relationship("FacebookAdSet", back_populates="campaign", cascade="all, delete-orphan")
+    adsets = relationship("FacebookAdSet", back_populates="campaign", cascade="all, delete-orphan",
+                          primaryjoin="FacebookCampaign.id == FacebookAdSet.campaign_id", foreign_keys="FacebookAdSet.campaign_id")
 
 class FacebookAdSet(Base):
     __tablename__ = "facebook_adsets"
+    __table_args__ = (
+        UniqueConstraint('id', 'organization_id', name='uq_facebook_adsets_id_org'),
+        ForeignKeyConstraint(['campaign_id', 'organization_id'], ['facebook_campaigns.id', 'facebook_campaigns.organization_id'],
+                             name='fk_facebook_adsets_campaign_org', ondelete='CASCADE'),
+        Index('ix_facebook_adsets_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     campaign_id = Column(String, ForeignKey("facebook_campaigns.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     optimization_goal = Column(String, nullable=False)
@@ -265,13 +282,22 @@ class FacebookAdSet(Base):
     fb_adset_id = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    campaign = relationship("FacebookCampaign", back_populates="adsets")
-    ads = relationship("FacebookAd", back_populates="adset", cascade="all, delete-orphan")
+    campaign = relationship("FacebookCampaign", back_populates="adsets",
+                            primaryjoin="FacebookCampaign.id == FacebookAdSet.campaign_id", foreign_keys="FacebookAdSet.campaign_id")
+    ads = relationship("FacebookAd", back_populates="adset", cascade="all, delete-orphan",
+                       primaryjoin="FacebookAdSet.id == FacebookAd.adset_id", foreign_keys="FacebookAd.adset_id")
 
 class FacebookAd(Base):
     __tablename__ = "facebook_ads"
+    __table_args__ = (
+        ForeignKeyConstraint(['adset_id', 'organization_id'], ['facebook_adsets.id', 'facebook_adsets.organization_id'],
+                             name='fk_facebook_ads_adset_org', ondelete='CASCADE'),
+        Index('ix_facebook_ads_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     adset_id = Column(String, ForeignKey("facebook_adsets.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     creative_name = Column(String, nullable=True)
@@ -291,12 +317,19 @@ class FacebookAd(Base):
     fb_creative_id = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    adset = relationship("FacebookAdSet", back_populates="ads")
+    adset = relationship("FacebookAdSet", back_populates="ads",
+                         primaryjoin="FacebookAdSet.id == FacebookAd.adset_id", foreign_keys="FacebookAd.adset_id")
 
 class WinningAd(Base):
     __tablename__ = "winning_ads"
+    __table_args__ = (
+        UniqueConstraint('id', 'organization_id', name='uq_winning_ads_id_org'),
+        Index('ix_winning_ads_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     name = Column(String, nullable=False)
     image_url = Column(String, nullable=False)
     notes = Column(Text, nullable=True)
@@ -326,12 +359,24 @@ class WinningAd(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    generated_ads = relationship("GeneratedAd", back_populates="template")
+    generated_ads = relationship("GeneratedAd", back_populates="template",
+                                 primaryjoin="WinningAd.id == GeneratedAd.template_id", foreign_keys="GeneratedAd.template_id")
 
 class GeneratedAd(Base):
     __tablename__ = "generated_ads"
+    __table_args__ = (
+        ForeignKeyConstraint(['brand_id', 'organization_id'], ['brands.id', 'brands.organization_id'],
+                             name='fk_generated_ads_brand_org', ondelete='SET NULL (brand_id)'),
+        ForeignKeyConstraint(['product_id', 'organization_id'], ['products.id', 'products.organization_id'],
+                             name='fk_generated_ads_product_org', ondelete='SET NULL (product_id)'),
+        ForeignKeyConstraint(['template_id', 'organization_id'], ['winning_ads.id', 'winning_ads.organization_id'],
+                             name='fk_generated_ads_template_org', ondelete='SET NULL (template_id)'),
+        Index('ix_generated_ads_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     brand_id = Column(String, ForeignKey("brands.id", ondelete="SET NULL"), nullable=True)
     product_id = Column(String, ForeignKey("products.id", ondelete="SET NULL"), nullable=True) # Assuming product_id is also FK, though not explicit in original schema it makes sense
     template_id = Column(String, ForeignKey("winning_ads.id", ondelete="SET NULL"), nullable=True)
@@ -350,26 +395,45 @@ class GeneratedAd(Base):
     video_id = Column(String, nullable=True)  # Facebook video ID
     thumbnail_url = Column(String, nullable=True)
 
-    brand = relationship("Brand", back_populates="generated_ads")
-    template = relationship("WinningAd", back_populates="generated_ads")
+    brand = relationship("Brand", back_populates="generated_ads",
+                         primaryjoin="Brand.id == GeneratedAd.brand_id", foreign_keys="GeneratedAd.brand_id")
+    template = relationship("WinningAd", back_populates="generated_ads",
+                            primaryjoin="WinningAd.id == GeneratedAd.template_id", foreign_keys="GeneratedAd.template_id")
 
 class Vertical(Base):
     __tablename__ = "verticals"
+    __table_args__ = (
+        UniqueConstraint('id', 'organization_id', name='uq_verticals_id_org'),
+        UniqueConstraint('organization_id', 'name', name='uq_verticals_org_name'),
+        Index('ix_verticals_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
-    name = Column(String, nullable=False, unique=True, index=True)  # e.g., "Legal", "Fitness", "E-commerce"
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
+    name = Column(String, nullable=False, index=True)  # e.g., "Legal", "Fitness", "E-commerce"
     description = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    saved_searches = relationship("SavedSearch", back_populates="vertical")
+    saved_searches = relationship("SavedSearch", back_populates="vertical",
+                                  primaryjoin="Vertical.id == SavedSearch.vertical_id", foreign_keys="SavedSearch.vertical_id")
 
 
 class FacebookPage(Base):
     __tablename__ = "facebook_pages"
+    __table_args__ = (
+        UniqueConstraint('id', 'organization_id', name='uq_facebook_pages_id_org'),
+        UniqueConstraint('organization_id', 'page_name', name='uq_facebook_pages_org_page_name'),
+        ForeignKeyConstraint(['vertical_id', 'organization_id'], ['verticals.id', 'verticals.organization_id'],
+                             name='fk_facebook_pages_vertical_org', ondelete='SET NULL (vertical_id)'),
+        Index('ix_facebook_pages_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
-    page_name = Column(String, nullable=False, unique=True, index=True)
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
+    page_name = Column(String, nullable=False, index=True)
     page_url = Column(String, nullable=True)
     vertical_id = Column(String, ForeignKey('verticals.id', ondelete='SET NULL'), nullable=True)
     total_ads = Column(Integer, default=0)  # Cached count of ads from this page
@@ -377,14 +441,23 @@ class FacebookPage(Base):
     last_seen = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    vertical = relationship("Vertical")
-    ads = relationship("ScrapedAd", back_populates="facebook_page")
+    vertical = relationship("Vertical", primaryjoin="Vertical.id == FacebookPage.vertical_id", foreign_keys="FacebookPage.vertical_id")
+    ads = relationship("ScrapedAd", back_populates="facebook_page",
+                       primaryjoin="FacebookPage.id == ScrapedAd.facebook_page_id", foreign_keys="ScrapedAd.facebook_page_id")
 
 
 class SavedSearch(Base):
     __tablename__ = "saved_searches"
+    __table_args__ = (
+        UniqueConstraint('id', 'organization_id', name='uq_saved_searches_id_org'),
+        ForeignKeyConstraint(['vertical_id', 'organization_id'], ['verticals.id', 'verticals.organization_id'],
+                             name='fk_saved_searches_vertical_org', ondelete='SET NULL (vertical_id)'),
+        Index('ix_saved_searches_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     query = Column(String, nullable=False)
     country = Column(String, nullable=True)
     negative_keywords = Column(JSON, nullable=True)  # List of negative keywords
@@ -399,14 +472,21 @@ class SavedSearch(Base):
     ads_duplicate = Column(Integer, nullable=True)  # How many duplicate ads
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    vertical = relationship("Vertical", back_populates="saved_searches")
-    ads = relationship("ScrapedAd", back_populates="saved_search", cascade="all, delete-orphan")
+    vertical = relationship("Vertical", back_populates="saved_searches",
+                            primaryjoin="Vertical.id == SavedSearch.vertical_id", foreign_keys="SavedSearch.vertical_id")
+    ads = relationship("ScrapedAd", back_populates="saved_search", cascade="all, delete-orphan",
+                       primaryjoin="SavedSearch.id == ScrapedAd.search_id", foreign_keys="ScrapedAd.search_id")
 
 
 class ApiUsageLog(Base):
     __tablename__ = "api_usage_logs"
+    __table_args__ = (
+        Index('ix_api_usage_logs_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     endpoint = Column(String, nullable=False)  # "facebook_ads_library"
     api_calls = Column(Integer, nullable=False)  # Number of API calls made
     ads_returned = Column(Integer, nullable=False)  # Ads returned from API
@@ -418,25 +498,44 @@ class ApiUsageLog(Base):
 
 class PageBlacklist(Base):
     __tablename__ = "page_blacklist"
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'page_name', name='uq_page_blacklist_org_page_name'),
+        Index('ix_page_blacklist_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
-    page_name = Column(String, nullable=False, unique=True, index=True)  # Facebook page name
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
+    page_name = Column(String, nullable=False, index=True)  # Facebook page name
     reason = Column(String, nullable=True)  # Optional reason for blacklisting
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class KeywordBlacklist(Base):
     __tablename__ = "keyword_blacklist"
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'keyword', name='uq_keyword_blacklist_org_keyword'),
+        Index('ix_keyword_blacklist_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
-    keyword = Column(String, nullable=False, unique=True, index=True)  # Keyword to filter
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
+    keyword = Column(String, nullable=False, index=True)  # Keyword to filter
     reason = Column(String, nullable=True)  # Optional reason for blacklisting
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class SearchLog(Base):
     __tablename__ = "search_logs"
+    __table_args__ = (
+        ForeignKeyConstraint(['vertical_id', 'organization_id'], ['verticals.id', 'verticals.organization_id'],
+                             name='fk_search_logs_vertical_org', ondelete='SET NULL (vertical_id)'),
+        Index('ix_search_logs_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     search_query = Column(String, nullable=False)
     country = Column(String, nullable=True)
     negative_keywords = Column(JSON, nullable=True)  # List of keywords excluded
@@ -459,20 +558,31 @@ class SearchLog(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     date = Column(String, nullable=False, index=True)  # YYYY-MM-DD for daily grouping
 
-    vertical = relationship("Vertical")
+    vertical = relationship("Vertical", primaryjoin="Vertical.id == SearchLog.vertical_id", foreign_keys="SearchLog.vertical_id")
 
 
 class ScrapedAd(Base):
     __tablename__ = "scraped_ads"
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'external_id', name='uq_scraped_ads_org_external_id'),
+        UniqueConstraint('organization_id', 'content_hash', name='uq_scraped_ads_org_content_hash'),
+        ForeignKeyConstraint(['search_id', 'organization_id'], ['saved_searches.id', 'saved_searches.organization_id'],
+                             name='fk_scraped_ads_search_org', ondelete='CASCADE'),
+        ForeignKeyConstraint(['facebook_page_id', 'organization_id'], ['facebook_pages.id', 'facebook_pages.organization_id'],
+                             name='fk_scraped_ads_page_org', ondelete='SET NULL (facebook_page_id)'),
+        Index('ix_scraped_ads_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     brand_name = Column(String, nullable=True)  # DEPRECATED: Use facebook_page relationship instead
     headline = Column(String, nullable=True)  # Ad headline
     ad_copy = Column(Text, nullable=True)  # Ad body text
     cta_text = Column(String, nullable=True)
     platform = Column(String, default='facebook')
-    external_id = Column(String, nullable=True, unique=True, index=True)  # ID from platform
-    content_hash = Column(String, nullable=True, unique=True, index=True)  # Hash of ad content for deduplication
+    external_id = Column(String, nullable=True, index=True)  # ID from platform
+    content_hash = Column(String, nullable=True, index=True)  # Hash of ad content for deduplication
     ad_link = Column(String, nullable=False)  # Link to original ad on FB Ads Library
     platforms = Column(JSON, nullable=True)  # ['facebook', 'instagram'] etc
     start_date = Column(String, nullable=True)  # When ad started running
@@ -484,8 +594,10 @@ class ScrapedAd(Base):
     facebook_page_id = Column(String, ForeignKey('facebook_pages.id', ondelete='SET NULL'), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    saved_search = relationship("SavedSearch", back_populates="ads")
-    facebook_page = relationship("FacebookPage", back_populates="ads")
+    saved_search = relationship("SavedSearch", back_populates="ads",
+                                primaryjoin="SavedSearch.id == ScrapedAd.search_id", foreign_keys="ScrapedAd.search_id")
+    facebook_page = relationship("FacebookPage", back_populates="ads",
+                                 primaryjoin="FacebookPage.id == ScrapedAd.facebook_page_id", foreign_keys="ScrapedAd.facebook_page_id")
 
 class Prompt(Base):
     __tablename__ = "prompts"
@@ -522,8 +634,14 @@ class AdStyle(Base):
 class BrandScrape(Base):
     """Tracks scraping sessions for a specific Facebook page/brand."""
     __tablename__ = "brand_scrapes"
+    __table_args__ = (
+        UniqueConstraint('id', 'organization_id', name='uq_brand_scrapes_id_org'),
+        Index('ix_brand_scrapes_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     brand_name = Column(String, nullable=False, index=True)  # User-defined name, also R2 folder name
     page_id = Column(String, nullable=False)  # FB page ID from URL
     page_name = Column(String, nullable=True)  # Actual FB page name (discovered during scrape)
@@ -535,14 +653,22 @@ class BrandScrape(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    ads = relationship("BrandScrapedAd", back_populates="brand_scrape", cascade="all, delete-orphan")
+    ads = relationship("BrandScrapedAd", back_populates="brand_scrape", cascade="all, delete-orphan",
+                       primaryjoin="BrandScrape.id == BrandScrapedAd.brand_scrape_id", foreign_keys="BrandScrapedAd.brand_scrape_id")
 
 
 class BrandScrapedAd(Base):
     """Individual ad scraped from a brand's Facebook page with media stored on R2."""
     __tablename__ = "brand_scraped_ads"
+    __table_args__ = (
+        ForeignKeyConstraint(['brand_scrape_id', 'organization_id'], ['brand_scrapes.id', 'brand_scrapes.organization_id'],
+                             name='fk_brand_scraped_ads_scrape_org', ondelete='CASCADE'),
+        Index('ix_brand_scraped_ads_organization_id', 'organization_id'),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    # Tenant owner (NULL = LEGACY row in quarantine: invisible to every organization).
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="RESTRICT"), nullable=True)
     brand_scrape_id = Column(String, ForeignKey('brand_scrapes.id', ondelete='CASCADE'), nullable=False)
     external_id = Column(String, nullable=False, index=True)  # FB ad library ID
     page_name = Column(String, nullable=True)  # Facebook page name
@@ -558,7 +684,8 @@ class BrandScrapedAd(Base):
     ad_link = Column(String, nullable=True)  # FB Ads Library link
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    brand_scrape = relationship("BrandScrape", back_populates="ads")
+    brand_scrape = relationship("BrandScrape", back_populates="ads",
+                                primaryjoin="BrandScrape.id == BrandScrapedAd.brand_scrape_id", foreign_keys="BrandScrapedAd.brand_scrape_id")
 
 
 class ApiKey(Base):
@@ -655,3 +782,31 @@ class MutationAudit(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User")
+
+
+class AuditLog(Base):
+    """Append-only security audit trail (member changes, denied access).
+
+    ``organization_id`` is the organization the event is about; deliberately NOT
+    a foreign key so the trail outlives users/organizations. The runtime role
+    can only INSERT and SELECT (inside its own organization): no UPDATE/DELETE.
+    Never store secrets, tokens, passwords or request bodies here.
+    """
+    __tablename__ = "audit_logs"
+    # INSERT ... RETURNING would need SELECT visibility (denied rows are not
+    # visible to the actor's organization), so never fetch server defaults back.
+    __mapper_args__ = {"eager_defaults": False}
+    __table_args__ = (
+        Index('ix_audit_logs_organization_id', 'organization_id'),
+        Index('ix_audit_logs_created_at', 'created_at'),
+    )
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, nullable=True)
+    actor_user_id = Column(String, nullable=True)
+    action = Column(String, nullable=False)       # e.g. member.role_changed / access.denied
+    outcome = Column(String, nullable=False)      # success / denied
+    target = Column(String, nullable=True)        # e.g. user id, permission name, METHOD path
+    detail = Column(JSON, nullable=True)          # small, non-secret context
+    ip_address = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

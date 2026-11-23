@@ -10,10 +10,15 @@ from datetime import datetime
 from app.core.config import settings
 from sqlalchemy import func
 
+from app.database import session_org
+
 
 class ResearchService:
     def __init__(self, db: Session):
         self.db = db
+        # Organization the session is bound to; every query below also filters
+        # on it (RLS is the second, database-level wall).
+        self.org_id = session_org(db)
 
     @staticmethod
     def compute_content_hash(ad_data) -> str:
@@ -44,6 +49,14 @@ class ResearchService:
         ads_new = 0
         ads_duplicate = 0
 
+        # A vertical of another organization can never be attached.
+        if request.vertical_id:
+            from app.models import Vertical
+            from fastapi import HTTPException
+            if not self.db.query(Vertical.id).filter(
+                    Vertical.organization_id == self.org_id, Vertical.id == request.vertical_id).first():
+                raise HTTPException(status_code=404, detail="Vertical not found")
+
         # Create SavedSearch
         saved_search = SavedSearch(
             query=request.query,
@@ -68,6 +81,7 @@ class ResearchService:
         existing_ads_by_hash = {}
         if all_hashes:
             existing_ads = self.db.query(ScrapedAd).filter(
+                ScrapedAd.organization_id == self.org_id,
                 ScrapedAd.content_hash.in_(all_hashes)
             ).all()
             existing_ads_by_hash = {ad.content_hash: ad for ad in existing_ads}
@@ -91,6 +105,7 @@ class ResearchService:
             # Fallback: check by external_id if not found by hash
             if not existing and ad_data.external_id:
                 existing = self.db.query(ScrapedAd).filter(
+                    ScrapedAd.organization_id == self.org_id,
                     ScrapedAd.external_id == ad_data.external_id
                 ).first()
 
@@ -106,6 +121,7 @@ class ResearchService:
                 fb_page = None
                 if ad_data.brand_name:
                     fb_page = self.db.query(FacebookPage).filter(
+                        FacebookPage.organization_id == self.org_id,
                         FacebookPage.page_name == ad_data.brand_name
                     ).first()
 
@@ -141,12 +157,14 @@ class ResearchService:
                 # check if it now exists and update instead
                 saved_ads_clean = []
                 for ad in saved_ads:
-                    if ad.id and self.db.query(ScrapedAd).filter(ScrapedAd.id == ad.id).first():
+                    if ad.id and self.db.query(ScrapedAd).filter(
+                            ScrapedAd.organization_id == self.org_id, ScrapedAd.id == ad.id).first():
                         # Ad already exists in session/DB
                         saved_ads_clean.append(ad)
                     else:
                         # Try to find existing by content_hash
                         existing = self.db.query(ScrapedAd).filter(
+                            ScrapedAd.organization_id == self.org_id,
                             ScrapedAd.content_hash == ad.content_hash
                         ).first()
                         if existing:
@@ -162,9 +180,11 @@ class ResearchService:
         page_ids = {ad.facebook_page_id for ad in saved_ads if ad.facebook_page_id}
         for page_id in page_ids:
             total = self.db.query(func.count(ScrapedAd.id)).filter(
+                ScrapedAd.organization_id == self.org_id,
                 ScrapedAd.facebook_page_id == page_id
             ).scalar()
-            fb_page = self.db.query(FacebookPage).filter(FacebookPage.id == page_id).first()
+            fb_page = self.db.query(FacebookPage).filter(
+                FacebookPage.organization_id == self.org_id, FacebookPage.id == page_id).first()
             if fb_page:
                 fb_page.total_ads = total
 
@@ -191,15 +211,18 @@ class ResearchService:
 
     def get_saved_searches(self):
         """Get all saved searches"""
-        return self.db.query(SavedSearch).order_by(SavedSearch.created_at.desc()).all()
+        return (self.db.query(SavedSearch).filter(SavedSearch.organization_id == self.org_id)
+                .order_by(SavedSearch.created_at.desc()).all())
 
     def get_saved_search_with_ads(self, search_id: str):
         """Get saved search with its ads"""
-        return self.db.query(SavedSearch).filter(SavedSearch.id == search_id).first()
+        return self.db.query(SavedSearch).filter(
+            SavedSearch.organization_id == self.org_id, SavedSearch.id == search_id).first()
 
     def delete_saved_search(self, search_id: str):
         """Delete saved search (cascades to ads)"""
-        search = self.db.query(SavedSearch).filter(SavedSearch.id == search_id).first()
+        search = self.db.query(SavedSearch).filter(
+            SavedSearch.organization_id == self.org_id, SavedSearch.id == search_id).first()
         if search:
             self.db.delete(search)
             self.db.commit()
@@ -210,6 +233,7 @@ class ResearchService:
         """Search stored ads by keyword in brand name, headline, or ad copy"""
         query_lower = query.lower()
         ads = self.db.query(ScrapedAd).filter(
+            ScrapedAd.organization_id == self.org_id,
             (ScrapedAd.brand_name.ilike(f"%{query}%")) |
             (ScrapedAd.headline.ilike(f"%{query}%")) |
             (ScrapedAd.ad_copy.ilike(f"%{query}%"))

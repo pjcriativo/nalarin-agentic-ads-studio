@@ -9,7 +9,6 @@ import re
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import Response
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -142,8 +141,6 @@ app.include_router(overview.router, prefix="/api/v1/overview", tags=["overview"]
 app.include_router(bot.router, prefix="/api/v1/bot", tags=["bot"])
 app.include_router(optimization.router, prefix="/api/v1/optimization", tags=["optimization"])
 
-# Mount static files for uploads
-import os
-uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
-os.makedirs(uploads_dir, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+# Private uploads: namespaced per organization and served only for a valid signed
+# name (NOT a public StaticFiles mount: a flat public directory is readable by any tenant).
+app.include_router(uploads.files_router)

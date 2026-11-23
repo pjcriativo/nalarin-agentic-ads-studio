@@ -218,7 +218,8 @@ class TestIsolation:
     def test_ad_remix_reconstruct_does_not_see_another_tenants_brand(self, client, tenants, db_session):
         from app.models import WinningAd
         b = seed_org_data(client, tenants.hb, "b")
-        template = WinningAd(id=str(uuid.uuid4()), name="tpl", image_url="http://x/y.png", blueprint_json={"x": 1})
+        template = WinningAd(id=str(uuid.uuid4()), organization_id=tenants.org_a.id, name="tpl",
+                             image_url="http://x/y.png", blueprint_json={"x": 1})
         db_session.add(template)
         db_session.commit()
         response = client.post("/api/v1/ad-remix/reconstruct", headers=tenants.ha, json={

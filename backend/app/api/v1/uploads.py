@@ -1,13 +1,14 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi.responses import FileResponse
 import os
-import uuid
 from typing import Dict
-from pathlib import Path
 from app.core.config import settings
-from app.models import User
-from app.core.deps import get_current_active_user
+from app.core.storage import UPLOAD_DIR, local_path, r2_key, save_local  # noqa: F401
+from app.core.tenancy import OrgContext, require_org_permission
 
 router = APIRouter()
+# Serves private files at /uploads/<org>/<signed name> (mounted WITHOUT the /api/v1 prefix).
+files_router = APIRouter()
 
 # Security: Define allowed file types and size limits
 ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
@@ -48,10 +49,7 @@ ALLOWED_EXTENSIONS = ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB for images
 MAX_VIDEO_SIZE = 500 * 1024 * 1024  # 500MB for videos
 
-# Local upload dir for fallback
-UPLOAD_DIR = Path(__file__).parent.parent.parent.parent / "uploads"
-UPLOAD_DIR = UPLOAD_DIR.resolve()
-os.makedirs(UPLOAD_DIR, mode=0o755, exist_ok=True)
+# Local uploads are namespaced per organization (see app.core.storage).
 
 # Initialize R2 client if configured
 _s3_client = None
@@ -88,16 +86,16 @@ async def upload_to_r2(file_content: bytes, filename: str, content_type: str) ->
         raise HTTPException(status_code=500, detail=f"Failed to upload to R2: {str(e)}")
 
 
-async def upload_to_local(file_content: bytes, filename: str) -> str:
-    """Upload file to local filesystem and return relative URL"""
-    file_path = UPLOAD_DIR / filename
-    with open(file_path, "wb") as buffer:
-        buffer.write(file_content)
-    return f"/uploads/{filename}"
+async def upload_to_local(file_content: bytes, org_id: str, extension: str) -> str:
+    """Store the file under the organization's namespace; returns the signed URL."""
+    return save_local(org_id, file_content, extension)
 
 
 @router.post("/", response_model=Dict[str, str])
-async def upload_file(file: UploadFile = File(...), current_user: User = Depends(get_current_active_user)):
+async def upload_file(
+    file: UploadFile = File(...),
+    ctx: OrgContext = Depends(require_org_permission("uploads:write")),
+):
     try:
         # Security: Sanitize filename to prevent path traversal
         safe_filename = os.path.basename(file.filename)
@@ -131,14 +129,12 @@ async def upload_file(file: UploadFile = File(...), current_user: User = Depends
         elif not _looks_like_image(file_content):
             raise HTTPException(status_code=400, detail="File content does not match an image type")
 
-        # Generate a unique filename
-        filename = f"{uuid.uuid4()}{file_extension}"
-
-        # Upload to R2 if configured, otherwise local
+        # Upload to R2 (key namespaced by organization) if configured, otherwise local
         if settings.r2_enabled:
-            url = await upload_to_r2(file_content, filename, file.content_type or 'application/octet-stream')
+            url = await upload_to_r2(file_content, r2_key(ctx.org.id, file_extension),
+                                     file.content_type or 'application/octet-stream')
         else:
-            url = await upload_to_local(file_content, filename)
+            url = await upload_to_local(file_content, ctx.org.id, file_extension)
 
         # Return media type along with URL
         media_type = 'video' if is_video else 'image'
@@ -148,3 +144,21 @@ async def upload_file(file: UploadFile = File(...), current_user: User = Depends
     except Exception:
         # Never echo internal exception text to the client (leaks paths/stack info)
         raise HTTPException(status_code=500, detail="Could not upload file")
+
+
+@files_router.get("/uploads/{org_id}/{filename}", include_in_schema=False)
+def serve_private_upload(org_id: str, filename: str):
+    """Serve a private upload. The signed file name must match the organization
+    in the path; anything else (unknown, forged, another tenant's path,
+    traversal) is the same 404."""
+    path = local_path(org_id, filename)
+    if path is None or not path.is_file():
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(path, headers={"Cache-Control": "private, max-age=3600"})
+
+
+@files_router.get("/uploads/{filename}", include_in_schema=False)
+def legacy_flat_upload(filename: str):
+    """Files from before tenant namespacing sit directly in uploads/ and have no
+    known owner: they are quarantined (never served) until an operator relocates them."""
+    raise HTTPException(status_code=404, detail="Not found")

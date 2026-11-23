@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
-from app.models import GeneratedAd, User
-from app.core.deps import get_current_active_user, require_permission
+from app.models import GeneratedAd, Brand, Product, WinningAd
+from app.core.storage import require_own_media, save_local
+from app.core.tenancy import OrgContext, client_or_new_id, require_org_permission
 from fastapi.responses import StreamingResponse
 import io
 import csv
@@ -119,32 +121,28 @@ try:
 except ImportError:
     fal_client = None
 
-# Setup uploads directory
-UPLOAD_DIR = Path(__file__).parent.parent.parent.parent / "uploads"
-UPLOAD_DIR = UPLOAD_DIR.resolve()
-os.makedirs(UPLOAD_DIR, mode=0o755, exist_ok=True)
+# Max number of ids accepted by the CSV export (bounded work per request).
+MAX_EXPORT_IDS = 1000
 
-async def download_and_save_image(image_url: str, prefix: str = "generated") -> str:
+
+def _csv_cell(value):
+    """Neutralize spreadsheet formula injection (=, +, -, @ prefixes)."""
+    text = "" if value is None else str(value)
+    if text[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + text
+    return text
+
+
+async def download_and_save_image(image_url: str, org_id: str, prefix: str = "generated") -> str:
     """
-    Download image from external URL and save it locally.
-    Returns the local URL path.
+    Download image from external URL and store it in the organization's private
+    upload namespace. Returns the signed local URL path.
     """
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(image_url, timeout=30.0)
             response.raise_for_status()
-
-            # Generate unique filename
-            unique_id = str(uuid.uuid4())
-            filename = f"{prefix}_{unique_id}.png"
-            file_path = UPLOAD_DIR / filename
-
-            # Save image
-            with open(file_path, "wb") as f:
-                f.write(response.content)
-
-            # Return local URL
-            return f"/uploads/{filename}"
+            return save_local(org_id, response.content, ".png")
     except Exception as e:
         print(f"Error downloading image: {e}")
         # Return original URL as fallback
@@ -153,7 +151,7 @@ async def download_and_save_image(image_url: str, prefix: str = "generated") -> 
 @router.post("/generate-image")
 async def generate_image(
     request: ImageGenerationRequest,
-    current_user: User = Depends(require_permission("ads:write"))
+    ctx: OrgContext = Depends(require_org_permission("ads:write"))
 ):
     """Generate ad images using Fal.ai (with mock fallback)"""
     
@@ -223,7 +221,7 @@ async def generate_image(
 
                     # Download and save image locally
                     print(f"Downloading image from Fal.ai: {external_url[:50]}...")
-                    image_url = await download_and_save_image(external_url, prefix="generated")
+                    image_url = await download_and_save_image(external_url, ctx.org.id, prefix="generated")
                     print(f"Saved locally as: {image_url}")
 
                 except Exception as e:
@@ -249,10 +247,10 @@ async def generate_image(
 def get_generated_ads(
     brand_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    ctx: OrgContext = Depends(require_org_permission("ads:read"))
 ):
-    """Get all generated ads, optionally filtered by brand"""
-    query = db.query(GeneratedAd)
+    """Get all generated ads of the organization, optionally filtered by brand"""
+    query = db.query(GeneratedAd).filter(GeneratedAd.organization_id == ctx.org.id)
     
     if brand_id:
         query = query.filter(GeneratedAd.brand_id == brand_id)
@@ -284,10 +282,11 @@ def get_generated_ads(
 def delete_generated_ad(
     ad_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("ads:delete"))
+    ctx: OrgContext = Depends(require_org_permission("ads:delete"))
 ):
     """Delete a generated ad by ID"""
-    ad = db.query(GeneratedAd).filter(GeneratedAd.id == ad_id).first()
+    ad = db.query(GeneratedAd).filter(
+        GeneratedAd.organization_id == ctx.org.id, GeneratedAd.id == ad_id).first()
     
     if not ad:
         raise HTTPException(status_code=404, detail="Ad not found")
@@ -301,15 +300,19 @@ def delete_generated_ad(
 def export_ads_csv(
     request: dict,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    ctx: OrgContext = Depends(require_org_permission("ads:read"))
 ):
-    """Export selected ads to CSV"""
+    """Export selected ads of the organization to CSV"""
     ad_ids = request.get("ids", [])
     
-    if not ad_ids:
+    if not ad_ids or not isinstance(ad_ids, list):
         raise HTTPException(status_code=400, detail="No ad IDs provided")
+    if len(ad_ids) > MAX_EXPORT_IDS:
+        raise HTTPException(status_code=400, detail=f"Too many ids (max {MAX_EXPORT_IDS})")
     
-    ads = db.query(GeneratedAd).filter(GeneratedAd.id.in_(ad_ids)).all()
+    ads = db.query(GeneratedAd).filter(
+        GeneratedAd.organization_id == ctx.org.id,
+        GeneratedAd.id.in_([str(i) for i in ad_ids])).all()
     
     # Create CSV in memory
     output = io.StringIO()
@@ -323,7 +326,7 @@ def export_ads_csv(
 
     # Write data
     for ad in ads:
-        writer.writerow([
+        writer.writerow([_csv_cell(v) for v in (
             ad.id,
             ad.brand_id or "",
             ad.headline or "",
@@ -337,7 +340,7 @@ def export_ads_csv(
             ad.video_id or "",
             ad.thumbnail_url or "",
             ad.created_at.isoformat() if ad.created_at else ""
-        ])
+        )])
     
     # Prepare response
     output.seek(0)
@@ -351,19 +354,43 @@ def export_ads_csv(
 def batch_save_ads(
     request: BatchSaveRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("ads:write"))
+    ctx: OrgContext = Depends(require_org_permission("ads:write"))
 ):
-    """Batch save generated ads"""
-    
+    """Batch save generated ads. Every brand / product / template reference must
+    belong to the caller's organization (also enforced by composite foreign keys)."""
+    if len(request.ads) > MAX_EXPORT_IDS:
+        raise HTTPException(status_code=400, detail=f"Too many ads (max {MAX_EXPORT_IDS})")
+
+    def _own(model, ids):
+        ids = {i for i in ids if i}
+        if not ids:
+            return {}
+        rows = db.query(model).filter(model.organization_id == ctx.org.id, model.id.in_(list(ids))).all()
+        found = {r.id: r for r in rows}
+        if len(found) != len(ids):
+            raise HTTPException(status_code=404, detail=f"{model.__name__} not found")
+        return found
+
+    brands = _own(Brand, [a.brandId for a in request.ads])
+    products = _own(Product, [a.productId for a in request.ads])
+    _own(WinningAd, [a.templateId for a in request.ads])
+
     saved_ads = []
     for ad_data in request.ads:
-        # Check if ad already exists
-        existing = db.query(GeneratedAd).filter(GeneratedAd.id == ad_data.id).first()
+        if ad_data.productId and ad_data.brandId and products[ad_data.productId].brand_id != ad_data.brandId:
+            raise HTTPException(status_code=400, detail="Product does not belong to the brand")
+        require_own_media(ctx.org.id, ad_data.imageUrl, ad_data.videoUrl, ad_data.thumbnailUrl)
+
+        ad_id = client_or_new_id(ad_data.id, loose=True)
+        # Check if ad already exists (in this organization)
+        existing = db.query(GeneratedAd).filter(
+            GeneratedAd.organization_id == ctx.org.id, GeneratedAd.id == ad_id).first()
         if existing:
             continue
-            
+
         new_ad = GeneratedAd(
-            id=ad_data.id,
+            id=ad_id,
+            organization_id=ctx.org.id,
             brand_id=ad_data.brandId,
             product_id=ad_data.productId,
             template_id=ad_data.templateId,
@@ -383,10 +410,13 @@ def batch_save_ads(
         )
         db.add(new_ad)
         saved_ads.append(new_ad)
-    
+
     try:
         db.commit()
         return {"message": f"Saved {len(saved_ads)} ads", "count": len(saved_ads)}
-    except Exception as e:
+    except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=409, detail="Resource id already in use")
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Could not save ads")

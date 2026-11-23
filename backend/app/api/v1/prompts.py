@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.database import get_db
 from app.models import Prompt, User
 from app.core.deps import get_current_active_user
+from app.core.tenancy import require_platform_admin
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -29,10 +30,10 @@ class PromptResponse(BaseModel):
     id: str
     name: str
     category: str
-    description: str = None
-    variables: List[str] = None
+    description: Optional[str] = None
+    variables: Optional[List[str]] = None
     template: str
-    notes: str = None
+    notes: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -51,7 +52,7 @@ def get_prompt(prompt_id: str, db: Session = Depends(get_db), current_user: User
     return prompt
 
 @router.post("/", response_model=PromptResponse)
-def create_prompt(prompt: PromptCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+def create_prompt(prompt: PromptCreate, db: Session = Depends(get_db), current_user: User = Depends(require_platform_admin)):
     """Create a new prompt"""
     # Check if prompt with this ID already exists
     existing = db.query(Prompt).filter(Prompt.id == prompt.id).first()
@@ -65,7 +66,7 @@ def create_prompt(prompt: PromptCreate, db: Session = Depends(get_db), current_u
     return db_prompt
 
 @router.put("/{prompt_id}", response_model=PromptResponse)
-def update_prompt(prompt_id: str, prompt: PromptUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+def update_prompt(prompt_id: str, prompt: PromptUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_platform_admin)):
     """Update an existing prompt"""
     db_prompt = db.query(Prompt).filter(Prompt.id == prompt_id).first()
     if not db_prompt:
@@ -81,7 +82,7 @@ def update_prompt(prompt_id: str, prompt: PromptUpdate, db: Session = Depends(ge
     return db_prompt
 
 @router.delete("/{prompt_id}")
-def delete_prompt(prompt_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+def delete_prompt(prompt_id: str, db: Session = Depends(get_db), current_user: User = Depends(require_platform_admin)):
     """Delete a prompt"""
     db_prompt = db.query(Prompt).filter(Prompt.id == prompt_id).first()
     if not db_prompt:

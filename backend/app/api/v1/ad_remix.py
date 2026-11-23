@@ -19,8 +19,6 @@ from app.schemas.ad_blueprint import (
     ReconstructRequest
 )
 from app.services.ad_remix_service import deconstruct_template, reconstruct_ad
-from app.models import User
-from app.core.deps import get_current_active_user
 
 router = APIRouter()
 
@@ -29,7 +27,7 @@ router = APIRouter()
 async def deconstruct_ad_template(
     request: DeconstructRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    ctx: OrgContext = Depends(require_org_permission("templates:write")),
 ):
     """
     Deconstruct a template into a structural blueprint
@@ -42,7 +40,7 @@ async def deconstruct_ad_template(
     - Visual style guide
     """
     # Get the template
-    template = db.query(WinningAd).filter(WinningAd.id == request.template_id).first()
+    template = db.query(WinningAd).filter(WinningAd.organization_id == ctx.org.id, WinningAd.id == request.template_id).first()
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
     
@@ -65,7 +63,6 @@ async def deconstruct_ad_template(
 async def reconstruct_ad_from_blueprint(
     request: ReconstructRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
     ctx: OrgContext = Depends(require_org_permission("brands:read")),
 ):
     """
@@ -74,8 +71,10 @@ async def reconstruct_ad_from_blueprint(
     This takes a template's blueprint and generates a new ad concept
     with your brand/product information while maintaining the proven structure.
     """
+    if not ctx.can("templates:read"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions in this organization")
     # Get the template with blueprint
-    template = db.query(WinningAd).filter(WinningAd.id == request.template_id).first()
+    template = db.query(WinningAd).filter(WinningAd.organization_id == ctx.org.id, WinningAd.id == request.template_id).first()
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
     
@@ -125,14 +124,14 @@ async def reconstruct_ad_from_blueprint(
 
 @router.get("/blueprints/{template_id}", response_model=AdBlueprint)
 async def get_template_blueprint(
-    template_id: int,
+    template_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    ctx: OrgContext = Depends(require_org_permission("templates:read")),
 ):
     """
     Get the blueprint for a specific template
     """
-    template = db.query(WinningAd).filter(WinningAd.id == template_id).first()
+    template = db.query(WinningAd).filter(WinningAd.organization_id == ctx.org.id, WinningAd.id == template_id).first()
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
     
@@ -148,12 +147,12 @@ async def get_template_blueprint(
 @router.get("/blueprints", response_model=List[dict])
 async def list_templates_with_blueprints(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    ctx: OrgContext = Depends(require_org_permission("templates:read")),
 ):
     """
     List all templates that have been deconstructed
     """
-    templates = db.query(WinningAd).filter(WinningAd.blueprint_json.isnot(None)).all()
+    templates = db.query(WinningAd).filter(WinningAd.organization_id == ctx.org.id, WinningAd.blueprint_json.isnot(None)).all()
     
     return [
         {

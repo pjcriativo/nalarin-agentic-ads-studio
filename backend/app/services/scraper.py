@@ -108,10 +108,12 @@ class FacebookAdsLibraryAPI:
         blacklisted_keywords = []
         if self.db:
             from app.models import PageBlacklist, KeywordBlacklist
-            page_blacklist = self.db.query(PageBlacklist).all()
+            from app.database import session_org
+            org_id = session_org(self.db)
+            page_blacklist = self.db.query(PageBlacklist).filter(PageBlacklist.organization_id == org_id).all()
             blacklisted_pages = {p.page_name.lower() for p in page_blacklist}
 
-            keyword_blacklist = self.db.query(KeywordBlacklist).all()
+            keyword_blacklist = self.db.query(KeywordBlacklist).filter(KeywordBlacklist.organization_id == org_id).all()
             blacklisted_keywords = [k.keyword.lower() for k in keyword_blacklist]
 
             if blacklisted_pages:

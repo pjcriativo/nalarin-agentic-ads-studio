@@ -23,12 +23,12 @@ import uuid
 from dataclasses import dataclass
 from typing import FrozenSet, Optional
 
-from fastapi import Depends, Header, HTTPException, status
-from sqlalchemy import text
+from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.audit import audit_denied
 from app.core.deps import get_current_active_user
-from app.database import ORG_SETTING, get_db
+from app.database import bind_context, get_db
 from app.models import Organization, OrganizationMember, User
 
 ORG_HEADER = "X-Organization-Id"
@@ -39,14 +39,21 @@ ROLE_RANK = {role: len(ROLES) - i for i, role in enumerate(ROLES)}  # owner=5 ..
 _VIEWER = frozenset({
     "org:read", "members:read",
     "brands:read", "products:read", "profiles:read",
+    "ads:read", "templates:read", "campaigns:read", "research:read",
 })
-_ANALYST = _VIEWER | {"reports:read"}
+# Analysts research the market (Ads Library queries spend shared API quota).
+_ANALYST = _VIEWER | {"reports:read", "research:write"}
 _MANAGER = _ANALYST | {
     "brands:write", "brands:delete",
     "products:write", "products:delete",
     "profiles:write", "profiles:delete",
+    "ads:write", "ads:delete",
+    "templates:write", "templates:delete",
+    "campaigns:write", "campaigns:delete",
+    "research:delete",
+    "uploads:write",
 }
-_ADMIN = _MANAGER | {"members:manage"}
+_ADMIN = _MANAGER | {"members:manage", "audit:read"}
 _OWNER = _ADMIN | {"org:manage"}
 
 ROLE_PERMISSIONS = {
@@ -98,9 +105,9 @@ def find_active_membership(db: Session, user_id: str, org_id: str) -> Optional[O
 
 def bind_org_to_session(db: Session, org_id: Optional[str]) -> None:
     """Make PostgreSQL RLS see ``org_id`` for this and every later transaction
-    of the session (the after_begin hook in app.database re-applies it)."""
-    db.info["org_id"] = org_id
-    db.execute(text("SELECT set_config(:name, :org, true)"), {"name": ORG_SETTING, "org": org_id or ""})
+    of the session. The context is HMAC-signed (app.database.bind_context), so
+    SQL that merely overwrites the raw setting cannot switch tenant."""
+    bind_context(db, org_id)
 
 
 def build_context(db: Session, user: User, org_id: str) -> OrgContext:
@@ -110,7 +117,16 @@ def build_context(db: Session, user: User, org_id: str) -> OrgContext:
     return OrgContext(org=membership.organization, membership=membership, user=user)
 
 
+def _deny_org_access(request: Request, user: User, requested_org: Optional[str], reason: str) -> None:
+    audit_denied(
+        action="access.denied", actor_user_id=user.id,
+        organization_id=(requested_org or None), target=f"{request.method} {request.url.path}",
+        detail={"reason": reason}, request=request,
+    )
+
+
 async def get_current_org(
+    request: Request,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_active_user),
     x_organization_id: Optional[str] = Header(None, alias=ORG_HEADER, max_length=64),
@@ -121,7 +137,12 @@ async def get_current_org(
     organization is bound to the DB session for RLS. Raises 403 otherwise.
     """
     if x_organization_id:
-        ctx = build_context(db, user, x_organization_id.strip())
+        requested = x_organization_id.strip()
+        try:
+            ctx = build_context(db, user, requested)
+        except HTTPException:
+            _deny_org_access(request, user, requested[:64], "not_an_active_member")
+            raise
     else:
         memberships = (
             db.query(OrganizationMember)
@@ -134,6 +155,7 @@ async def get_current_org(
             .all()
         )
         if not memberships:
+            _deny_org_access(request, user, None, "no_active_membership")
             raise _forbidden("No active organization membership")
         if len(memberships) > 1:
             raise HTTPException(
@@ -149,14 +171,22 @@ async def get_current_org(
 
 def require_org_permission(permission: str):
     """Dependency factory: current organization + a specific RBAC permission."""
-    async def checker(ctx: OrgContext = Depends(get_current_org)) -> OrgContext:
+    async def checker(request: Request, ctx: OrgContext = Depends(get_current_org)) -> OrgContext:
         if not ctx.can(permission):
+            audit_denied(
+                action="permission.denied", actor_user_id=ctx.user.id, organization_id=ctx.org.id,
+                target=permission, detail={"role": ctx.role, "path": f"{request.method} {request.url.path}"},
+                request=request,
+            )
             raise _forbidden("Insufficient permissions in this organization")
         return ctx
     return checker
 
 
-def client_or_new_id(value: Optional[str]) -> str:
+_LOOSE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def client_or_new_id(value: Optional[str], loose: bool = False) -> str:
     """Accept a client-generated id only when it is a well-formed UUID (the
     frontend uses crypto.randomUUID()); anything else gets a server id. Ids are
     never guessable sequences, so a primary-key collision with another
@@ -165,7 +195,10 @@ def client_or_new_id(value: Optional[str]) -> str:
         try:
             return str(uuid.UUID(str(value)))
         except ValueError:
-            pass
+            # ``loose`` is for entities whose UI generates readable ids
+            # (camp_xxx, adset_xxx...): any short slug is accepted.
+            if loose and _LOOSE_ID_RE.match(str(value)):
+                return str(value)
     return str(uuid.uuid4())
 
 
@@ -191,3 +224,19 @@ def create_organization(db: Session, name: str, owner: User) -> Organization:
 
 def create_personal_organization(db: Session, user: User) -> Organization:
     return create_organization(db, f"{user.name or user.email} (personal)", user)
+
+
+async def require_platform_admin(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_active_user),
+) -> User:
+    """Platform-level administration (global catalogs). Needs ``is_superuser``;
+    the session then carries the SIGNED platform-admin capability -- and NO
+    organization, so it still cannot read any tenant data."""
+    if not user.is_superuser:
+        audit_denied(action="catalog.write_denied", actor_user_id=user.id,
+                     target=f"{request.method} {request.url.path}", request=request)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Platform administrator required")
+    bind_context(db, None, platform_admin=True)
+    return user

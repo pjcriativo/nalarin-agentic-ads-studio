@@ -117,6 +117,7 @@ class TestFacebookAds:
         assert response.status_code in [
             status.HTTP_200_OK,
             status.HTTP_201_CREATED,
+            status.HTTP_404_NOT_FOUND,  # an ad needs an adset of the organization
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             status.HTTP_500_INTERNAL_SERVER_ERROR
         ]

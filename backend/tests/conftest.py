@@ -132,7 +132,13 @@ def db_session():
         session.rollback()
         # This session is the (superuser) seeding connection, so it bypasses RLS
         # and can wipe the tenant tables of the disposable test database.
-        for table in ("brand_profiles", "products", "brands", "customer_profiles"):
+        for table in (
+            "brand_scraped_ads", "brand_scrapes", "scraped_ads", "search_logs", "api_usage_logs",
+            "page_blacklist", "keyword_blacklist", "saved_searches", "facebook_pages", "verticals",
+            "facebook_ads", "facebook_adsets", "facebook_campaigns", "generated_ads", "winning_ads",
+            "audit_logs",
+            "brand_profiles", "products", "brands", "customer_profiles",
+        ):
             session.execute(text(f"DELETE FROM {table}"))
         session.commit()
         test_user = session.query(User).filter(User.email == "test@example.com").first()

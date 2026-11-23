@@ -38,6 +38,17 @@ class Settings:
     # role is itself such a restricted role. See app/database.py.
     DB_RUNTIME_ROLE: str = os.getenv("DB_RUNTIME_ROLE", "ads_app")
 
+    # RECOMMENDED for production: a dedicated LOGIN role (member of the runtime
+    # role, never a superuser) used by the API. With it the process cannot
+    # `RESET ROLE` / `SET ROLE` back to a privileged login, which is possible
+    # when the API connects as the owner and merely drops to DB_RUNTIME_ROLE.
+    # DATABASE_URL stays the owner/migration connection (Alembic, operator tools).
+    RUNTIME_DATABASE_URL: str = os.getenv("RUNTIME_DATABASE_URL", "").strip()
+
+    # "true" makes the API refuse to start unless the connection cannot escape to
+    # a privileged role (i.e. session_user itself is unprivileged).
+    REQUIRE_LOGIN_RUNTIME_ROLE: bool = os.getenv("REQUIRE_LOGIN_RUNTIME_ROLE", "false").lower() == "true"
+
     # External APIs
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     FAL_AI_API_KEY: str = os.getenv("FAL_AI_API_KEY", "")

@@ -11,10 +11,10 @@ from fastapi import APIRouter, Depends
 from google.ads.googleads.errors import GoogleAdsException
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_active_user
+from app.core.tenancy import OrgContext, require_org_permission
 from app.core.token_encryption import decrypt_token
 from app.database import get_db
-from app.models import GoogleAdsConnection, MetaAdsConnection, TikTokAdsConnection, User
+from app.models import GoogleAdsConnection, MetaAdsConnection, TikTokAdsConnection
 from app.services.facebook_service import FacebookService
 from app.services.google_ads_service import (
     get_campaign_performance,
@@ -71,7 +71,10 @@ def _fetch_meta_rows(db: Session, user_id: str, ad_account_id: Optional[str], da
             ad_account_id=connection.ad_account_id,
         )
     else:
-        service = FacebookService()
+        # NO fallback to the server-wide FACEBOOK_ACCESS_TOKEN: that account is not
+        # any tenant's, and showing its performance to whoever has no connection
+        # would leak it across organizations.
+        raise ValueError("No connected Meta Ads account. Connect Meta Ads in Facebook Campaigns first.")
     if not service.api:
         service.initialize()
     if service.ad_account_id is None and ad_account_id:
@@ -206,7 +209,10 @@ async def get_overview(
     ad_account_id: Optional[str] = None,
     date_preset: str = "last_30d",
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    ctx: OrgContext = Depends(require_org_permission("reports:read")),
 ):
-    """Combined Meta + Google Ads campaign performance for the logged-in user."""
-    return await build_overview(db, current_user.id, date_preset, ad_account_id)
+    """Combined campaign performance (requires reports:read in the organization).
+
+    The ad-platform connections are still per USER (isolation of connections is the
+    next stage), so the figures come from the caller's own connections."""
+    return await build_overview(db, ctx.user.id, date_preset, ad_account_id)

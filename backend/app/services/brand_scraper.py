@@ -86,7 +86,9 @@ class BrandScraperService:
 
             # Process each ad - download media and create records
             media_count = 0
-            folder_name = sanitize_folder_name(brand_scrape.brand_name)
+            # Media keys are namespaced by organization: two tenants scraping the same
+            # brand name must never overwrite (or later delete) each other's files.
+            folder_name = f"orgs/{brand_scrape.organization_id}/brand-scrapes/{sanitize_folder_name(brand_scrape.brand_name)}"
 
             for ad_data in ads_data:
                 try:
@@ -815,6 +817,9 @@ class BrandScraperService:
                             try:
                                 # Extract key from URL
                                 key = url.replace(f"{settings.R2_PUBLIC_URL}/", "")
+                                # Only ever delete objects inside THIS organization's namespace.
+                                if not key.startswith(f"orgs/{brand_scrape.organization_id}/"):
+                                    continue
                                 s3_client.delete_object(Bucket=settings.R2_BUCKET_NAME, Key=key)
                             except Exception as e:
                                 print(f"Error deleting {url}: {e}")

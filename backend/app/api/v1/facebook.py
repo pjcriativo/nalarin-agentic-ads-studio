@@ -7,7 +7,9 @@ from typing import Dict, Any, Optional
 from app.services.facebook_service import FacebookService
 from app.models import FacebookAd, FacebookAdSet, FacebookCampaign, MetaAdsConnection, User
 from app.database import get_db
-from app.core.deps import get_current_active_user, require_permission
+from app.core.deps import get_current_active_user
+from app.core.tenancy import OrgContext, client_or_new_id, require_org_permission
+from app.core.storage import require_own_media, resolve_media_reference
 from app.core.config import settings
 from app.core.oauth_state import create_oauth_state, verify_oauth_state, set_oauth_state_cookie, clear_oauth_state_cookie, get_oauth_state_cookie_name
 from app.core.token_encryption import encrypt_token, decrypt_token
@@ -206,7 +208,7 @@ def disconnect_meta_connection(
 @router.get("/accounts")
 def get_ad_accounts(
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(get_current_active_user)
+    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
 ):
     try:
         return service.get_ad_accounts()
@@ -217,7 +219,7 @@ def get_ad_accounts(
 def read_campaigns(
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(get_current_active_user)
+    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
 ):
     try:
         campaigns = service.get_campaigns(ad_account_id)
@@ -231,7 +233,7 @@ def create_campaign(
     campaign: Dict[str, Any],
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(require_permission("campaigns:write"))
+    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
 ):
     try:
         # Check if ad_account_id is in query or body (body takes precedence if we structured it that way, but here we use query or separate param)
@@ -245,7 +247,7 @@ def create_campaign(
 def read_pixels(
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(get_current_active_user)
+    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
 ):
     try:
         pixels = service.get_pixels(ad_account_id)
@@ -257,7 +259,7 @@ def read_pixels(
 @router.get("/pages")
 def read_pages(
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(get_current_active_user)
+    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
 ):
     try:
         pages = service.get_pages()
@@ -271,7 +273,7 @@ def read_adsets(
     ad_account_id: Optional[str] = None,
     campaign_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(get_current_active_user)
+    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
 ):
     try:
         adsets = service.get_adsets(ad_account_id, campaign_id)
@@ -284,7 +286,7 @@ def create_adset(
     adset: Dict[str, Any],
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(require_permission("campaigns:write"))
+    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
 ):
     try:
         result = service.create_adset(adset, ad_account_id)
@@ -297,7 +299,7 @@ def create_creative(
     creative: Dict[str, Any],
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(require_permission("campaigns:write"))
+    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
 ):
     try:
         result = service.create_creative(creative, ad_account_id)
@@ -310,7 +312,7 @@ def create_ad(
     ad: Dict[str, Any],
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(require_permission("campaigns:write"))
+    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
 ):
     try:
         result = service.create_ad(ad, ad_account_id)
@@ -322,7 +324,7 @@ def create_ad(
 def read_ads(
     adset_id: str,
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(get_current_active_user)
+    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
 ):
     try:
         ads = service.get_ads(adset_id)
@@ -334,11 +336,13 @@ def read_ads(
 def save_campaign_locally(
     campaign_data: Dict[str, Any],
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("campaigns:write"))
+    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
 ):
     try:
         # Check if exists
-        existing = db.query(FacebookCampaign).filter(FacebookCampaign.id == campaign_data.get('id')).first()
+        campaign_id = client_or_new_id(campaign_data.get('id'), loose=True)
+        existing = db.query(FacebookCampaign).filter(
+            FacebookCampaign.organization_id == ctx.org.id, FacebookCampaign.id == campaign_id).first()
         if existing:
             return {"message": "Campaign already exists", "id": existing.id}
 
@@ -348,7 +352,8 @@ def save_campaign_locally(
             daily_budget = int(float(daily_budget))
 
         new_campaign = FacebookCampaign(
-            id=campaign_data.get('id'),
+            id=campaign_id,
+            organization_id=ctx.org.id,
             name=campaign_data.get('name'),
             objective=campaign_data.get('objective'),
             budget_type=campaign_data.get('budgetType', 'ABO'),
@@ -361,20 +366,25 @@ def save_campaign_locally(
         db.commit()
         db.refresh(new_campaign)
         return {"message": "Campaign saved locally", "id": new_campaign.id}
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
-        print(f"Error saving campaign locally: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error saving campaign locally: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail="Could not save locally")
 
 @router.post("/adsets/save")
 def save_adset_locally(
     adset_data: Dict[str, Any],
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("campaigns:write"))
+    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
 ):
     try:
         # Check if exists
-        existing = db.query(FacebookAdSet).filter(FacebookAdSet.id == adset_data.get('id')).first()
+        adset_id = client_or_new_id(adset_data.get('id'), loose=True)
+        existing = db.query(FacebookAdSet).filter(
+            FacebookAdSet.organization_id == ctx.org.id, FacebookAdSet.id == adset_id).first()
         if existing:
             return {"message": "AdSet already exists", "id": existing.id}
             
@@ -383,7 +393,10 @@ def save_adset_locally(
         if not campaign_id:
              raise HTTPException(status_code=400, detail="campaignId is required")
              
-        # We assume campaign is already saved by the frontend calling /campaigns/save first
+        # The campaign must belong to THIS organization (also enforced by a composite FK)
+        if not db.query(FacebookCampaign.id).filter(
+                FacebookCampaign.organization_id == ctx.org.id, FacebookCampaign.id == campaign_id).first():
+            raise HTTPException(status_code=404, detail="Campaign not found")
 
         # Handle numeric fields casting
         daily_budget = adset_data.get('dailyBudget')
@@ -395,7 +408,8 @@ def save_adset_locally(
             bid_amount = int(float(bid_amount))
 
         new_adset = FacebookAdSet(
-            id=adset_data.get('id'),
+            id=adset_id,
+            organization_id=ctx.org.id,
             campaign_id=campaign_id,
             name=adset_data.get('name'),
             optimization_goal=adset_data.get('optimizationGoal'),
@@ -412,23 +426,33 @@ def save_adset_locally(
         db.commit()
         db.refresh(new_adset)
         return {"message": "AdSet saved locally", "id": new_adset.id}
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
-        print(f"Error saving adset locally: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error saving adset locally: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail="Could not save locally")
 
 @router.post("/ads/save")
 def save_ad_locally(
     ad_data: Dict[str, Any],
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("campaigns:write"))
+    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
 ):
     try:
-        # Check if adset exists locally, if not we might need to create it or handle error
-        # For now, assuming adset exists or we just save the ID
+        adset_ref = ad_data.get('adsetId')
+        if not adset_ref or not db.query(FacebookAdSet.id).filter(
+                FacebookAdSet.organization_id == ctx.org.id, FacebookAdSet.id == adset_ref).first():
+            raise HTTPException(status_code=404, detail="AdSet not found")
+        require_own_media(ctx.org.id, ad_data.get('imageUrl'), ad_data.get('videoUrl'), ad_data.get('thumbnailUrl'))
+        ad_id = client_or_new_id(ad_data.get('id'), loose=True)
+        if db.query(FacebookAd.id).filter(FacebookAd.organization_id == ctx.org.id, FacebookAd.id == ad_id).first():
+            return {"message": "Ad already exists", "id": ad_id}
 
         new_ad = FacebookAd(
-            id=ad_data.get('id'),
+            id=ad_id,
+            organization_id=ctx.org.id,
             adset_id=ad_data.get('adsetId'),
             name=ad_data.get('name'),
             creative_name=ad_data.get('creativeName'),
@@ -451,24 +475,29 @@ def save_ad_locally(
         db.commit()
         db.refresh(new_ad)
         return {"message": "Ad saved locally", "id": new_ad.id}
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
-        print(f"Error saving ad locally: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error saving ad locally: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail="Could not save locally")
 
 @router.post("/upload-image")
 def upload_image(
     data: Dict[str, str],
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(require_permission("campaigns:write"))
+    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
 ):
     try:
         image_url = data.get("image_url")
         if not image_url:
             raise HTTPException(status_code=400, detail="image_url is required")
-        image_hash = service.upload_image(image_url, ad_account_id)
+        image_hash = service.upload_image(resolve_media_reference(ctx.org.id, image_url), ad_account_id)
         return {"image_hash": image_hash}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -477,7 +506,7 @@ def upload_video(
     data: Dict[str, Any],
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(require_permission("campaigns:write"))
+    ctx: OrgContext = Depends(require_org_permission("campaigns:write"))
 ):
     """Upload a video to Facebook Ad Library.
 
@@ -500,7 +529,7 @@ def upload_video(
         timeout = data.get("timeout", 600)
 
         result = service.upload_video(
-            video_url,
+            resolve_media_reference(ctx.org.id, video_url),
             ad_account_id,
             wait_for_ready=wait_for_ready,
             timeout=timeout
@@ -515,7 +544,7 @@ def upload_video(
 def get_video_status(
     video_id: str,
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(get_current_active_user)
+    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
 ):
     """Check the processing status of a video.
 
@@ -533,7 +562,7 @@ def get_video_status(
 def get_video_thumbnails(
     video_id: str,
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(get_current_active_user)
+    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
 ):
     """Get auto-generated thumbnails for a video.
 
@@ -553,7 +582,7 @@ def search_locations(
     limit: int = 10,
     ad_account_id: Optional[str] = None,
     service: FacebookService = Depends(get_facebook_service),
-    current_user: User = Depends(get_current_active_user)
+    ctx: OrgContext = Depends(require_org_permission("campaigns:read"))
 ):
     try:
         locations = service.search_locations(q, type, limit, ad_account_id)

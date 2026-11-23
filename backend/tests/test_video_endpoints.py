@@ -158,7 +158,7 @@ class TestVideoEndpoints:
         assert response.status_code == 200
         assert response.json()['thumbnails'] == []
 
-    def test_save_video_ad_locally(self, client, auth_headers, db_session):
+    def test_save_video_ad_locally(self, client, auth_headers, db_session, test_user):
         """Test saving a video ad to local database."""
         import uuid
         from app.models import FacebookAdSet, FacebookCampaign
@@ -169,8 +169,12 @@ class TestVideoEndpoints:
         ad_id = f"ad_video_{uuid.uuid4().hex[:8]}"
 
         # Create prerequisite campaign and adset
+        from app.models import OrganizationMember
+        org_id = db_session.query(OrganizationMember).filter(
+            OrganizationMember.user_id == test_user.id).first().organization_id
         campaign = FacebookCampaign(
             id=campaign_id,
+            organization_id=org_id,
             name="Test Campaign",
             objective="CONVERSIONS",
             budget_type="ABO"
@@ -180,6 +184,7 @@ class TestVideoEndpoints:
 
         adset = FacebookAdSet(
             id=adset_id,
+            organization_id=org_id,
             campaign_id=campaign_id,
             name="Test AdSet",
             optimization_goal="CONVERSIONS"

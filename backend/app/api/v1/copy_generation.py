@@ -4,8 +4,7 @@ from typing import Optional, List, Dict, Any
 import google.generativeai as genai
 import os
 import json
-from app.models import User
-from app.core.deps import get_current_active_user
+from app.core.tenancy import OrgContext, require_org_permission
 
 router = APIRouter()
 
@@ -33,7 +32,7 @@ class FieldRegenerationRequest(BaseModel):
     campaignDetails: Dict[str, str]
 
 @router.post("/generate")
-async def generate_copy(request: CopyGenerationRequest, current_user: User = Depends(get_current_active_user)):
+async def generate_copy(request: CopyGenerationRequest, ctx: OrgContext = Depends(require_org_permission("ads:write"))):
     """Generate ad copy variations using Gemini AI"""
     
     if not GEMINI_API_KEY:
@@ -133,7 +132,7 @@ Return ONLY valid JSON in this exact format:
         raise HTTPException(status_code=500, detail="Copy generation failed")
 
 @router.post("/regenerate-field")
-async def regenerate_field(request: FieldRegenerationRequest, current_user: User = Depends(get_current_active_user)):
+async def regenerate_field(request: FieldRegenerationRequest, ctx: OrgContext = Depends(require_org_permission("ads:write"))):
     """Regenerate a specific field (headline, body, or cta)"""
     
     if not GEMINI_API_KEY:

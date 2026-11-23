@@ -1,7 +1,9 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+
+from app.database import session_org
 
 
 class RateLimiter:
@@ -18,11 +20,12 @@ class RateLimiter:
         """
         from app.models import SearchLog
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         window_start = now - timedelta(minutes=self.window_minutes)
 
         # Count total API calls in the last 59 minutes from SearchLog
         total_calls = db.query(func.sum(SearchLog.api_calls_made)).filter(
+            SearchLog.organization_id == session_org(db),
             SearchLog.created_at >= window_start
         ).scalar() or 0
 
@@ -33,6 +36,7 @@ class RateLimiter:
         if total_calls >= self.max_calls:
             # Find the oldest call in the window
             oldest_log = db.query(SearchLog).filter(
+                SearchLog.organization_id == session_org(db),
                 SearchLog.created_at >= window_start
             ).order_by(SearchLog.created_at.asc()).first()
 
@@ -47,11 +51,12 @@ class RateLimiter:
         """Get current usage statistics from SearchLog"""
         from app.models import SearchLog
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         window_start = now - timedelta(minutes=self.window_minutes)
 
         # Count total API calls in the last 59 minutes
         total_calls = db.query(func.sum(SearchLog.api_calls_made)).filter(
+            SearchLog.organization_id == session_org(db),
             SearchLog.created_at >= window_start
         ).scalar() or 0
 
@@ -61,6 +66,7 @@ class RateLimiter:
         reset_seconds = 0
         if total_calls > 0:
             oldest_log = db.query(SearchLog).filter(
+                SearchLog.organization_id == session_org(db),
                 SearchLog.created_at >= window_start
             ).order_by(SearchLog.created_at.asc()).first()
 

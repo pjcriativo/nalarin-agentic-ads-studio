@@ -16,7 +16,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
 from app.core.config import settings
-from app.scripts.claim_legacy_data import ClaimError, assert_privileged, claim, report
+from app.scripts.claim_legacy_data import ClaimError, assert_privileged, claim, claim_tables, report, ALL_TABLES
 
 PRE_TENANT = "a1d2e3f4b5c6"
 BACKEND = Path(__file__).resolve().parent.parent.parent
@@ -60,6 +60,31 @@ def _legacy_rows(engine):
         conn.execute(text("INSERT INTO products (id, brand_id, name) VALUES ('p-1','b-1','Prod 1'), ('p-2','b-2','Prod 2')"))
         conn.execute(text("INSERT INTO customer_profiles (id, name) VALUES ('c-1','Profile 1'), ('c-2','Profile 2')"))
         conn.execute(text("INSERT INTO brand_profiles (brand_id, profile_id) VALUES ('b-1','c-1'), ('b-2','c-2')"))
+        # etapa 01.2 data: creatives, templates, campaigns, research, logs, blacklists, scrapes
+        conn.execute(text("INSERT INTO winning_ads (id, name, image_url) VALUES ('w-1','Tpl','/uploads/a.png')"))
+        conn.execute(text("INSERT INTO generated_ads (id, brand_id, product_id, template_id, headline) "
+                          "VALUES ('g-1','b-1','p-1','w-1','Legacy ad')"))
+        conn.execute(text("INSERT INTO facebook_campaigns (id, name, objective, budget_type) VALUES ('fc-1','C','O','ABO')"))
+        conn.execute(text("INSERT INTO facebook_adsets (id, campaign_id, name, optimization_goal) VALUES ('fa-1','fc-1','S','G')"))
+        conn.execute(text("INSERT INTO facebook_ads (id, adset_id, name) VALUES ('fd-1','fa-1','Ad')"))
+        conn.execute(text("INSERT INTO verticals (id, name) VALUES ('v-1','Legal')"))
+        conn.execute(text("INSERT INTO saved_searches (id, query, vertical_id) VALUES ('s-1','q','v-1')"))
+        conn.execute(text("INSERT INTO facebook_pages (id, page_name) VALUES ('fp-1','Page')"))
+        conn.execute(text("INSERT INTO scraped_ads (id, ad_link, search_id, facebook_page_id, content_hash) "
+                          "VALUES ('sa-1','http://l','s-1','fp-1','h1')"))
+        conn.execute(text("INSERT INTO search_logs (id, search_query, date) VALUES ('sl-1','q','2026-01-01')"))
+        conn.execute(text("INSERT INTO api_usage_logs (id, endpoint, api_calls, ads_returned, ads_saved, date) "
+                          "VALUES ('al-1','e',1,1,1,'2026-01-01')"))
+        conn.execute(text("INSERT INTO page_blacklist (id, page_name) VALUES ('pb-1','bad')"))
+        conn.execute(text("INSERT INTO keyword_blacklist (id, keyword) VALUES ('kb-1','kw')"))
+        conn.execute(text("INSERT INTO brand_scrapes (id, brand_name, page_id, page_url) VALUES ('bs-1','B','1','http://u')"))
+        conn.execute(text("INSERT INTO brand_scraped_ads (id, brand_scrape_id, external_id) VALUES ('bsa-1','bs-1','x')"))
+
+
+def _signed(conn, org_id):
+    """Bind the transaction to ``org_id`` the way the application does (signed)."""
+    from app.database import _SET_CONTEXT_SQL, _context_params
+    conn.execute(_SET_CONTEXT_SQL, _context_params(org_id, False))
 
 
 class TestFromEmptyDatabase:
@@ -70,7 +95,7 @@ class TestFromEmptyDatabase:
             tables = set(text_ for (text_,) in conn.execute(text(
                 "SELECT tablename FROM pg_tables WHERE schemaname = 'public'")))
             assert {"organizations", "organization_members", "brands"} <= tables
-            assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar() == "e3f1a7c2d9b4"
+            assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar() == "a7b8c9d0e1f2"
         command.downgrade(cfg, PRE_TENANT)
         with scratch_db.connect() as conn:
             tables = set(t for (t,) in conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname='public'")))
@@ -114,7 +139,9 @@ class TestLegacyData:
     def test_legacy_rows_are_not_assigned_to_anyone(self, migrated):
         with migrated.connect() as conn:
             counts = report(conn)
-        assert counts == {"brands": 2, "products": 2, "customer_profiles": 2, "brand_profiles": 2}
+        expected = {t: 1 for t in ALL_TABLES}
+        expected.update({"brands": 2, "products": 2, "customer_profiles": 2, "brand_profiles": 2})
+        assert counts == expected  # every legacy row is quarantined (organization_id NULL), none deleted
 
     def test_legacy_rows_are_invisible_to_every_organization(self, migrated):
         engine = create_engine(migrated.url)
@@ -126,8 +153,9 @@ class TestLegacyData:
         assert len(org_ids) == 2
         for org_id in org_ids:
             with engine.begin() as conn:
-                conn.execute(text("SELECT set_config('app.current_org', :o, true)"), {"o": org_id})
-                for table in ("brands", "products", "customer_profiles", "brand_profiles"):
+                _signed(conn, org_id)
+                from app.database import TENANT_TABLES
+                for table in TENANT_TABLES:
                     assert conn.execute(text(f"SELECT count(*) FROM {table}")).scalar() == 0, table
         engine.dispose()
 
@@ -141,7 +169,7 @@ class TestLegacyData:
             conn.commit()
             assert done == would
             rest = report(conn)
-        assert rest == {"brands": 1, "products": 1, "customer_profiles": 1, "brand_profiles": 1}
+        assert (rest["brands"], rest["products"], rest["customer_profiles"], rest["brand_profiles"]) == (1, 1, 1, 1)
 
     def test_claimed_rows_become_visible_to_that_organization_only(self, migrated):
         with migrated.connect() as conn:
@@ -155,7 +183,7 @@ class TestLegacyData:
         seen = {}
         for label, org in (("a", org_a), ("b", org_b)):
             with engine.begin() as conn:
-                conn.execute(text("SELECT set_config('app.current_org', :o, true)"), {"o": org})
+                _signed(conn, org)
                 seen[label] = (conn.execute(text("SELECT count(*) FROM brands")).scalar(),
                                conn.execute(text("SELECT count(*) FROM products")).scalar())
         engine.dispose()
@@ -203,3 +231,28 @@ class TestLegacyData:
             with pytest.raises(Exception, match="ck_brands_org_required"):
                 conn.execute(text("INSERT INTO brands (id, name) VALUES ('new-ownerless','x')"))
             conn.rollback()
+
+
+    def test_claim_tables_is_explicit_dry_run_first_and_parents_first(self, migrated):
+        with migrated.connect() as conn:
+            org_a = conn.execute(text("SELECT id FROM organizations ORDER BY slug LIMIT 1")).scalar()
+            # a child whose brand is still ownerless is refused as a whole: nothing half-assigned
+            with pytest.raises(ClaimError, match="refused"):
+                claim_tables(conn, org_a, ["winning_ads", "generated_ads"], apply=True)
+            conn.rollback()
+            assert report(conn)["winning_ads"] == 1 and report(conn)["generated_ads"] == 1
+            claim(conn, org_a, ["b-1"], ["c-1"], apply=True)
+            conn.commit()
+            dry = claim_tables(conn, org_a, ["generated_ads", "winning_ads"], apply=False)
+            assert dry == {"winning_ads": 1, "generated_ads": 1}
+            assert report(conn)["generated_ads"] == 1  # dry run wrote nothing
+            claim_tables(conn, org_a, ["generated_ads", "winning_ads"], apply=True)
+            conn.commit()
+            assert report(conn)["generated_ads"] == 0 and report(conn)["winning_ads"] == 0
+            with pytest.raises(ClaimError, match="Not claimable here"):
+                claim_tables(conn, org_a, ["brands"], apply=True)
+
+    def test_no_legacy_row_was_deleted_by_the_migration(self, migrated):
+        with migrated.connect() as conn:
+            for table in ("generated_ads", "winning_ads", "facebook_ads", "scraped_ads", "brand_scraped_ads"):
+                assert conn.execute(text(f"SELECT count(*) FROM {table}")).scalar() == 1, table

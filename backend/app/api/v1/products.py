@@ -5,6 +5,7 @@ from typing import List
 from app.database import get_db
 from app.models import Brand as BrandModel, Product as ProductModel
 from app.schemas.product import Product, ProductCreate, ProductUpdate
+from app.core.storage import require_own_media, require_own_shots  # noqa: F401
 from app.core.tenancy import OrgContext, client_or_new_id, require_org_permission
 
 router = APIRouter()
@@ -64,6 +65,7 @@ def create_product(
     if brand is None:
         raise HTTPException(status_code=404, detail="Brand not found")
 
+    require_own_shots(ctx.org.id, product.product_shots)
     data = product.model_dump()
     data["id"] = client_or_new_id(data.get("id"))
     db_product = ProductModel(**data, organization_id=ctx.org.id)
@@ -88,6 +90,7 @@ def update_product(
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
 
+    require_own_shots(ctx.org.id, product.model_dump(exclude_unset=True).get("product_shots"))
     # ProductUpdate cannot carry brand_id / organization_id / id, so a product
     # can neither be moved to another brand nor to another organization here.
     for key, value in product.model_dump(exclude_unset=True).items():

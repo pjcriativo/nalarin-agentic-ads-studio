@@ -21,6 +21,7 @@ class SchedulerService:
 
         # Get active scheduled searches
         searches = self.db.query(SavedSearch).filter(
+            SavedSearch.organization_id == self.research_service.org_id,
             SavedSearch.search_type.in_(['scheduled_daily', 'scheduled_weekly']),
             SavedSearch.is_active == True
         ).all()

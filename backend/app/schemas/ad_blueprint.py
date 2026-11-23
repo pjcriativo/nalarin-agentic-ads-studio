@@ -15,7 +15,7 @@ class AdBlueprint(BaseModel):
 class AdBlueprintResponse(AdBlueprint):
     """Blueprint with metadata"""
     id: int
-    template_id: int
+    template_id: str
     created_at: datetime
     updated_at: datetime
 
@@ -48,7 +48,7 @@ class AdConcept(BaseModel):
 
 class DeconstructRequest(BaseModel):
     """Request to deconstruct a template into a blueprint"""
-    template_id: int
+    template_id: str
 
 
 class ReconstructRequest(BaseModel):

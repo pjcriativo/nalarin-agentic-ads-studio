@@ -4,6 +4,7 @@ from typing import List, Optional
 from app.database import get_db
 from app.models import AdStyle, User
 from app.core.deps import get_current_active_user
+from app.core.tenancy import require_platform_admin
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -103,7 +104,7 @@ def get_ad_style(
 def create_ad_style(
     style: AdStyleCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_platform_admin),
 ):
     """Create a new ad style"""
     # Check if style with this ID already exists
@@ -122,7 +123,7 @@ def update_ad_style(
     style_id: str,
     style: AdStyleUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_platform_admin),
 ):
     """Update an existing ad style"""
     db_style = db.query(AdStyle).filter(AdStyle.id == style_id).first()
@@ -142,7 +143,7 @@ def update_ad_style(
 def delete_ad_style(
     style_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_platform_admin),
 ):
     """Delete an ad style"""
     db_style = db.query(AdStyle).filter(AdStyle.id == style_id).first()
